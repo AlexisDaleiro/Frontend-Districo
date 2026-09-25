@@ -1,0 +1,142 @@
+[
+  {
+    "name": "BIOFRESH para cachorros – Razas medianas",
+    "image": "/images/product-0-0.jpg",
+    "category": "alimentacion",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/alimento-para-mascotas/"
+  },
+  {
+    "name": "BIOFRESH para gatos – Castrados",
+    "image": "/images/product-0-1.png",
+    "category": "alimentacion",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/alimento-para-mascotas/"
+  },
+  {
+    "name": "BIOFRESH para perros – SENIOR Razas grandes y gigantes",
+    "image": "/images/product-0-2.png",
+    "category": "alimentacion",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/alimento-para-mascotas/"
+  },
+  {
+    "name": "BIOFRESH para perros – Adultos Razas pequeñas y mini",
+    "image": "/images/product-0-3.png",
+    "category": "alimentacion",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/alimento-para-mascotas/"
+  },
+  {
+    "name": "4PETS – Arena sanitaria para gatos",
+    "image": "/images/product-1-0.jpg",
+    "category": "arenas",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/arenas-sanitarias/"
+  },
+  {
+    "name": "KETS – Arena sanitaria para gatos",
+    "image": "/images/product-1-1.jpg",
+    "category": "arenas",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/arenas-sanitarias/"
+  },
+  {
+    "name": "Alfombra de entrenamiento – TAPET",
+    "image": "/images/product-2-0.png",
+    "category": "higiene",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/cuidado-mascotas/"
+  },
+  {
+    "name": "Alfombra de Entrenamiento – Procão",
+    "image": "/images/product-2-1.png",
+    "category": "higiene",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/cuidado-mascotas/"
+  },
+  {
+    "name": "Mega Pack",
+    "image": "/images/product-3-0.png",
+    "category": "snacks",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/snacks-para-consumo-humano/"
+  },
+  {
+    "name": "Super Pack",
+    "image": "/images/product-3-1.png",
+    "category": "snacks",
+    "source": "DISTRICO",
+    "sourceUrl": "https://www.districo.com.uy/snacks-para-consumo-humano/"
+  },
+  {
+    "name": "ALIZIN 10ML",
+    "image": "/images/raicor-animales-de-compania-0.png",
+    "category": "veterinaria",
+    "source": "RAICOR",
+    "sourceUrl": "https://raicor.com.uy/product/alizin-10/"
+  },
+  {
+    "name": "ALLERCALM 250ML",
+    "image": "/images/raicor-animales-de-compania-1.png",
+    "category": "veterinaria",
+    "source": "RAICOR",
+    "sourceUrl": "https://raicor.com.uy/product/allercalm-250-ml/"
+  },
+  {
+    "name": "ADENOSAN * 2ML (DOSIS)",
+    "image": "/images/raicor-ganaderia-0.png",
+    "category": "ganaderia",
+    "source": "RAICOR",
+    "sourceUrl": "https://raicor.com.uy/product/adenosan-2-ml-dosis/"
+  },
+  {
+    "name": "BARRICADE 15% 1L",
+    "image": "/images/raicor-ganaderia-1.png",
+    "category": "ganaderia",
+    "source": "RAICOR",
+    "sourceUrl": "https://raicor.com.uy/product/barricade-15/"
+  },
+  {
+    "name": "Alamycin Spray x 140g",
+    "image": "/images/magnis-animales-de-compania-0.jpg",
+    "category": "veterinaria",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/alamycin-spray-x-140-grs/"
+  },
+  {
+    "name": "Apeticat Jarabe 100ml",
+    "image": "/images/magnis-animales-de-compania-1.jpg",
+    "category": "veterinaria",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/apeticat-jarabe/"
+  },
+  {
+    "name": "AE Poxine",
+    "image": "/images/magnis-aves-y-cerdos-0.jpg",
+    "category": "aves-y-cerdos",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/ae-poxine/"
+  },
+  {
+    "name": "AE Vac",
+    "image": "/images/magnis-aves-y-cerdos-1.jpg",
+    "category": "aves-y-cerdos",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/ae-vac/"
+  },
+  {
+    "name": "Storm 1Kg",
+    "image": "/images/magnis-raticidas-0.png",
+    "category": "raticidas",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/storm-1kg/"
+  },
+  {
+    "name": "Storm balde x 10 kg.",
+    "image": "/images/magnis-raticidas-1.jpg",
+    "category": "raticidas",
+    "source": "MAGNIS",
+    "sourceUrl": "https://magnis.com.uy/product/storm-balde-x-10-kg/"
+  }
+]
