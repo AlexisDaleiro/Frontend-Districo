@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: districo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: districo_demo
+      POSTGRES_USER: districo
+      POSTGRES_PASSWORD: districo
+    ports:
+      - "5432:5432"
+    volumes:
+      - districo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U districo -d districo_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  districo_postgres_data:
