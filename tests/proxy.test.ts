@@ -119,4 +119,20 @@ describe("Frontera entre frontend y API", () => {
     expect(result.status).toBe(400);
     expect(await result.json()).toEqual({ message: "Stock insuficiente" });
   });
+  it("usa el servicio enlazado de Vercel cuando no hay BACKEND_API_URL", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "");
+    vi.stubEnv("BACKEND_SERVICE_URL", "https://backend.internal/");
+    const fetch = vi.fn().mockResolvedValue(Response.json([]));
+    vi.stubGlobal("fetch", fetch);
+    const result = await GET(
+      new NextRequest("http://localhost/api/backend/products"),
+      params("products"),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://backend.internal/api/products",
+      expect.anything(),
+    );
+    expect(result.status).toBe(200);
+  });
 });

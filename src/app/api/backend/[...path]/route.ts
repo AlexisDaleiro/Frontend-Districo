@@ -26,7 +26,11 @@ async function handle(
     if (!origin || origin !== request.nextUrl.origin)
       return reply({ message: "Origen no autorizado." }, 403);
   }
-  const base = process.env.BACKEND_API_URL;
+  // BACKEND_SERVICE_URL is injected by the Vercel Services binding (see vercel.json).
+  const binding = process.env.BACKEND_SERVICE_URL;
+  const base =
+    process.env.BACKEND_API_URL ||
+    (binding ? `${binding.replace(/\/$/, "")}/api` : undefined);
   if (!base) return reply({ message: "La API aún no está configurada." }, 503);
   let body: Record<string, unknown> | undefined;
   if (request.method !== "GET" && request.method !== "DELETE") {
