@@ -2,6 +2,12 @@
 
 Última actualización: 25 de septiembre de 2026. Rama de trabajo: `frontend`. Sin commits ni publicación durante esta implementación.
 
+## Sesión 25/09/2026: despliegue conjunto en Vercel
+
+Tras el merge de `backend/` en `main`, `next build` fallaba (543 errores de tipos: `tsconfig` incluía `backend/**`). Cambios: `tsconfig.json` y `eslint.config.mjs` excluyen `backend`; nuevo `vercel.json` con Vercel Services (frontend público, backend privado vía binding `BACKEND_SERVICE_URL`); el proxy usa `BACKEND_API_URL` o, si falta, `BACKEND_SERVICE_URL` + `/api`; prueba nueva en `tests/proxy.test.ts`; pasos en `docs/DEPLOYMENT.md`.
+
+Pruebas: `typecheck`, `lint`, `npm test` (16) y `npm run build` correctos. Build del backend (`prisma generate` + `nest build`) correcto en local. **Despliegue en Vercel no verificado**: la configuración de Services se basó en los tipos de `@vercel/build-utils` y en la documentación de Vercel, no en un deploy real. Pendiente: base Postgres, variables, `prisma db push` + seed, y probar login real en la URL publicada.
+
 ## Último paso terminado
 
 Primera implementación de las fases 0–7 y ensayo local de la fase 8. Sitio público, catálogo, acceso B2B, solicitudes, carrito, pedidos y administración disponibles en modo demo. Adaptador real construido contra la referencia `eacea83ef05e834c423c22b33821ca89cec73f62` de `origin/backend`, sin modificar su código.

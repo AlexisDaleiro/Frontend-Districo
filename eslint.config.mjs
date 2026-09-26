@@ -12,5 +12,6 @@ export default defineConfig([
     ".local-support/**",
     "playwright-report/**",
     "test-results/**",
+    "backend/**",
   ]),
 ]);
