@@ -10,6 +10,22 @@ const params = (path: string) => ({
   params: Promise.resolve({ path: path.split("/") }),
 });
 describe("Frontera entre frontend y API", () => {
+  it("prefiere el servicio privado de Vercel y conserva la ruta y consulta", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_SERVICE_URL", "https://private-backend.test/");
+    vi.stubEnv("BACKEND_API_URL", "http://localhost:3001/api");
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] }));
+    vi.stubGlobal("fetch", fetch);
+    const result = await GET(
+      new NextRequest("https://demo.test/api/backend/products?page=2"),
+      params("products"),
+    );
+    expect(result.status).toBe(200);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://private-backend.test/api/products?page=2",
+      expect.objectContaining({ redirect: "error", cache: "no-store" }),
+    );
+  });
   it("limita rutas y elimina secretos recursivamente", () => {
     expect(allowedPath("../auth/login", "POST")).toBe(false);
     expect(allowedPath("https://elsewhere.test", "GET")).toBe(false);
