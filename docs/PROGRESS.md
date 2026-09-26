@@ -2,7 +2,27 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 02b · páginas públicas
+## Último paso terminado: 03a · búsqueda y filtros
+
+Contrastado con `apps/api` (solo lectura): `categoryId` incluye subcategorías, `attributeValueIds` exige todos los valores, la búsqueda cubre nombre, SKU, EAN, marca y laboratorio, el orden es por nombre en el servidor y `page` debe ser entero ≥1. El catálogo no reordena la página actual.
+
+- `src/components/catalog.tsx`: categorías mostradas como árbol (subcategorías con sangría debajo de su categoría superior, reconstruido por `parentId`) y opción «Todas». `page` inválido no se envía a la API (evita un 400). Total de páginas calculado con `meta.limit` en lugar de un 12 fijo. Chips: `productType` con su etiqueta (`label()` de `commerce.ts`) y atributos con los nombres de los valores elegidos.
+- `src/lib/demo.ts`: el filtro por categoría incluye subcategorías, como la API (antes solo la categoría exacta, aunque administración permite crear subcategorías). `page` inválido vuelve a 1 en lugar de `NaN`.
+- `tests/demo.test.ts`: prueba nueva de subcategorías, orden por nombre entre páginas y página inválida. Falla con el `demo.ts` anterior y pasa con el nuevo.
+- `docs/API.md`: fila «Filtros» completada con esos detalles del contrato.
+- Sin cambios en `providers.tsx` (aplana el árbol conservando `parentId`) ni en `types.ts`.
+
+Verificación:
+- `npm test`: 16/16 correctas (antes 15). `npm run typecheck` y eslint de los archivos: correctos. `npm run build`: correcto.
+- `npm run test:e2e -- --grep "catálogo público"`: 1/1 correcta (Chromium del contenedor con configuración temporal, ya eliminada).
+- Navegador (demo, 1280 px): con una subcategoría «Cachorros» bajo Alimentación, la lista queda «Todas | Alimentación | Cachorros (sangría) | …» y Alimentación incluye el producto movido a Cachorros. Categoría + marca + búsqueda persisten al recargar (URL, radio, selector, campo y chips iguales; 2 productos antes y después). «Todas» quita `categoryId`. `?productType=FOOD&page=abc` muestra 6 productos, página 1/1 y chip «Alimentación». `?page=2` muestra 2/2.
+- No probado contra la API real (sin URL publicada).
+
+Pendiente menor: la etiqueta de `FOOD` («Alimentación») coincide con el nombre de la categoría homónima en los chips.
+
+Siguiente tarea: `docs/prompts/03b-ficha.md`.
+
+## Paso anterior: 02b · páginas públicas
 
 Revisadas empresa, contacto y directorio de marcas/laboratorios. Diseño y textos comerciales sin cambios salvo la frase corregida.
 
@@ -17,8 +37,6 @@ Verificación:
 - Empresa y contacto son estáticas: no tienen estados de carga, vacío ni error porque no consultan la API.
 
 Pendiente: confirmar con DISTRICO las direcciones, teléfonos y la lista de marcas del texto de empresa (Three Dogs, Three Cats, Primocão, Pipicat, Amazonia no están en el catálogo demo).
-
-Siguiente tarea: `docs/prompts/03a-catalogo.md`.
 
 ## Paso anterior: 02a · inicio por necesidades
 

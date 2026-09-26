@@ -198,4 +198,25 @@ describe("Demo B2B: recorrido comercial", () => {
     expect(quantityError(v, 3)).toContain("múltiplo");
     expect(quantityError(v, NaN)).toBeTruthy();
   });
+  it("filtra como la API: subcategorías incluidas, orden por nombre y página inválida", async () => {
+    await login("admin@districo.com");
+    const child = await api<{ id: string }>("categories", "POST", {
+      name: "Cachorros",
+      parentId: "alimentacion",
+    });
+    await api("products/demo-product-4", "PATCH", { categoryIds: [child.id] });
+    const parent = await api<ProductList>(
+      "products?categoryId=alimentacion&limit=100",
+    );
+    expect(parent.items.map((p) => p.id)).toContain("demo-product-4");
+    expect(
+      (await api<ProductList>(`products?categoryId=${child.id}`)).items,
+    ).toHaveLength(1);
+    const all = await api<ProductList>("products?limit=5&page=2");
+    const names = (await api<ProductList>("products?limit=100")).items.map(
+      (p) => p.name,
+    );
+    expect(all.items.map((p) => p.name)).toEqual(names.slice(5, 10));
+    expect((await api<ProductList>("products?page=abc")).meta.page).toBe(1);
+  });
 });

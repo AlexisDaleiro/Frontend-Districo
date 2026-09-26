@@ -34,7 +34,7 @@ El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba p
 | Acceso                | POST `auth/login` `{email,password}` → tokens + payload de usuario; GET `auth/me` → usuario, permisos como objetos y cuenta                 |
 | Renovación            | POST `auth/refresh` `{refreshToken}` → par rotado; POST `auth/logout` revoca refresh                                                        |
 | Catálogo              | GET `products` → `{items,meta:{total,page,limit}}`; GET `products/:slug`                                                                    |
-| Filtros               | `search`, `categoryId`, `brandId`, `laboratoryId`, `productType`, `attributeValueIds` separados por comas, `featured`, `page`, `limit` ≤100 |
+| Filtros               | `search`, `categoryId` (incluye subcategorías), `brandId`, `laboratoryId`, `productType`, `attributeValueIds` separados por comas (deben cumplirse todos), `featured`, `page` ≥1, `limit` ≤100 (20 por omisión; la UI envía 12) |
 | Búsqueda              | Nombre, SKU, EAN, marca y laboratorio; orden por nombre del backend                                                                         |
 | Taxonomía             | GET `categories` devuelve árbol; `brands`, `laboratories`, `attributes` devuelven listas                                                    |
 | Precios visibles      | `variants[].price={amount,currency,priceList}` solo con permisos; `availableStock`, `minimumOrderQuantity`, `saleMultiple` por variante     |

@@ -32,7 +32,13 @@ import type {
   ProductList,
   Variant,
 } from "@/lib/types";
-import { can, firstQuantity, money, quantityError } from "@/lib/commerce";
+import {
+  can,
+  firstQuantity,
+  label,
+  money,
+  quantityError,
+} from "@/lib/commerce";
 export function ProductCard({ product }: { product: Product }) {
   const variant = product.variants.find((v) => v.active !== false);
   const price = variant?.price;
@@ -97,6 +103,25 @@ export function ProductGrid({ products }: { products: Product[] }) {
     </div>
   );
 }
+// La API entrega un árbol que providers aplana; se reordena por parentId para
+// mostrar cada subcategoría debajo de su categoría superior.
+function categoryTree(list: Entity[]) {
+  const ids = new Set(list.map((c) => c.id));
+  const children = new Map<string | null, Entity[]>();
+  for (const c of list) {
+    const parent = c.parentId && ids.has(c.parentId) ? c.parentId : null;
+    children.set(parent, [...(children.get(parent) ?? []), c]);
+  }
+  const seen = new Set<string>();
+  const walk = (
+    parent: string | null,
+    depth: number,
+  ): { c: Entity; depth: number }[] =>
+    (children.get(parent) ?? [])
+      .filter((c) => !seen.has(c.id) && seen.add(c.id))
+      .flatMap((c) => [{ c, depth }, ...walk(c.id, depth + 1)]);
+  return walk(null, 0);
+}
 export function Catalog() {
   const params = useSearchParams(),
     router = useRouter();
@@ -113,6 +138,7 @@ export function Catalog() {
     "productType",
   ]) {
     const value = params.get(key);
+    if (key === "page" && !/^[1-9]\d*$/.test(value ?? "")) continue;
     if (value) filtered.set(key, value);
   }
   filtered.set("limit", "12");
@@ -132,8 +158,23 @@ export function Catalog() {
     <>
       <div className="filter-section">
         <h3>Categorías</h3>
-        {categories.data?.map((c) => (
-          <label className="filter-option" key={c.id}>
+        {!!categories.data?.length && (
+          <label className="filter-option">
+            <input
+              type="radio"
+              name="categoryId"
+              checked={!params.get("categoryId")}
+              onChange={() => set("categoryId", "")}
+            />
+            Todas
+          </label>
+        )}
+        {categoryTree(categories.data ?? []).map(({ c, depth }) => (
+          <label
+            className="filter-option"
+            key={c.id}
+            style={depth ? { paddingLeft: depth * 16 } : undefined}
+          >
             <input
               type="radio"
               name="categoryId"
@@ -269,9 +310,20 @@ export function Catalog() {
                   ].find((e) => e.id === params.get(key))?.name ??
                     (key === "featured"
                       ? "Destacados"
-                      : key === "attributeValueIds"
-                        ? "Atributos"
-                        : params.get(key))}
+                      : key === "productType"
+                        ? label(params.get(key) ?? "")
+                        : key === "attributeValueIds"
+                          ? (params.get(key) ?? "")
+                              .split(",")
+                              .map(
+                                (id) =>
+                                  attributes.data
+                                    ?.flatMap((a) => a.values)
+                                    .find((v) => v.id === id)?.value,
+                              )
+                              .filter(Boolean)
+                              .join(", ") || "Atributos"
+                          : params.get(key))}
                   <X size={12} />
                 </button>
               ))}
@@ -315,12 +367,18 @@ export function Catalog() {
                 </button>
                 <span>
                   {products.data.meta.page} /{" "}
-                  {Math.max(1, Math.ceil(products.data.meta.total / 12))}
+                  {Math.max(
+                    1,
+                    Math.ceil(
+                      products.data.meta.total / products.data.meta.limit,
+                    ),
+                  )}
                 </span>
                 <button
                   className="button secondary small"
                   disabled={
-                    products.data.meta.page * 12 >= products.data.meta.total
+                    products.data.meta.page * products.data.meta.limit >=
+                    products.data.meta.total
                   }
                   onClick={() =>
                     set("page", String(products.data.meta.page + 1))

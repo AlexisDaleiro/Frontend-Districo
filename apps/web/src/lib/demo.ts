@@ -86,6 +86,18 @@ function write(state: State) {
   }
 }
 const id = () => crypto.randomUUID();
+function descendants(categories: Entity[], rootId: string) {
+  const ids = new Set([rootId]);
+  for (let added = true; added;) {
+    added = false;
+    for (const c of categories)
+      if (c.parentId && ids.has(c.parentId) && !ids.has(c.id)) {
+        ids.add(c.id);
+        added = true;
+      }
+  }
+  return ids;
+}
 function publicProduct(p: Product, user?: User): Product {
   const priceAllowed =
     can(user, "CAN_VIEW_PRICES") &&
@@ -297,7 +309,11 @@ export async function demoRequest<T>(
     for (const [key, test] of [
       [
         "categoryId",
-        (p: Product, v: string) => p.categories.some((c) => c.categoryId === v),
+        // Igual que la API: incluye las subcategorías.
+        (p: Product, v: string) =>
+          p.categories.some((c) =>
+            descendants(s.categories, v).has(c.categoryId),
+          ),
       ],
       ["brandId", (p: Product, v: string) => p.brand?.id === v],
       ["laboratoryId", (p: Product, v: string) => p.laboratory?.id === v],
@@ -315,7 +331,7 @@ export async function demoRequest<T>(
         ),
       );
     items.sort((a, b) => a.name.localeCompare(b.name));
-    const page = Math.max(1, Number(query.get("page") ?? 1)),
+    const page = Math.max(1, Math.floor(Number(query.get("page"))) || 1),
       limit = Math.min(100, Math.max(1, Number(query.get("limit") ?? 12)));
     result = {
       items: items
