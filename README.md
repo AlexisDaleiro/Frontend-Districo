@@ -2,13 +2,13 @@
 
 Monorepo con npm workspaces. Un solo `npm ci` en la raíz instala las dos aplicaciones a partir de un único `package-lock.json`.
 
-| Carpeta    | Aplicación                                                    | Responsable                  | Documentación                              |
+| Carpeta    | Aplicación                                                    | Desarrolla                   | Documentación                              |
 | ---------- | ------------------------------------------------------------- | ---------------------------- | ------------------------------------------ |
 | `apps/web` | Frontend Next.js: sitio, catálogo, pedidos y administración   | @AlexisDaleiro               | [apps/web/README.md](apps/web/README.md)   |
 | `apps/api` | Backend NestJS + Prisma + PostgreSQL                          | @MaraAnima                   | [apps/api/README.md](apps/api/README.md)   |
 | `docs`     | Documento maestro, contrato de API, avance y prompts de tareas | —                            | [docs/MASTER.md](docs/MASTER.md)           |
 
-Las revisiones requeridas por carpeta están en `.github/CODEOWNERS`.
+No hay revisión obligatoria por carpeta: ambos socios pueden aprobar y subir cambios en todo el repositorio (`.github/CODEOWNERS`).
 
 ## Requisitos
 

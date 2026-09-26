@@ -4,7 +4,7 @@ Monorepo: frontend en `apps/web` (las rutas `src/...`, `tests/...` y `public/...
 
 Antes de editar, leé `docs/PROGRESS.md`, `docs/MASTER.md` y el prompt de la tarea elegida. Consultá `docs/API.md` solo si la tarea involucra integración. Comprobá `git status --short` y preservá trabajo ajeno.
 
-- El backend (`apps/api`) pertenece al socio (@MaraAnima, ver `.github/CODEOWNERS`). No cambiar su código, migraciones ni seed sin su acuerdo explícito; consultarlo leyendo `apps/api`.
+- El backend (`apps/api`) lo desarrolla el socio (@MaraAnima). No hay revisión obligatoria: ambos socios suben cambios por igual (acuerdo del 26/09/2026). Aun así, no cambiar su código, migraciones ni seed salvo que la tarea lo pida; consultarlo leyendo `apps/api`.
 - No rehacer la aplicación ni cambiar el diseño acordado al retomar una sesión.
 - Mobile first, paleta de DISTRICO, Manrope, animaciones discretas y accesibilidad.
 - No introducir rutas de API inventadas ni cálculos comerciales en modo real.

@@ -41,7 +41,7 @@ Acordada con el socio. Sin cambios de lógica en ninguna aplicación.
 
 Pruebas de la migración: typecheck, lint, tests unitarios (15 frontend + reglas del backend) y build de ambas apps correctos. E2E 15/15 en Chromium contra build de producción en modo demo. Etapas del Dockerfile reproducidas fuera de Docker (el sandbox no da red a `docker build`) y la salida final arrancó y respondió contra PostgreSQL local; la imagen completa no se construyó.
 
-Pendiente fuera del repositorio: en Vercel configurar *Root Directory* = `apps/web`. CODEOWNERS solo exige revisión si @MaraAnima tiene acceso de escritura y la rama `main` tiene protección con revisión de propietarios.
+Pendiente fuera del repositorio: en Vercel configurar *Root Directory* = `apps/web`. La revisión obligatoria de @MaraAnima sobre `apps/api` quedó anulada el 26/09 (ver «Decisiones vigentes»).
 
 Auditoría del backend (26/09): errores críticos reproducidos (precio desactualizado en checkout, reservas de pedidos liberadas por pedidos posteriores, token de recuperación expuesto, cuentas suspendidas que compran, transiciones libres de pedidos). Coordinar su corrección con el socio en PRs separados de esta migración.
 
@@ -53,6 +53,7 @@ La administración incluye solicitudes, permisos, estados de pedidos, productos,
 
 ## Decisiones vigentes
 
+- Sin revisión obligatoria (acuerdo entre socios del 26/09/2026): ambos suben por igual, incluso directo a `main` cuando se indica «commit y push». `CODEOWNERS` lista a ambos para todo el repositorio. `apps/api` se sigue sin modificar salvo que la tarea lo pida.
 - Modo de datos fijado por entorno: demo y real no se mezclan ni se sustituyen ante un error.
 - Demo persistida únicamente en el navegador; datos comerciales ficticios y escenario reiniciable. Los nombres e imágenes de productos tienen procedencia registrada.
 - Cookies HttpOnly para tokens reales; respuestas privadas sin caché compartida. Cierre de sesión limpia datos privados; los cambios de identidad se notifican entre pestañas.
@@ -76,7 +77,7 @@ La administración incluye solicitudes, permisos, estados de pedidos, productos,
 1. **API publicada:** falta URL y cuentas/datos de prueba del socio. La integración real no está verificada. No afirmar que se completó la fase 8.
 2. **Vercel:** CLI disponible, pero `vercel whoami` indicó sesión cerrada. No existe enlace publicado por esta implementación. El despliegue está documentado en `docs/DEPLOYMENT.md`.
 3. Validar con el cliente la selección visual, presentaciones reales y correspondencias de necesidades del catálogo importado. Laboratorios se muestran solo cuando existen datos.
-4. Revisar las limitaciones del backend documentadas antes de utilizar datos comerciales reales. No resolverlas modificando `apps/api` sin acuerdo del socio.
+4. Revisar las limitaciones del backend documentadas antes de utilizar datos comerciales reales. No resolverlas modificando `apps/api` salvo que la tarea lo pida.
 
 ## Siguiente acción exacta
 
