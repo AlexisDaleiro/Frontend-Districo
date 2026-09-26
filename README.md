@@ -14,6 +14,8 @@ No hay revisión obligatoria por carpeta: ambos socios pueden aprobar y subir ca
 
 Node.js 22.9 o posterior. Para el backend, además, Docker (PostgreSQL local).
 
+Guía paso a paso para levantar el proyecto (demo, backend local y ambos conectados): [docs/INICIO.md](docs/INICIO.md).
+
 ## Comandos desde la raíz
 
 ```bash
