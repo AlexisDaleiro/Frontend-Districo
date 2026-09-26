@@ -2,6 +2,7 @@
 import Link from "next/link";
 import {
   useEffect,
+  useId,
   useRef,
   type ReactNode,
   type ImgHTMLAttributes,
@@ -106,6 +107,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
     if (open && !dialog?.open) dialog?.showModal();
@@ -115,14 +117,14 @@ export function Modal({
     <dialog
       ref={ref}
       className="modal"
-      aria-label={title}
+      aria-labelledby={titleId}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="modal-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           type="button"
           className="icon-button"

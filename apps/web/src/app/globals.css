@@ -283,6 +283,10 @@ svg {
   margin-inline: 20px;
   max-width: 580px;
 }
+.search:focus-within {
+  outline: 3px solid #688300;
+  outline-offset: 2px;
+}
 .search input {
   background: transparent;
   border: 0;
@@ -349,7 +353,8 @@ svg {
   font-size: 12px;
   font-weight: 600;
 }
-.navline .active {
+.navline .active,
+.mobile-nav .active {
   color: #6d7c00;
 }
 .be-client {
@@ -1097,6 +1102,9 @@ footer {
   margin: auto;
   box-shadow: 0 20px 100px #0003;
 }
+html:has(.modal[open]) {
+  overflow: hidden;
+}
 .modal::backdrop {
   background: #15323cb0;
   backdrop-filter: blur(3px);
@@ -1386,13 +1394,13 @@ td .button {
   .header-main {
     min-height: auto;
     display: grid;
-    grid-template-columns: 30px 1fr auto;
+    grid-template-columns: 34px 1fr auto;
     gap: 12px;
     padding-block: 18px;
   }
   .mobile-menu {
     display: inline-flex;
-    width: 30px;
+    margin-left: -10px;
   }
   .logo img {
     width: 143px;

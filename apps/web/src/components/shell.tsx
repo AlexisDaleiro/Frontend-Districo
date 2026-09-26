@@ -31,16 +31,20 @@ export function Header() {
   const cart = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
   const nav = (
     <>
-      {links.map(([href, text]) => (
-        <Link
-          key={href}
-          className={pathname === href ? "active" : ""}
-          href={href}
-          onClick={() => setOpen(false)}
-        >
-          {text}
-        </Link>
-      ))}
+      {links.map(([href, text]) => {
+        const current = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link
+            key={href}
+            className={current ? "active" : ""}
+            aria-current={current ? "page" : undefined}
+            href={href}
+            onClick={() => setOpen(false)}
+          >
+            {text}
+          </Link>
+        );
+      })}
     </>
   );
   return (
@@ -70,6 +74,8 @@ export function Header() {
           <button
             className="icon-button mobile-menu"
             aria-label="Abrir menú"
+            aria-haspopup="dialog"
+            aria-expanded={open}
             onClick={() => setOpen(true)}
           >
             <Menu />
@@ -137,12 +143,13 @@ export function Header() {
       >
         <nav className="mobile-nav">
           {nav}
-          <Link href="/solicitar-cuenta" onClick={() => setOpen(false)}>
-            Quiero ser cliente
-          </Link>
-          {user?.role === "ADMIN" && (
+          {user?.role === "ADMIN" ? (
             <Link href="/admin" onClick={() => setOpen(false)}>
               Administración
+            </Link>
+          ) : (
+            <Link href="/solicitar-cuenta" onClick={() => setOpen(false)}>
+              Quiero ser cliente
             </Link>
           )}
           {user && (
@@ -198,6 +205,8 @@ export function Footer() {
             className="footer-logo"
             src="/images/logo-districo.png"
             alt="DISTRICO"
+            width={201}
+            height={38}
           />
           <p>
             Conectamos tu negocio con marcas

@@ -1,16 +1,33 @@
 # Registro de avance
 
-Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4` (sin commit).
+Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 00 · preparación y contratos
+## Último paso terminado: 01 · base visual adaptable
+
+Revisados tokens, Manrope, encabezado, búsqueda, navegación móvil, pie y diálogos. Paleta, tipografía y diseño sin cambios; solo correcciones de accesibilidad y coherencia.
+
+- `src/app/globals.css`: la búsqueda del encabezado recupera el foco visible (`.search:focus-within`; `.search input { outline: none }` anulaba la regla global). Botón de menú móvil a 44×44 px (antes 30 px de ancho) sin mover el logo. Estado activo también en el menú móvil. La página no se desplaza detrás de un diálogo abierto (`html:has(.modal[open])`).
+- `src/components/shell.tsx`: `aria-current="page"` y estado activo también en subrutas; botón de menú con `aria-expanded` y `aria-haspopup`. El menú móvil muestra «Administración» o «Quiero ser cliente», igual que el escritorio (antes mostraba ambos al administrador). Logo del pie con `width`/`height`.
+- `src/components/ui.tsx`: `Modal` se nombra con `aria-labelledby` apuntando a su título, en lugar de repetirlo en `aria-label`.
+- Sin cambios en `layout.tsx` (Manrope local vía `@fontsource-variable/manrope`, `lang="es-UY"`, enlace de salto a `#contenido`). Tokens `--ink #204F5F` y `--lime #B1CA00` intactos; `--muted`/`--line` siguen siendo derivados, no los grises observados `#636466`/`#EFEFEF`.
+
+Comandos y resultados:
+- `npm run typecheck`, `npm run lint`: correctos, sin advertencias. `npm run build`: correcto, 16 rutas.
+- `npm run test:e2e` (15 pruebas, Chromium, demo): 15/15 correctas contra la compilación final. En este contenedor hubo que apuntar a `/opt/pw-browsers/chromium-1194` con una configuración temporal, ya eliminada; un primer intento falló entero porque un `next start` anterior servía una compilación vieja.
+- Barrido propio con Playwright: 9 páginas públicas × 360/390/768/1024/1440 px = 45 combinaciones sin desbordamiento horizontal. Con sesión de administración a 360 px: `/`, `/admin`, `/cuenta` y `/catalogo` sin desbordamiento. Menú móvil a 360/390: botón 44×44, foco inicial en «Cerrar», Escape devuelve el foco al botón y `aria-expanded` vuelve a `false`. Diálogo de reinicio bloquea el desplazamiento en los cinco anchos. Capturas revisadas a 360 y 768 px.
+- No es una auditoría completa de accesibilidad ni prueba en otros navegadores.
+
+Pendiente fuera de alcance: los textos de 9–10 px (franja demo, barra superior y pie) son del diseño acordado; evaluar con el cliente si se amplían.
+
+Siguiente tarea: `docs/prompts/02a-inicio.md`.
+
+## Paso anterior: 00 · preparación y contratos
 
 - Backend verificado contra la referencia `eacea83`: `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración (Dockerfile, README, `.dockerignore` y lockfile). `src/` y `prisma/` idénticos; `origin/backend` sigue en `eacea83`. Cada ruta admitida por `src/lib/proxy-policy.ts` existe en los controladores. Contratos consumidos sin cambios.
 - `docs/API.md` (único archivo cambiado): verificación registrada; nuevas secciones «Modos de ejecución» (variables y respuestas del proxy por modo), «Dependencias externas» y «Rutas del backend fuera del uso actual»; punto 6 corregido (el backend sí tiene activar/desactivar promociones, no consumido); punto 11 con los hallazgos de la auditoría del 26/09.
 - Sin cambios en `apps/api`, código del frontend ni `.env.example` (sus dos variables siguen correctas).
 - Comandos: `git status --short` (limpio al inicio); `npm ci` en la raíz (contenedor sin dependencias; lockfile sin cambios); `npm run typecheck`: correcto.
 - Pendiente detectado, fuera de alcance: el proxy admite rutas que la UI no usa (`auth/reset-password`, `admin/orders/:id/approve|reject`, `admin/audit-logs`, `promotions`, `recommendations`). Evaluar retirarlas en 08a.
-
-Siguiente tarea: `docs/prompts/01-base-visual.md`.
 
 ## Paso anterior: migración a monorepo
 
