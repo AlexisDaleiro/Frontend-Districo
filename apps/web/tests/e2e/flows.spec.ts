@@ -48,9 +48,9 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   for (const [label, value] of [
     ["Nombre del comercio", "Comercio Prueba"],
     ["Razón social", "Comercio Prueba SRL"],
-    ["RUT", "123456789012"],
+    ["RUT", "12 345678 9012"],
     ["Nombre de contacto", "Persona Prueba"],
-    ["Correo electrónico", "nuevo@example.test"],
+    ["Correo electrónico", "Nuevo@Example.test"],
     ["Teléfono", "099123456"],
     ["Dirección", "Calle Prueba 123"],
     ["Departamento", "Montevideo"],
@@ -63,12 +63,21 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await expect(
     page.getByRole("heading", { name: "Recibimos tu solicitud" }),
   ).toBeVisible();
+  await expect(page.locator("main")).toContainText("nuevo@example.test");
+  // Pendiente: todavía no puede ingresar ni comprar.
+  await page.goto("/ingresar");
+  await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
+  await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page.locator("main [role=alert]")).toContainText("inválidas");
+  await expect(page).toHaveURL(/\/ingresar$/);
   await login(page, "Administración");
   await page.goto("/admin/solicitudes");
   await page.getByRole("button", { name: "Aprobar", exact: true }).click();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(page.locator(".admin-cards")).toContainText("Aprobado");
+  await expect(page.locator(".admin-cards")).toContainText("123456789012");
   await page.goto("/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await page.goto("/ingresar");

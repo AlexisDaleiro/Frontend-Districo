@@ -2,7 +2,25 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 04a · acceso y sesión
+## Último paso terminado: 04b · solicitud de cuenta
+
+Contrastado con `apps/api/src/applications` (solo lectura): `CreateApplicationDto` exige comercio, razón social, RUT, correo y contraseña ≥8; el resto es opcional. El servicio guarda el correo en minúsculas, rechaza correos de usuarios existentes y guarda solo el hash de la contraseña. El formulario pide además contacto, teléfono, dirección y tipo como obligatorios (decisión de negocio ya existente, sin cambios).
+
+- `src/components/auth.tsx`: el correo se envía sin espacios y en minúsculas, igual que la API. El RUT acepta espacios, puntos y guiones y se envía solo con sus 12 dígitos. Aviso del demo aclarado: la contraseña ingresada no se guarda y la cuenta aprobada usa Demo1234! (antes pedía usar Demo1234! y a la vez decía que no se guardaba). Pantalla de resultado: indica que no se puede ingresar hasta la aprobación y muestra el correo con el que se ingresará. Mensajes de error vinculados a su campo con `aria-describedby`.
+- `src/lib/demo.ts`: la solicitud simulada guarda el correo en minúsculas y compara duplicados sin distinguir mayúsculas. Sigue descartando la contraseña.
+- `tests/e2e/flows.spec.ts` («solicitud aprobada»): usa correo con mayúsculas y RUT con espacios; comprueba que, pendiente, el ingreso falla y queda en `/ingresar`; tras aprobar, la tarjeta muestra el RUT normalizado y la cuenta ingresa con Demo1234!.
+
+Verificación:
+- `npm run test:e2e -- --grep "solicitud aprobada"`: 1/1 correcta. Con `auth.tsx` y `demo.ts` anteriores falla (el RUT con espacios se rechaza).
+- `npm test`: 24/24. Typecheck y eslint: correctos. `npm run build`: correcto.
+- Navegador (demo, 360 px): formulario vacío → 11 mensajes, `aria-invalid` y descripción accesible en cada campo (RUT: «Ingresá un RUT de 12 dígitos.»), foco en el primer campo, sin desbordamiento.
+- No probado contra la API real: el envío real y la notificación (proveedor de consola) dependen del backend.
+
+Pendiente: el backend admite varias solicitudes pendientes con el mismo correo; el demo las rechaza. No hay subida de documentos (la API solo acepta URLs existentes; ver `docs/API.md`, punto 9).
+
+Siguiente tarea: `docs/prompts/05a-carrito.md`.
+
+## Paso anterior: 04a · acceso y sesión
 
 Contrastado con `apps/api/src/auth` (solo lectura): login devuelve `{accessToken, refreshToken, user}`, refresh rota el par recibido en el cuerpo, logout revoca y `forgot-password` devuelve `resetToken` a quien lo pide.
 
@@ -19,8 +37,6 @@ Verificación:
 - No probado contra la API real (sin URL): renovación, rotación y revocación verificadas con respuestas simuladas.
 
 Pendiente (backend, sin cambios): concurrencia de refresh entre pestañas o instancias y suspensión sin revocar tokens (`docs/API.md`, puntos 4 y 10).
-
-Siguiente tarea: `docs/prompts/04b-alta.md`.
 
 ## Paso anterior: 03b · ficha y presentaciones
 

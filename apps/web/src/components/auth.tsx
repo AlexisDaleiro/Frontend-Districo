@@ -132,7 +132,12 @@ export function Login() {
 const applicationSchema = z.object({
   businessName: z.string().min(2, "Ingresá el nombre del comercio."),
   legalName: z.string().min(2, "Ingresá la razón social."),
-  rut: z.string().regex(/^\d{12}$/, "Ingresá un RUT de 12 dígitos."),
+  rut: z
+    .string()
+    .refine(
+      (v) => /^\d{12}$/.test(v.replace(/[\s.-]/g, "")),
+      "Ingresá un RUT de 12 dígitos.",
+    ),
   email: z.email("Ingresá un correo válido."),
   password: z.string().min(8, "Usá al menos 8 caracteres."),
   contactName: z.string().min(2, "Ingresá tu nombre."),
@@ -145,7 +150,7 @@ const applicationSchema = z.object({
 });
 type ApplicationInput = z.infer<typeof applicationSchema>;
 export function Apply() {
-  const [done, setDone] = useState(false),
+  const [done, setDone] = useState(""),
     [error, setError] = useState<unknown>();
   const form = useForm<ApplicationInput>({
     resolver: zodResolver(applicationSchema),
@@ -153,9 +158,15 @@ export function Apply() {
   });
   async function submit(values: ApplicationInput) {
     setError(undefined);
+    // Igual que la API: correo en minúsculas; RUT solo con dígitos.
+    const email = values.email.trim().toLowerCase();
     try {
-      await request("applications", "POST", values);
-      setDone(true);
+      await request("applications", "POST", {
+        ...values,
+        email,
+        rut: values.rut.replace(/[\s.-]/g, ""),
+      });
+      setDone(email);
     } catch (e) {
       setError(e);
     }
@@ -171,8 +182,9 @@ export function Apply() {
           </p>
           {DEMO && (
             <p>
-              Solicitud simulada. Podés aprobarla desde Administración e
-              ingresar con este correo y <strong>Demo1234!</strong>.
+              Solicitud simulada. Hasta que se apruebe desde Administración no
+              se puede ingresar. Después, ingresá con <strong>{done}</strong> y
+              la contraseña <strong>Demo1234!</strong>.
             </p>
           )}
           <ActionLink href="/ingresar">Volver al acceso</ActionLink>
@@ -202,9 +214,9 @@ export function Apply() {
       </PageHeading>
       {DEMO && (
         <p className="panel small-copy" style={{ marginBottom: 25 }}>
-          Este es un escenario simulado. Usá datos ficticios y la contraseña
-          Demo1234!. No se guardará la contraseña que ingreses ni se enviarán
-          correos.
+          Este es un escenario simulado: usá datos ficticios. La contraseña que
+          ingreses no se guarda; al aprobarse, la cuenta usa Demo1234!. No se
+          envían correos.
         </p>
       )}
       <form onSubmit={form.handleSubmit(submit)} className="form-grid">
@@ -216,15 +228,20 @@ export function Apply() {
               autoComplete={key === "password" ? "new-password" : undefined}
               {...form.register(key)}
               aria-invalid={!!form.formState.errors[key]}
+              aria-describedby={`${key}-error`}
             />
-            <span className="field-error">
+            <span className="field-error" id={`${key}-error`}>
               {form.formState.errors[key]?.message}
             </span>
           </label>
         ))}
         <label className="field">
           Tipo de comercio *
-          <select {...form.register("businessType")}>
+          <select
+            {...form.register("businessType")}
+            aria-invalid={!!form.formState.errors.businessType}
+            aria-describedby="businessType-error"
+          >
             <option value="">Seleccionar</option>
             {[
               "Veterinaria",
@@ -237,7 +254,7 @@ export function Apply() {
               <option key={v}>{v}</option>
             ))}
           </select>
-          <span className="field-error">
+          <span className="field-error" id="businessType-error">
             {form.formState.errors.businessType?.message}
           </span>
         </label>

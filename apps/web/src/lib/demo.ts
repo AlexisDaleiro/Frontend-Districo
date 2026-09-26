@@ -281,9 +281,10 @@ export async function demoRequest<T>(
     s.session = null;
     result = { success: true };
   } else if (route === "applications" && method === "POST") {
+    const email = String(b.email ?? "").toLowerCase();
     if (
-      s.users.some((u) => u.email === b.email) ||
-      s.applications.some((a) => a.email === b.email && a.status === "PENDING")
+      s.users.some((u) => u.email.toLowerCase() === email) ||
+      s.applications.some((a) => a.email === email && a.status === "PENDING")
     )
       throw new ApiError(
         "Ya existe una cuenta o solicitud con ese correo.",
@@ -291,7 +292,12 @@ export async function demoRequest<T>(
       );
     const { password: _password, ...safe } = b;
     void _password;
-    const application = { ...safe, id: id(), status: "PENDING" } as Application;
+    const application = {
+      ...safe,
+      email,
+      id: id(),
+      status: "PENDING",
+    } as Application;
     s.applications.push(application);
     result = application;
   } else if (route === "products" && method === "GET") {
