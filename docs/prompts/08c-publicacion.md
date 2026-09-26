@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Desplegar un proyecto demo separado en Vercel usando la cuenta autorizada. No sobrescribir importadora.vercel.app. Verificar enlace desde sesión limpia y preparar ejecución local. No marcar publicado sin URL operativa.
 
-**Archivos relevantes:** docs/DEPLOYMENT.md, docs/PROGRESS.md. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** docs/DEPLOYMENT.md, docs/PROGRESS.md. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run build; verificar URL, login demo y pedido; comprobar npm run start. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

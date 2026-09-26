@@ -1,6 +1,6 @@
 # Contratos y límites del backend
 
-Referencia inspeccionada: `origin/backend`, commit `eacea83ef05e834c423c22b33821ca89cec73f62`. Fuente: controladores, DTOs y servicios de esa revisión. API local del socio: puerto 3001, prefijo `/api`, Swagger `/api/docs`. No se cambió código del backend.
+Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b33821ca89cec73f62` (hoy en `apps/api` del monorepo). Fuente: controladores, DTOs y servicios de esa revisión. API local del socio: puerto 3001, prefijo `/api`, Swagger `/api/docs`. No se cambió código del backend.
 
 ## Transporte
 

@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar tokens, Manrope, encabezado, búsqueda, navegación móvil, pie y diálogos. Conservar la paleta observada y el foco accesible.
 
-**Archivos relevantes:** src/app/globals.css, src/app/layout.tsx, src/components/ui.tsx, src/components/shell.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/app/globals.css, src/app/layout.tsx, src/components/ui.tsx, src/components/shell.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run typecheck; npm run lint; npm run build. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

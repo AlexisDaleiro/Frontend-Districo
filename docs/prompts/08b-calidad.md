@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Ejecutar pruebas y revisar capturas en cinco anchos, foco, movimiento reducido, mensajes, recursos, campos y estados de error. Usar modo demo aislado.
 
-**Archivos relevantes:** tests, docs/DEMO-SCRIPT.md, docs/PROGRESS.md. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** tests, docs/DEMO-SCRIPT.md, docs/PROGRESS.md. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run typecheck; npm run lint; npm test; npm run build; npm run test:e2e. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

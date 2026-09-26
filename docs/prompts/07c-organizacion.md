@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar creación y edición de taxonomías. Conservar jerarquías y marcas/laboratorios como entidades separadas. No crear proveedores como marcas automáticamente.
 
-**Archivos relevantes:** src/components/admin.tsx, src/components/providers.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/admin.tsx, src/components/providers.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run typecheck; npm run build. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

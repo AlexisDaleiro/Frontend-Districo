@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar envío único, revisión manual, confirmación e historial. En resultado incierto no repetir ciegamente: consultar pedidos. No agregar pagos ni envíos a la API.
 
-**Archivos relevantes:** src/components/orders.tsx, src/lib/http.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/orders.tsx, src/lib/http.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "pedido|cliente envía". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

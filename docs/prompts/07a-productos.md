@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar alta/edición, variantes, imágenes por URL y eliminación de medios con confirmación. No inventar subida de archivos. Documentar falta de listado de inactivos.
 
-**Archivos relevantes:** src/components/admin.tsx, src/components/admin-form.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/admin.tsx, src/components/admin-form.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run typecheck; npm run lint; npm run test:e2e -- --grep "administración". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Verificar login, logout, renovación, saneamiento y aislamiento de caché. No exponer el resetToken inseguro de la revisión actual del backend.
 
-**Archivos relevantes:** src/components/providers.tsx, src/lib/http.ts, src/app/api/backend/[...path]/route.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/providers.tsx, src/lib/http.ts, src/app/api/backend/[...path]/route.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "permisos". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

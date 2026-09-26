@@ -1,39 +1,20 @@
 {
-  "name": "districo-frontend",
-  "version": "0.1.0",
+  "name": "districo",
   "private": true,
-  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build",
-    "start": "next start --hostname 127.0.0.1",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:e2e": "playwright test"
-  },
-  "dependencies": {
-    "@fontsource-variable/manrope": "^5.2.8",
-    "@hookform/resolvers": "^5.2.2",
-    "@tanstack/react-query": "^5.90.0",
-    "lucide-react": "^0.577.0",
-    "next": "^16.2.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-hook-form": "^7.71.0",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@tailwindcss/postcss": "^4.2.1",
-    "@types/node": "^24.0.0",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "eslint": "^9.39.0",
-    "eslint-config-next": "^16.2.0",
-    "prettier": "^3.9.9",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "dev:web": "npm run dev -w apps/web",
+    "dev:api": "npm run start:dev -w apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w apps/web"
   }
 }
