@@ -36,7 +36,7 @@ export default function Page() {
                 {query.data.map((item) => (
                   <Link
                     className="card"
-                    href={`/catalogo?${key}=${item.id}`}
+                    href={`/catalogo?${key}=${encodeURIComponent(item.id)}`}
                     key={item.id}
                   >
                     <h3>{item.name}</h3>

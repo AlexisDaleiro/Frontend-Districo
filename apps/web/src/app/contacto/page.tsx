@@ -21,7 +21,10 @@ export default function Page() {
             <Phone size={16} />
             0800 1004 · Línea gratuita
           </a>
-          <a href="tel:+59823201381">(+598) 2320 1381</a>
+          <a className="text-link" href="tel:+59823201381">
+            <Phone size={16} />
+            (+598) 2320 1381
+          </a>
           <a className="text-link" href="mailto:contacto@districo.com.uy">
             <Mail size={16} />
             contacto@districo.com.uy

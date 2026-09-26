@@ -2,7 +2,25 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 02a · inicio por necesidades
+## Último paso terminado: 02b · páginas públicas
+
+Revisadas empresa, contacto y directorio de marcas/laboratorios. Diseño y textos comerciales sin cambios salvo la frase corregida.
+
+- `src/app/empresa/page.tsx`: decía que Raicor y Magnis se sumaban «diferenciando sus marcas y laboratorios», pero en los datos esos productos no tienen marca ni laboratorio. Ahora dice que figuran como proveedores de origen, separados de marcas y laboratorios, y el párrafo solo aparece en modo demo.
+- `src/app/contacto/page.tsx`: el segundo teléfono de Casa central con el mismo formato e icono que los demás. Sigue sin formulario: solo enlaces `tel:` y `mailto:` existentes.
+- `src/app/marcas/page.tsx`: enlaces con `encodeURIComponent`. Nuevo `src/app/marcas/layout.tsx` solo para el título «Marcas y laboratorios | DISTRICO» (la página es cliente y no puede exportar metadatos).
+
+Verificación:
+- `npm run lint`: correcto. `npm run build` (demo): correcto; también compilado en modo real para probar errores y luego recompilado en demo.
+- Demo, 360 y 1440 px: las tres páginas sin desbordamiento y con título propio. Contacto: 4 enlaces (`tel:08001004`, `tel:+59823201381`, `mailto:contacto@districo.com.uy`, `tel:+59842252155`) y 0 formularios. Marcas: 5 marcas, cada una abre el catálogo filtrado con productos (Procão incluida). Laboratorios muestra su estado vacío (el demo no tiene laboratorios). La ficha de un producto de Magnis lo presenta como proveedor, no como marca.
+- Modo real sin `BACKEND_API_URL` (360 px): Marcas y Laboratorios muestran «La API aún no está configurada.» con «Intentar nuevamente» en unos 1,5 s, sin datos simulados ni desbordamiento; Empresa oculta el párrafo de demostración.
+- Empresa y contacto son estáticas: no tienen estados de carga, vacío ni error porque no consultan la API.
+
+Pendiente: confirmar con DISTRICO las direcciones, teléfonos y la lista de marcas del texto de empresa (Three Dogs, Three Cats, Primocão, Pipicat, Amazonia no están en el catálogo demo).
+
+Siguiente tarea: `docs/prompts/03a-catalogo.md`.
+
+## Paso anterior: 02a · inicio por necesidades
 
 Inicio revisado: círculos por necesidad, portada, líneas, marcas y selección breve. Sin cambios de diseño, textos ni paleta.
 
@@ -17,8 +35,6 @@ Verificación (modo demo, compilación de producción):
 - No ejercitado: el caso sin categorías coincidentes (el demo siempre coincide).
 
 Hallazgo para modo real (lectura de `apps/api/prisma/seed.ts` e `import-*.ts`, sin cambios): la API crea Mascotas, Perros, Alimentos, Veterinaria, Snacks, Nutraceuticos y Antiparasitarios. Solo Alimentación, Veterinaria y Snacks encontrarían categoría; no se agregaron vínculos a categorías clínicas (Antiparasitarios, Nutraceuticos). Definir con el cliente y el socio la taxonomía final antes de la reunión.
-
-Siguiente tarea: `docs/prompts/02b-publico.md`.
 
 ## Paso anterior: 01 · base visual adaptable
 

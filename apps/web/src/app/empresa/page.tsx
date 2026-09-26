@@ -1,5 +1,6 @@
 import { ActionLink, PageHeading, Picture } from "@/components/ui";
 export const metadata = { title: "Nuestra empresa" };
+const DEMO = process.env.NEXT_PUBLIC_DATA_MODE !== "real";
 export default function Page() {
   return (
     <div className="container section">
@@ -19,11 +20,13 @@ export default function Page() {
             Primocão, Pipicat, Procão, Amazonia y Stack. Nuestra propuesta reúne
             distintas líneas para acompañar las necesidades de cada negocio.
           </p>
-          <p>
-            Ampliamos la selección de esta demostración con productos de los
-            catálogos de Raicor y Magnis, diferenciando sus marcas y
-            laboratorios.
-          </p>
+          {DEMO && (
+            <p>
+              Ampliamos la selección de esta demostración con productos de los
+              catálogos de Raicor y Magnis. Figuran como proveedores de origen,
+              separados de las marcas y laboratorios.
+            </p>
+          )}
           <div className="actions">
             <ActionLink href="/contacto">Conversemos</ActionLink>
           </div>
