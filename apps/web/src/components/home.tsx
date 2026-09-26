@@ -67,14 +67,20 @@ export function Home() {
   const categories = useApi<Entity[]>("categories"),
     featured = useApi<ProductList>("products?featured=true&limit=4"),
     brands = useApi<Entity[]>("brands");
-  const mapped = needs.flatMap((n) => {
-    const category = categories.data?.find(
-      (c) =>
-        n.match.includes(normalize(c.name)) ||
-        n.match.includes(normalize(c.slug ?? "").replaceAll("-", " ")),
-    );
-    return category ? [{ ...n, id: category.id }] : [];
-  });
+  // Solo se muestran necesidades que coinciden con una categoría existente.
+  const mapped = needs
+    .flatMap((n) => {
+      const category = categories.data?.find(
+        (c) =>
+          n.match.includes(normalize(c.name)) ||
+          n.match.includes(normalize(c.slug ?? "").replaceAll("-", " ")),
+      );
+      return category ? [{ ...n, id: category.id }] : [];
+    })
+    .filter((n, i, all) => all.findIndex((m) => m.id === n.id) === i);
+  const lines = mapped.filter((n) =>
+    ["Alimentación", "Veterinaria", "Snacks"].includes(n.name),
+  );
   return (
     <>
       <div className="container">
@@ -90,6 +96,10 @@ export function Home() {
             />
           ) : categories.isPending ? (
             <Loading />
+          ) : !mapped.length ? (
+            <Link className="text-link" href="/catalogo">
+              Explorá el catálogo completo <ArrowUpRight size={16} />
+            </Link>
           ) : (
             <div className="need-list">
               {mapped.map((n) => (
@@ -161,22 +171,19 @@ export function Home() {
             </span>
           </div>
         </div>
-        <section className="section">
-          <div className="section-title">
-            <div>
-              <p className="eyebrow">Un catálogo, muchas posibilidades</p>
-              <h2>Encontrá tu próxima solución.</h2>
+        {lines.length > 0 && (
+          <section className="section">
+            <div className="section-title">
+              <div>
+                <p className="eyebrow">Un catálogo, muchas posibilidades</p>
+                <h2>Encontrá tu próxima solución.</h2>
+              </div>
+              <Link className="text-link" href="/catalogo">
+                Ver todo <ArrowUpRight size={16} />
+              </Link>
             </div>
-            <Link className="text-link" href="/catalogo">
-              Ver todo <ArrowUpRight size={16} />
-            </Link>
-          </div>
-          <div className="line-grid">
-            {mapped
-              .filter((n) =>
-                ["Alimentación", "Veterinaria", "Snacks"].includes(n.name),
-              )
-              .map((n, i) => (
+            <div className="line-grid">
+              {lines.map((n, i) => (
                 <Link
                   className="line-card"
                   key={n.id}
@@ -203,33 +210,36 @@ export function Home() {
                   </span>
                 </Link>
               ))}
+            </div>
+          </section>
+        )}
+      </div>
+      {!!brands.data?.length && (
+        <section className="brand-strip">
+          <div className="container">
+            <p
+              className="eyebrow"
+              style={{ textAlign: "center", marginBottom: 28 }}
+            >
+              Marcas que forman parte de cada día
+            </p>
+            <div className="brand-list">
+              {brands.data.slice(0, 6).map((b) => (
+                <Link
+                  className="brand-word"
+                  key={b.id}
+                  href={`/catalogo?brandId=${encodeURIComponent(b.id)}`}
+                >
+                  {b.name}
+                </Link>
+              ))}
+              <Link className="text-link" href="/marcas">
+                Conocé todas <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
         </section>
-      </div>
-      <section className="brand-strip">
-        <div className="container">
-          <p
-            className="eyebrow"
-            style={{ textAlign: "center", marginBottom: 28 }}
-          >
-            Marcas que forman parte de cada día
-          </p>
-          <div className="brand-list">
-            {brands.data?.slice(0, 6).map((b) => (
-              <Link
-                className="brand-word"
-                key={b.id}
-                href={`/catalogo?brandId=${b.id}`}
-              >
-                {b.name}
-              </Link>
-            ))}
-            <Link className="text-link" href="/marcas">
-              Conocé todas <ArrowUpRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      )}
       <div className="container">
         <section className="section">
           <div className="section-title">

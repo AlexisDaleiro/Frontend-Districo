@@ -5,6 +5,7 @@ Recuperación: 25/09/2026. Se seleccionaron 20 productos de catálogos públicos
 - Nombres, imágenes y página de origen por producto: `apps/web/src/data/catalog.json`.
 - URL y archivo local de cada recurso: `apps/web/src/data/asset-sources.json`.
 - Fuentes: https://www.districo.com.uy, https://raicor.com.uy y https://magnis.com.uy.
+- Sustituto de imágenes faltantes (`/images/placeholder.svg`): elaboración propia, registrado también en `asset-sources.json`.
 - Logo: imagen pública `logo-districo-23.png` del sitio de DISTRICO.
 - Paleta observada: CSS público https://www.districo.com.uy/wp-content/uploads/elementor/css/post-11.css.
 - Colores base observados: petróleo `#204F5F`, lima `#B1CA00`, gris `#636466`, fondo `#EFEFEF`. Tonos auxiliares de la UI derivados para contraste; no se presentan como colores oficiales adicionales.

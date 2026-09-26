@@ -2,7 +2,25 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 01 · base visual adaptable
+## Último paso terminado: 02a · inicio por necesidades
+
+Inicio revisado: círculos por necesidad, portada, líneas, marcas y selección breve. Sin cambios de diseño, textos ni paleta.
+
+- `src/components/home.tsx`: las necesidades siguen vinculándose solo a categorías existentes (por nombre o slug), ahora sin duplicados si dos coinciden con la misma categoría. Si ninguna coincide, se muestra un enlace al catálogo en lugar de una franja vacía. La sección de líneas y la franja de marcas se ocultan si no hay datos (antes quedaban títulos sin contenido). Enlaces de marca con `encodeURIComponent`.
+- `src/data/asset-sources.json` y `docs/ASSETS.md`: registrado `placeholder.svg` como elaboración propia; era el único archivo de `public/images` sin procedencia.
+- Comprobado: los 27 recursos restantes de `public/images` tienen URL de origen y toda imagen referenciada por el inicio y `catalog.json` existe.
+
+Verificación (modo demo, compilación de producción):
+- `npm run typecheck`, eslint del archivo y `npm run build`: correctos.
+- `npm run test:e2e -- --grep "catálogo público|adaptable"`: 6/6 correctas (usando `/opt/pw-browsers/chromium-1194` mediante configuración temporal, ya eliminada).
+- Recorrido propio: 16 accesos del inicio (8 necesidades, 3 líneas, 5 marcas). Cada uno abre el catálogo con su filtro marcado y solo productos de esa categoría o marca (p. ej. Control de plagas → `raticidas` → Storm 1Kg y Storm balde). Sin imágenes rotas en el inicio.
+- No ejercitado: el caso sin categorías coincidentes (el demo siempre coincide).
+
+Hallazgo para modo real (lectura de `apps/api/prisma/seed.ts` e `import-*.ts`, sin cambios): la API crea Mascotas, Perros, Alimentos, Veterinaria, Snacks, Nutraceuticos y Antiparasitarios. Solo Alimentación, Veterinaria y Snacks encontrarían categoría; no se agregaron vínculos a categorías clínicas (Antiparasitarios, Nutraceuticos). Definir con el cliente y el socio la taxonomía final antes de la reunión.
+
+Siguiente tarea: `docs/prompts/02b-publico.md`.
+
+## Paso anterior: 01 · base visual adaptable
 
 Revisados tokens, Manrope, encabezado, búsqueda, navegación móvil, pie y diálogos. Paleta, tipografía y diseño sin cambios; solo correcciones de accesibilidad y coherencia.
 
@@ -18,8 +36,6 @@ Comandos y resultados:
 - No es una auditoría completa de accesibilidad ni prueba en otros navegadores.
 
 Pendiente fuera de alcance: los textos de 9–10 px (franja demo, barra superior y pie) son del diseño acordado; evaluar con el cliente si se amplían.
-
-Siguiente tarea: `docs/prompts/02a-inicio.md`.
 
 ## Paso anterior: 00 · preparación y contratos
 

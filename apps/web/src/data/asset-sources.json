@@ -106,5 +106,10 @@
   {
     "file": "/images/banner-mascotas.jpg",
     "url": "https://magnis.com.uy/wp-content/uploads/2024/05/banner-2.jpg"
+  },
+  {
+    "file": "/images/placeholder.svg",
+    "url": null,
+    "origin": "Elaboración propia: sustituto de imágenes faltantes, sin material de terceros."
   }
 ]
