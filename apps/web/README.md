@@ -1,13 +1,14 @@
 # DISTRICO · Demo B2B
 
-Frontend Next.js independiente de la rama `backend`. Sitio público, catálogo, solicitud de acceso mayorista, carrito, pedidos y administración. Español de Uruguay, diseño adaptable y modos de datos separados.
+Frontend Next.js del monorepo (`apps/web`); el backend está en `apps/api`. Sitio público, catálogo, solicitud de acceso mayorista, carrito, pedidos y administración. Español de Uruguay, diseño adaptable y modos de datos separados.
 
 ## Ejecutar
 
-Requiere Node.js 22.9 o posterior (verificado con Node 24).
+Requiere Node.js 22.9 o posterior (verificado con Node 24). Instalar desde la raíz del repositorio (lockfile único) y ejecutar el resto dentro de `apps/web`:
 
 ```powershell
 npm ci
+cd apps/web
 Copy-Item .env.example .env.local
 npm run dev
 ```

@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Con la URL entregada por el socio, configurar modo real, recompilar, contrastar contratos y ensayar con cuentas de prueba. Si falta URL, registrar dependencia y no simular integración exitosa.
 
-**Archivos relevantes:** docs/API.md, .env.local, src/lib/http.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** docs/API.md, .env.local, src/lib/http.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run build; ensayo manual del guion en entorno de prueba. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

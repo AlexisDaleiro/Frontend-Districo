@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar aprobación/rechazo, permiso veterinario y situación comercial. No asumir que el cambio de accountStatus revoca JWT: documentar el límite del backend.
 
-**Archivos relevantes:** src/components/admin.tsx, src/components/admin-form.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/admin.tsx, src/components/admin-form.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run test:e2e -- --grep "solicitud aprobada|permisos". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar dashboard, filtros, detalle de pedidos, cambios de estado y efecto de reservas. Preservar importes históricos.
 
-**Archivos relevantes:** src/components/admin.tsx, src/components/orders.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/admin.tsx, src/components/orders.tsx. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "revisión". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

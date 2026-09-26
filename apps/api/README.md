@@ -66,13 +66,15 @@ Fase 9:
 
 ## Setup local
 
+Este backend vive en `apps/api` dentro del monorepo. Los comandos de los pasos 1 y 3 a 7 se ejecutan dentro de `apps/api`.
+
 1. Copiar variables:
 
    cp .env.example .env
 
-2. Instalar dependencias:
+2. Instalar dependencias (desde la raiz del repositorio, lockfile unico):
 
-   npm install
+   npm ci
 
 3. Levantar PostgreSQL:
 
@@ -103,6 +105,12 @@ Fase 9:
 Swagger queda disponible en:
 
    http://localhost:3001/api/docs
+
+## Imagen Docker
+
+Se construye desde la raiz del repositorio para usar el lockfile unico:
+
+   docker build -f apps/api/Dockerfile -t districo-api .
 
 ## Credenciales demo
 

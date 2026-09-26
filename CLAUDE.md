@@ -1,8 +1,10 @@
 # Trabajo en el frontend de DISTRICO
 
+Monorepo: frontend en `apps/web` (las rutas `src/...`, `tests/...` y `public/...` de la documentación son relativas a esa carpeta), backend en `apps/api`. Instalar solo desde la raíz con `npm ci`; el lockfile es único.
+
 Antes de editar, leé `docs/PROGRESS.md`, `docs/MASTER.md` y el prompt de la tarea elegida. Consultá `docs/API.md` solo si la tarea involucra integración. Comprobá `git status --short` y preservá trabajo ajeno.
 
-- El backend pertenece al socio. No cambiar su código, migraciones, seed ni ramas; usar `git show origin/backend:ruta` para consulta.
+- El backend (`apps/api`) pertenece al socio (@MaraAnima, ver `.github/CODEOWNERS`). No cambiar su código, migraciones ni seed sin su acuerdo explícito; consultarlo leyendo `apps/api`.
 - No rehacer la aplicación ni cambiar el diseño acordado al retomar una sesión.
 - Mobile first, paleta de DISTRICO, Manrope, animaciones discretas y accesibilidad.
 - No introducir rutas de API inventadas ni cálculos comerciales en modo real.

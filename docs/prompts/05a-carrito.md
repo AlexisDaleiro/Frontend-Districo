@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar agregar/cambiar/quitar, límites de cantidad, estados de red y subtotal. POST cart/items establece cantidad absoluta.
 
-**Archivos relevantes:** src/components/orders.tsx, src/lib/demo.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/orders.tsx, src/lib/demo.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "cliente envía". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

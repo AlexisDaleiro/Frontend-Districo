@@ -12,7 +12,13 @@ Inicio limpio, centrado en necesidades con círculos desplazables en móvil. Cat
 
 Paleta observada en el CSS público de DISTRICO: `#204F5F`, `#B1CA00`, `#636466`, `#EFEFEF`. No es una certificación de manual de marca. Manrope alojada localmente mediante paquete npm. Documentación de imágenes en `docs/ASSETS.md`.
 
+## Mapa del repositorio
+
+Monorepo con npm workspaces: `apps/web` (frontend), `apps/api` (backend del socio), `docs` (común). Un único `package-lock.json` en la raíz. CI en `.github/workflows/ci.yml`.
+
 ## Mapa del frontend
+
+Rutas relativas a `apps/web`.
 
 - `src/app`: rutas App Router, estilos globales, metadatos y proxy de transporte/sesión.
 - `src/components`: sitio público, catálogo, acceso, pedidos, administración, formularios y componentes compartidos.

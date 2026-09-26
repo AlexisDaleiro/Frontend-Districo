@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar galería, variantes, stock, permisos, mínimos y múltiplos. Conservar información de origen y evitar inventar presentaciones reales.
 
-**Archivos relevantes:** src/components/catalog.tsx, src/lib/commerce.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/catalog.tsx, src/lib/commerce.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "permisos|cliente envía". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

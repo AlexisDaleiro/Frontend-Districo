@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar validación, captura de datos y resultado pendiente. En demo no persistir contraseñas; explicar que la cuenta aprobada usa Demo1234!.
 
-**Archivos relevantes:** src/components/auth.tsx, src/app/solicitar-cuenta. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/auth.tsx, src/app/solicitar-cuenta. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm run test:e2e -- --grep "solicitud aprobada". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

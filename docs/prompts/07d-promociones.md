@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar creación y consulta de descuentos y vencimientos. Una condición/beneficio por regla en esta UI. No prometer combinación exacta en simulación; API es fuente de cálculo real.
 
-**Archivos relevantes:** src/components/admin.tsx, src/lib/demo.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/admin.tsx, src/lib/demo.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run typecheck. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

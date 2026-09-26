@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Verificar el commit de backend registrado y actualizar únicamente los contratos consumidos si cambiaron. Inventariar faltantes sin editar backend.
 
-**Archivos relevantes:** docs/MASTER.md, docs/API.md, .env.example. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** docs/MASTER.md, docs/API.md, .env.example. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** git status --short; npm run typecheck. Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 

@@ -10,7 +10,7 @@ Primero leé CLAUDE.md, docs/PROGRESS.md y docs/MASTER.md. Comprobá git status 
 
 **Objetivo:** Revisar filtros en URL, búsqueda, categorías jerárquicas, atributos y paginación. El orden lo define la API; no ordenar solo la página actual como si fuera todo el catálogo.
 
-**Archivos relevantes:** src/components/catalog.tsx, src/components/providers.tsx, src/lib/types.ts. Consultá docs/API.md si hay llamadas al backend. No modificar la rama ni el código backend.
+**Archivos relevantes:** src/components/catalog.tsx, src/components/providers.tsx, src/lib/types.ts. Consultá docs/API.md si hay llamadas al backend. No modificar el código de `apps/api`.
 
 **Verificación:** npm test; npm run test:e2e -- --grep "catálogo público". Ejecutá solo las verificaciones relacionadas con los cambios. Anotá resultados reales, no supuestos.
 
