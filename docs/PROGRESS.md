@@ -1,8 +1,18 @@
 # Registro de avance
 
-Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/keen-allen-prfhui` (PR hacia `main`).
+Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4` (sin commit).
 
-## Último paso terminado: migración a monorepo
+## Último paso terminado: 00 · preparación y contratos
+
+- Backend verificado contra la referencia `eacea83`: `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración (Dockerfile, README, `.dockerignore` y lockfile). `src/` y `prisma/` idénticos; `origin/backend` sigue en `eacea83`. Cada ruta admitida por `src/lib/proxy-policy.ts` existe en los controladores. Contratos consumidos sin cambios.
+- `docs/API.md` (único archivo cambiado): verificación registrada; nuevas secciones «Modos de ejecución» (variables y respuestas del proxy por modo), «Dependencias externas» y «Rutas del backend fuera del uso actual»; punto 6 corregido (el backend sí tiene activar/desactivar promociones, no consumido); punto 11 con los hallazgos de la auditoría del 26/09.
+- Sin cambios en `apps/api`, código del frontend ni `.env.example` (sus dos variables siguen correctas).
+- Comandos: `git status --short` (limpio al inicio); `npm ci` en la raíz (contenedor sin dependencias; lockfile sin cambios); `npm run typecheck`: correcto.
+- Pendiente detectado, fuera de alcance: el proxy admite rutas que la UI no usa (`auth/reset-password`, `admin/orders/:id/approve|reject`, `admin/audit-logs`, `promotions`, `recommendations`). Evaluar retirarlas en 08a.
+
+Siguiente tarea: `docs/prompts/01-base-visual.md`.
+
+## Paso anterior: migración a monorepo
 
 Acordada con el socio. Sin cambios de lógica en ninguna aplicación.
 
@@ -18,7 +28,7 @@ Pendiente fuera del repositorio: en Vercel configurar *Root Directory* = `apps/w
 
 Auditoría del backend (26/09): errores críticos reproducidos (precio desactualizado en checkout, reservas de pedidos liberadas por pedidos posteriores, token de recuperación expuesto, cuentas suspendidas que compran, transiciones libres de pedidos). Coordinar su corrección con el socio en PRs separados de esta migración.
 
-## Paso anterior
+## Paso previo: fases 0–7
 
 Primera implementación de las fases 0–7 y ensayo local de la fase 8. Sitio público, catálogo, acceso B2B, solicitudes, carrito, pedidos y administración disponibles en modo demo. Adaptador real construido contra la referencia `eacea83ef05e834c423c22b33821ca89cec73f62` de `origin/backend`, sin modificar su código.
 

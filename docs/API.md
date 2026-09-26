@@ -2,6 +2,29 @@
 
 Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b33821ca89cec73f62` (hoy en `apps/api` del monorepo). Fuente: controladores, DTOs y servicios de esa revisión. API local del socio: puerto 3001, prefijo `/api`, Swagger `/api/docs`. No se cambió código del backend.
 
+**Verificación del 26/09/2026:** `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración a monorepo (`Dockerfile`, `README.md`, `.dockerignore` y lockfile propio eliminados). `src/` y `prisma/` son idénticos a la referencia, y `origin/backend` sigue en `eacea83`. Cada ruta que admite `src/lib/proxy-policy.ts` existe en los controladores. Los contratos consumidos no cambiaron.
+
+## Modos de ejecución
+
+Variables en `apps/web/.env.example`. El modo se fija al compilar y no cambia ante fallas.
+
+| Modo | Variables | Datos | Respuesta del proxy `/api/backend/...` |
+| ---- | --------- | ----- | -------------------------------------- |
+| Demo (predeterminado) | `NEXT_PUBLIC_DATA_MODE=demo` o ausente | `src/lib/demo.ts` en el almacenamiento local del navegador | 503 «modo demo»; nunca contacta la API |
+| Real | `NEXT_PUBLIC_DATA_MODE=real`, `BACKEND_API_URL=https://.../api` (solo servidor) | API del socio vía proxy | 503 si falta `BACKEND_API_URL`; 404 ruta no admitida; 403 escritura sin origen coincidente; 413 cuerpo > 150 kB; 501 `auth/forgot-password` |
+
+Backend local (`apps/api/.env.example`): `PORT=3001`, PostgreSQL por `DATABASE_URL`, secretos JWT y `CORS_ORIGIN`. El proxy llama desde el servidor, por lo que CORS no interviene en el modo real a través de Next.js.
+
+## Dependencias externas
+
+| Dependencia | Uso | Estado |
+| ----------- | --- | ------ |
+| API publicada del socio | Modo real | Sin URL ni cuentas de prueba; integración no verificada |
+| PostgreSQL + Prisma | Backend local o publicado | Solo local, vía `apps/api/docker-compose.yml` |
+| Vercel | Publicación del frontend (*Root Directory* `apps/web`) | Sesión de CLI cerrada; sin enlace publicado |
+| Imágenes de productos | `public/images`, procedencia en `docs/ASSETS.md` | Locales; no dependen de terceros en la reunión |
+| Manrope | Paquete npm, alojada localmente | Sin dependencia de Google Fonts |
+
 ## Transporte
 
 El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba proviene de `BACKEND_API_URL` solo en servidor. GET sin caché; escrituras requieren origen coincidente. Rutas admitidas explícitamente, sin redirecciones upstream. Tokens en cookies HttpOnly/SameSite=Lax/Secure en producción. Se eliminan hashes y tokens recursivamente de las respuestas.
@@ -43,13 +66,20 @@ El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba p
 3. **Datos sensibles en respuestas:** solicitudes/aprobaciones incluyen hashes de contraseña en la revisión inspeccionada. El proxy los elimina; el socio debe sanear también la API pública.
 4. **Estados y permisos:** cambiar `accountStatus` no revoca automáticamente permisos; los permisos viajan en JWT. Solicitar al socio invalidación/renovación adecuada y aplicación de suspensión en servidor. No presentar la UI como una barrera de seguridad equivalente.
 5. **Edición administrativa de productos inactivos:** el listado existente filtra `active:true`. Un producto desactivado no puede recuperarse desde ese listado. Se muestra advertencia antes de desactivar.
-6. **Promociones/recomendaciones:** hay creación y lectura, no edición ni borrado. UI no inventa acciones. Los selectores de reglas cargan los primeros 100 productos; ampliar con búsqueda remota paginada al crecer el catálogo.
+6. **Promociones/recomendaciones:** hay creación y lectura, no edición ni borrado. El backend sí ofrece PATCH `promotions/:id/activate|deactivate`, hoy no consumido ni admitido por el proxy. UI no inventa acciones. Los selectores de reglas cargan los primeros 100 productos; ampliar con búsqueda remota paginada al crecer el catálogo.
 7. **Checkout:** falta clave de idempotencia. La UI evita doble clic y, ante resultado incierto, deriva al historial. No puede garantizar idempotencia ante múltiples pestañas o reintentos externos.
 8. **Pedidos/reservas:** transiciones y caducidad dependen del backend. La simulación no ejecuta un servicio periódico de vencimiento de reservas ni reproduce todos los casos de promociones combinables.
 9. **Correo/documentos:** proveedor de notificaciones de consola; no asegurar correos reales. El alta inicial no adjunta documentos porque no hay una ruta de subida; administración puede consultar URLs existentes en solicitudes de la API.
 10. **Concurrencia de refresh:** se agrupan solicitudes de una pestaña. Probar rotación simultánea desde varias pestañas/instancias contra el backend antes de uso real.
 
-No se envían mensajes al socio automáticamente. Este documento es el insumo para la coordinación.
+11. **Auditoría del 26/09 (ver `docs/PROGRESS.md`):** precio desactualizado en checkout, reservas liberadas por pedidos posteriores, cuentas suspendidas que compran y transiciones libres de pedidos. Corregir en el backend, en PRs separados del socio.
+
+No se envían mensajes al socio automáticamente.
+
+## Rutas del backend fuera del uso actual
+
+- **No admitidas por el proxy ni usadas:** POST `cart/reserve`, POST `cart/reservations/release`, POST `orders` (duplica `checkout`), PATCH `promotions/:id/activate|deactivate`, GET `pricing/price-list/default`, GET `pricing/variants/:id/current`, POST `attributes` y `attributes/:id/values`, GET `applications` y POST `applications/:id/approve|reject` (equivalentes a `admin/applications`).
+- **Admitidas por el proxy pero sin llamada desde la UI:** POST `auth/reset-password`, POST `admin/orders/:id/approve|reject` (la UI usa `status`), GET `admin/audit-logs`, GET/POST `promotions` y `recommendations` (la UI usa las variantes `admin/`). Candidatas a retirar de la lista del proxy en una tarea de integración; no se tocaron aquí. Este documento es el insumo para la coordinación.
 
 ## Verificación de integración pendiente
 
