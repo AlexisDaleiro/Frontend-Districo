@@ -2,7 +2,24 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 03a · búsqueda y filtros
+## Último paso terminado: 03b · ficha y presentaciones
+
+Contrastado con `apps/api` (solo lectura): el precio llega por variante solo si el usuario tiene `CAN_VIEW_PRICES` (y `CAN_BUY_MEDICATIONS` en productos de uso profesional; el administrador siempre); el carrito exige `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS`; las imágenes vienen ordenadas con la principal primero y pueden pertenecer a una variante; `presentation` es un campo opcional de la variante. `sourceUrl` no existe en la API (el enlace «Información del proveedor» solo aparece en demo).
+
+- `src/lib/commerce.ts`: `canBuy()` replica la regla del carrito de la API (antes la ficha no exigía `CAN_VIEW_PRICES`). `hiddenPriceText()` da el motivo sin precio: «Ingresá para ver precios», «Precio no habilitado», «Requiere habilitación profesional» o «Sin precio vigente» (antes todo cliente veía «Consultar disponibilidad»). `purchasable()` indica si el stock alcanza la primera cantidad válida. `quantityError` dice «Sin stock disponible.» con stock 0.
+- `src/components/catalog.tsx`: tarjeta con esos motivos. Ficha: aviso de uso profesional para clientes sin permiso de medicamentos; sin selector de cantidad cuando el stock no alcanza el mínimo (mensaje y enlace a contacto); `min` del campo de cantidad = primera cantidad válida (antes el paso del navegador partía de un mínimo no múltiplo); se muestra `variant.presentation` tal como llega (en demo: «Unidad de prueba · confirmar presentación comercial»; no se inventan presentaciones); «Sin stock» con estilo de advertencia. Galería: imagen con su `alt`, miniaturas solo si hay más de una, `aria-pressed` en la activa, incluye las imágenes generales y las de la presentación elegida (y muestra la de la presentación al cambiarla).
+- `src/app/globals.css`: miniaturas con desplazamiento horizontal propio y borde `--ink` en la activa.
+- `tests/commerce.test.ts` (nuevo): permisos por perfil, compra sin ver precios y stock insuficiente para mínimo/múltiplo.
+
+Verificación:
+- `npm test`: 19/19 correctas (antes 16). `npm run typecheck`, eslint y prettier de los archivos: correctos. `npm run build`: correcto.
+- `npm run test:e2e -- --grep "permisos|cliente envía"`: 2/2 correctas (Chromium `/opt/pw-browsers/chromium-1194` con configuración temporal en el scratchpad, no versionada).
+- Navegador (demo, 360 px, prueba temporal ya eliminada), BIOFRESH (alimento) / Alizin (uso profesional): visitante sin precio y con «Ingresar / Solicitar cuenta» en ambos; cliente mayorista con precio $ 390 y «Guardar en carrito» en el alimento, y en Alizin sin precio, sin botón y con el aviso de uso profesional (tarjeta: «Requiere habilitación profesional»); cliente veterinario con precio y botón en ambos ($ 1.240 en Alizin). Sin desbordamiento horizontal.
+- No ejercitado en navegador: variantes múltiples, imágenes por variante y stock insuficiente (el demo tiene una variante con stock 40 por producto); cubierto solo por la prueba unitaria y la lectura del código. No probado contra la API real.
+
+Siguiente tarea: `docs/prompts/04a-sesion.md`.
+
+## Paso anterior: 03a · búsqueda y filtros
 
 Contrastado con `apps/api` (solo lectura): `categoryId` incluye subcategorías, `attributeValueIds` exige todos los valores, la búsqueda cubre nombre, SKU, EAN, marca y laboratorio, el orden es por nombre en el servidor y `page` debe ser entero ≥1. El catálogo no reordena la página actual.
 
@@ -20,7 +37,6 @@ Verificación:
 
 Pendiente menor: la etiqueta de `FOOD` («Alimentación») coincide con el nombre de la categoría homónima en los chips.
 
-Siguiente tarea: `docs/prompts/03b-ficha.md`.
 
 ## Paso anterior: 02b · páginas públicas
 
@@ -115,7 +131,7 @@ La administración incluye solicitudes, permisos, estados de pedidos, productos,
 
 - `npm run typecheck`: correcto.
 - `npm run lint`: correcto, sin advertencias.
-- `npm test`: 15 pruebas correctas de simulación y política del proxy.
+- `npm test`: 19 pruebas correctas de simulación, reglas comerciales y política del proxy (03b).
 - `npm run build`: correcto, 16 rutas de Next.js.
 - `npm run test:e2e`: 15 pruebas correctas en Chromium contra compilación de producción en modo demo.
 - Recorridos: filtros persistentes, precios por permisos, solicitud y aprobación, login, envío y detalle de pedido, revisión manual, logout, alta de producto/variante/imagen/precio/stock, promociones y recomendaciones.

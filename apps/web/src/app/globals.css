@@ -851,14 +851,19 @@ footer {
   display: flex;
   gap: 10px;
   margin-top: 15px;
+  overflow-x: auto;
 }
 .thumbs button {
+  flex: none;
   width: 65px;
   height: 65px;
   border: 1px solid var(--line);
   padding: 6px;
   background: white;
   border-radius: 7px;
+}
+.thumbs button[aria-pressed="true"] {
+  border-color: var(--ink);
 }
 .thumbs img {
   width: 100%;

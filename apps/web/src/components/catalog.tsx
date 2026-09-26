@@ -33,10 +33,12 @@ import type {
   Variant,
 } from "@/lib/types";
 import {
-  can,
+  canBuy,
   firstQuantity,
+  hiddenPriceText,
   label,
   money,
+  purchasable,
   quantityError,
 } from "@/lib/commerce";
 export function ProductCard({ product }: { product: Product }) {
@@ -80,7 +82,7 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           <span className="row" style={{ gap: 5 }}>
             <LockKeyhole size={12} />
-            {user ? "Consultar disponibilidad" : "Ingresá para ver precios"}
+            {variant ? hiddenPriceText(user, product) : "Sin presentaciones"}
           </span>
         )}
         <Link
@@ -434,7 +436,7 @@ export function Quantity({
       <input
         type="number"
         aria-label="Cantidad"
-        min={variant.minimumOrderQuantity}
+        min={firstQuantity(variant)}
         step={variant.saleMultiple}
         max={variant.availableStock}
         value={Number.isNaN(value) ? "" : value}
@@ -479,15 +481,30 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
         </div>
       </div>
     );
-  if (
-    (product.requiresMedicationPermission &&
-      !can(user, "CAN_BUY_MEDICATIONS")) ||
-    !can(user, "CAN_PLACE_ORDERS")
-  )
+  if (!canBuy(user, product))
     return (
       <div className="detail-buy">
         <LockKeyhole size={20} />
         <p>Tu cuenta no está habilitada para comprar este producto.</p>
+        {product.requiresMedicationPermission && (
+          <p className="info-note">
+            Producto de uso profesional: requiere habilitación para medicamentos
+            veterinarios.
+          </p>
+        )}
+        <Link className="text-link" href="/contacto">
+          Consultar a DISTRICO
+        </Link>
+      </div>
+    );
+  if (!purchasable(variant))
+    return (
+      <div className="detail-buy">
+        <p>
+          {variant.availableStock > 0
+            ? `Hay ${variant.availableStock} unidades disponibles, menos que el mínimo de compra (${firstQuantity(variant)}).`
+            : "Esta presentación no tiene stock disponible."}
+        </p>
         <Link className="text-link" href="/contacto">
           Consultar a DISTRICO
         </Link>
@@ -535,31 +552,41 @@ function ProductDetailContent({ product }: { product: Product }) {
   const [variantId, setVariantId] = useState(
     product.variants.find((v) => v.active !== false)?.id ?? "",
   );
-  const [image, setImage] = useState(
-    product.media.find((m) => m.type === "IMAGE")?.url,
-  );
+  const [imageId, setImageId] = useState<string>();
   const variant = product.variants.find((v) => v.id === variantId);
-  const images = product.media.filter((m) => m.type === "IMAGE");
+  // Imágenes generales y las de la presentación elegida, en el orden de la API
+  // (principal primero); la de la presentación se muestra al elegirla.
+  const images = product.media.filter(
+    (m) => m.type === "IMAGE" && (!m.variantId || m.variantId === variantId),
+  );
+  const image =
+    images.find((m) => m.id === imageId) ??
+    images.find((m) => m.variantId === variantId) ??
+    images[0];
   return (
     <div className="detail-grid">
       <div>
         <div className="detail-image">
           <Picture
-            src={image ?? "/images/placeholder.svg"}
-            alt={product.name}
+            src={image?.url ?? "/images/placeholder.svg"}
+            alt={image?.alt || product.name}
           />
         </div>
-        <div className="thumbs">
-          {images.map((m) => (
-            <button
-              key={m.id}
-              aria-label={`Ver imagen ${m.alt ?? product.name}`}
-              onClick={() => setImage(m.url)}
-            >
-              <Picture src={m.url} alt="" />
-            </button>
-          ))}
-        </div>
+        {images.length > 1 && (
+          <div className="thumbs">
+            {images.map((m, index) => (
+              <button
+                type="button"
+                key={m.id}
+                aria-label={`Ver imagen ${index + 1} de ${images.length}`}
+                aria-pressed={m.id === image?.id}
+                onClick={() => setImageId(m.id)}
+              >
+                <Picture src={m.url} alt="" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="detail-info">
         <p className="eyebrow">
@@ -572,7 +599,9 @@ function ProductDetailContent({ product }: { product: Product }) {
         {variant && (
           <>
             <div className="row" style={{ marginTop: 20 }}>
-              <span className="status-pill">
+              <span
+                className={`status-pill${variant.availableStock > 0 ? "" : " pending"}`}
+              >
                 {variant.availableStock > 0 ? "Disponible" : "Sin stock"}
               </span>
               <span className="muted small-copy">SKU {variant.sku}</span>
@@ -586,7 +615,10 @@ function ProductDetailContent({ product }: { product: Product }) {
               Presentación
               <select
                 value={variantId}
-                onChange={(e) => setVariantId(e.target.value)}
+                onChange={(e) => {
+                  setVariantId(e.target.value);
+                  setImageId(undefined);
+                }}
               >
                 {product.variants
                   .filter((v) => v.active !== false)
@@ -597,6 +629,11 @@ function ProductDetailContent({ product }: { product: Product }) {
                   ))}
               </select>
             </label>
+            {variant.presentation && (
+              <p className="muted small-copy" style={{ marginTop: 8 }}>
+                {variant.presentation}
+              </p>
+            )}
             <BuyForm key={variantId} product={product} variant={variant} />
           </>
         )}
