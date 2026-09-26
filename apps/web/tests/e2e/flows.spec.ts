@@ -111,6 +111,22 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
     "Ingresá para ver precios",
   );
 });
+test("permisos: la identidad cambia sin recargar al ingresar y al salir", async ({
+  page,
+}) => {
+  await login(page);
+  const account = page.locator(".account-link");
+  await expect(account).toContainText("Mi cuenta");
+  await expect(page.locator(".product-bottom strong").first()).toBeVisible();
+  await account.click();
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(account).toContainText("Ingresar");
+  await page.getByRole("link", { name: "Catálogo" }).first().click();
+  await expect(page.locator(".product-bottom").first()).toContainText(
+    "Ingresá para ver precios",
+  );
+  await expect(page.locator(".cart-count")).toHaveText("0");
+});
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {

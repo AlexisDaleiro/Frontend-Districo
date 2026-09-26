@@ -79,7 +79,8 @@ No se envían mensajes al socio automáticamente.
 ## Rutas del backend fuera del uso actual
 
 - **No admitidas por el proxy ni usadas:** POST `cart/reserve`, POST `cart/reservations/release`, POST `orders` (duplica `checkout`), PATCH `promotions/:id/activate|deactivate`, GET `pricing/price-list/default`, GET `pricing/variants/:id/current`, POST `attributes` y `attributes/:id/values`, GET `applications` y POST `applications/:id/approve|reject` (equivalentes a `admin/applications`).
-- **Admitidas por el proxy pero sin llamada desde la UI:** POST `auth/reset-password`, POST `admin/orders/:id/approve|reject` (la UI usa `status`), GET `admin/audit-logs`, GET/POST `promotions` y `recommendations` (la UI usa las variantes `admin/`). Candidatas a retirar de la lista del proxy en una tarea de integración; no se tocaron aquí. Este documento es el insumo para la coordinación.
+- **Retiradas del proxy:** POST `auth/reset-password` (04a; responde 404). Completa el flujo de recuperación que expone el token.
+- **Admitidas por el proxy pero sin llamada desde la UI:** POST `admin/orders/:id/approve|reject` (la UI usa `status`), GET `admin/audit-logs`, GET/POST `promotions` y `recommendations` (la UI usa las variantes `admin/`). Candidatas a retirar de la lista del proxy en una tarea de integración; no se tocaron aquí. Este documento es el insumo para la coordinación.
 
 ## Verificación de integración pendiente
 

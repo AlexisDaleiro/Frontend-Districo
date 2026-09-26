@@ -51,15 +51,13 @@ describe("Frontera entre frontend y API", () => {
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          Response.json({
-            accessToken: "access-secret",
-            refreshToken: "refresh-secret",
-            user: { sub: "client" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        Response.json({
+          accessToken: "access-secret",
+          refreshToken: "refresh-secret",
+          user: { sub: "client" },
+        }),
+      ),
     );
     const result = await POST(
       new NextRequest("http://localhost/api/backend/auth/login", {
@@ -118,5 +116,78 @@ describe("Frontera entre frontend y API", () => {
     );
     expect(result.status).toBe(400);
     expect(await result.json()).toEqual({ message: "Stock insuficiente" });
+  });
+  it("renueva con la cookie, ignora el cuerpo del navegador y rota ambas cookies", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({
+          accessToken: "new-access",
+          refreshToken: "new-refresh",
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const result = await POST(
+      new NextRequest("http://localhost/api/backend/auth/refresh", {
+        method: "POST",
+        headers: {
+          origin: "http://localhost",
+          cookie: "districo-refresh=old-refresh",
+        },
+        body: JSON.stringify({ refreshToken: "forged" }),
+      }),
+      params("auth/refresh"),
+    );
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      refreshToken: "old-refresh",
+    });
+    expect(await result.json()).toEqual({});
+    expect(result.cookies.get("districo-access")?.value).toBe("new-access");
+    expect(result.cookies.get("districo-refresh")?.value).toBe("new-refresh");
+  });
+  it("borra las cookies si la renovación falla o al cerrar sesión, aunque la API no responda", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const request = (path: string) =>
+      new NextRequest(`http://localhost/api/backend/${path}`, {
+        method: "POST",
+        headers: {
+          origin: "http://localhost",
+          cookie: "districo-access=a; districo-refresh=r",
+        },
+        body: "{}",
+      });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(Response.json({ message: "x" }, { status: 401 })),
+    );
+    const refresh = await POST(request("auth/refresh"), params("auth/refresh"));
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const logout = await POST(request("auth/logout"), params("auth/logout"));
+    for (const response of [refresh, logout])
+      for (const name of ["districo-access", "districo-refresh"]) {
+        expect(response.cookies.get(name)?.value).toBe("");
+        expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+      }
+  });
+  it("no transporta el restablecimiento de contraseña del backend", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const result = await POST(
+      new NextRequest("http://localhost/api/backend/auth/reset-password", {
+        method: "POST",
+        headers: { origin: "http://localhost" },
+        body: JSON.stringify({ resetToken: "x", password: "y" }),
+      }),
+      params("auth/reset-password"),
+    );
+    expect(result.status).toBe(404);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

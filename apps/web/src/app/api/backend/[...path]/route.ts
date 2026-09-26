@@ -79,7 +79,12 @@ async function handle(
           },
       upstream.status,
     );
-    if (upstream.ok && (path === "auth/login" || path === "auth/refresh")) {
+    if (
+      upstream.ok &&
+      (path === "auth/login" || path === "auth/refresh") &&
+      typeof data.accessToken === "string" &&
+      typeof data.refreshToken === "string"
+    ) {
       response.cookies.set("districo-access", data.accessToken, {
         ...cookieOptions,
         maxAge: 60 * 60 * 24 * 7,

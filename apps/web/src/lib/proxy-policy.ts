@@ -20,7 +20,9 @@ export function allowedPath(path: string, method: string) {
       "admin/(dashboard|customers|applications|orders|promotions|recommendations|audit-logs)",
     ],
     POST: [
-      "auth/(login|refresh|logout|forgot-password|reset-password)",
+      // forgot-password se admite solo para responder 501 en el proxy; el flujo de
+      // restablecimiento del backend expone el token y no se transporta.
+      "auth/(login|refresh|logout|forgot-password)",
       "applications",
       "cart/items",
       "checkout",

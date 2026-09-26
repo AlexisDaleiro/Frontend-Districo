@@ -97,10 +97,19 @@ function SessionProvider({ children }: { children: ReactNode }) {
     retry: false,
     staleTime: 60000,
   });
-  const expire = useCallback(() => {
-    client.clear();
-    client.setQueryData(["session"], null);
-  }, [client]);
+  // Borra los datos del usuario anterior sin quitar la consulta ["session"]:
+  // client.clear() la eliminaba y el proveedor seguía mostrando la identidad
+  // vieja hasta recargar. Las demás claves llevan el id del usuario.
+  const replaceSession = useCallback(
+    (user: User | null) => {
+      client.removeQueries({
+        predicate: (query) => query.queryKey[0] !== "session",
+      });
+      client.setQueryData(["session"], user);
+    },
+    [client],
+  );
+  const expire = useCallback(() => replaceSession(null), [replaceSession]);
   useEffect(() => {
     window.addEventListener("session-expired", expire);
     return () => window.removeEventListener("session-expired", expire);
@@ -114,8 +123,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
     await request("auth/login", "POST", { email, password });
     const user = normalizeUser(await request("auth/me"));
     await client.cancelQueries();
-    client.clear();
-    client.setQueryData(["session"], user);
+    replaceSession(user);
     sessionChannel.current?.postMessage("changed");
     return user;
   }
@@ -130,8 +138,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
   }
   function reset() {
     resetDemo();
-    client.clear();
-    client.setQueryData(["session"], null);
+    replaceSession(null);
     setNotice("Escenario de demostración reiniciado.");
     sessionChannel.current?.postMessage("changed");
   }

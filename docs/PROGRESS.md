@@ -2,7 +2,27 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 03b · ficha y presentaciones
+## Último paso terminado: 04a · acceso y sesión
+
+Contrastado con `apps/api/src/auth` (solo lectura): login devuelve `{accessToken, refreshToken, user}`, refresh rota el par recibido en el cuerpo, logout revoca y `forgot-password` devuelve `resetToken` a quien lo pide.
+
+- **Error corregido, `src/components/providers.tsx`:** al iniciar o cerrar sesión, `client.clear()` eliminaba también la consulta `["session"]`; el proveedor quedaba enganchado a la consulta borrada y la interfaz mostraba la identidad anterior hasta recargar (tras ingresar, el encabezado seguía en «Ingresar»; tras salir, en «Mi cuenta» y la tarjeta decía «Sin precio vigente» con datos ya públicos). Ahora `replaceSession()` borra todas las demás consultas (llevan el id del usuario en la clave) y actualiza `["session"]` en su lugar. Las e2e no lo detectaban porque recargan tras el login.
+- `src/lib/proxy-policy.ts`: se retira `auth/reset-password` (sin uso en la UI; completa el flujo que expone el token). `forgot-password` sigue respondiendo 501 sin contactar a la API.
+- `src/app/api/backend/[...path]/route.ts`: solo crea cookies si la API devolvió ambos tokens como texto (antes podía guardar `"undefined"`).
+- Pruebas: `tests/proxy.test.ts` (renovación con la cookie ignorando el cuerpo del navegador y rotando ambas cookies; cookies borradas si la renovación falla o al salir aunque la API no responda; `reset-password` → 404 sin llamar a la API). Nuevo `tests/http.test.ts` (varios 401 simultáneos → una sola renovación; renovación fallida → evento `session-expired`). Nueva e2e «permisos: la identidad cambia sin recargar al ingresar y al salir».
+- Revisado sin cambios: cookies `HttpOnly`, `SameSite=Lax`, `Secure` en producción; respuestas `no-store, private`; saneamiento recursivo de tokens y hashes; claves de caché por modo y usuario; aviso entre pestañas. En el navegador no hay tokens: `document.cookie` vacío y solo `districo-demo-v1` en `localStorage` (datos simulados).
+
+Verificación:
+- `npm test`: 24/24 correctas (antes 19). Typecheck, eslint y prettier: correctos. `npm run build`: correcto.
+- `npm run test:e2e -- --grep "permisos"`: 2/2 correctas. La e2e nueva falla con el `providers.tsx` anterior y pasa con el nuevo; la prueba de `reset-password` falla con la política anterior. Suite e2e completa: 15/15 antes de agregar la nueva.
+- Navegador (demo, sin recargar): tras ingresar, «Mi cuenta / Pet Shop Demo» y precio $ 730; tras salir, «Ingresar», «Ingresá para ver precios», 0 precios y carrito 0; la otra pestaña se recargó; `/cuenta` pide ingresar.
+- No probado contra la API real (sin URL): renovación, rotación y revocación verificadas con respuestas simuladas.
+
+Pendiente (backend, sin cambios): concurrencia de refresh entre pestañas o instancias y suspensión sin revocar tokens (`docs/API.md`, puntos 4 y 10).
+
+Siguiente tarea: `docs/prompts/04b-alta.md`.
+
+## Paso anterior: 03b · ficha y presentaciones
 
 Contrastado con `apps/api` (solo lectura): el precio llega por variante solo si el usuario tiene `CAN_VIEW_PRICES` (y `CAN_BUY_MEDICATIONS` en productos de uso profesional; el administrador siempre); el carrito exige `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS`; las imágenes vienen ordenadas con la principal primero y pueden pertenecer a una variante; `presentation` es un campo opcional de la variante. `sourceUrl` no existe en la API (el enlace «Información del proveedor» solo aparece en demo).
 
@@ -16,8 +36,6 @@ Verificación:
 - `npm run test:e2e -- --grep "permisos|cliente envía"`: 2/2 correctas (Chromium `/opt/pw-browsers/chromium-1194` con configuración temporal en el scratchpad, no versionada).
 - Navegador (demo, 360 px, prueba temporal ya eliminada), BIOFRESH (alimento) / Alizin (uso profesional): visitante sin precio y con «Ingresar / Solicitar cuenta» en ambos; cliente mayorista con precio $ 390 y «Guardar en carrito» en el alimento, y en Alizin sin precio, sin botón y con el aviso de uso profesional (tarjeta: «Requiere habilitación profesional»); cliente veterinario con precio y botón en ambos ($ 1.240 en Alizin). Sin desbordamiento horizontal.
 - No ejercitado en navegador: variantes múltiples, imágenes por variante y stock insuficiente (el demo tiene una variante con stock 40 por producto); cubierto solo por la prueba unitaria y la lectura del código. No probado contra la API real.
-
-Siguiente tarea: `docs/prompts/04a-sesion.md`.
 
 ## Paso anterior: 03a · búsqueda y filtros
 
@@ -93,7 +111,7 @@ Pendiente fuera de alcance: los textos de 9–10 px (franja demo, barra superior
 - `docs/API.md` (único archivo cambiado): verificación registrada; nuevas secciones «Modos de ejecución» (variables y respuestas del proxy por modo), «Dependencias externas» y «Rutas del backend fuera del uso actual»; punto 6 corregido (el backend sí tiene activar/desactivar promociones, no consumido); punto 11 con los hallazgos de la auditoría del 26/09.
 - Sin cambios en `apps/api`, código del frontend ni `.env.example` (sus dos variables siguen correctas).
 - Comandos: `git status --short` (limpio al inicio); `npm ci` en la raíz (contenedor sin dependencias; lockfile sin cambios); `npm run typecheck`: correcto.
-- Pendiente detectado, fuera de alcance: el proxy admite rutas que la UI no usa (`auth/reset-password`, `admin/orders/:id/approve|reject`, `admin/audit-logs`, `promotions`, `recommendations`). Evaluar retirarlas en 08a.
+- Pendiente detectado, fuera de alcance: el proxy admite rutas que la UI no usa (`admin/orders/:id/approve|reject`, `admin/audit-logs`, `promotions`, `recommendations`). Evaluar retirarlas en 08a.
 
 ## Paso anterior: migración a monorepo
 
