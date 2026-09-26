@@ -48,17 +48,13 @@ export function Header() {
       <a className="skip-link" href="#contenido">
         Ir al contenido
       </a>
-      {(DEMO || process.env.NEXT_PUBLIC_DEMO_NOTICE === "true") && (
+      {DEMO && (
         <div className="demo-strip">
           <span>
             <span className="dot" /> DEMO · Precios, stock y operaciones de
             prueba
           </span>
-          {DEMO ? (
-            <button onClick={() => setResetOpen(true)}>Reiniciar demo</button>
-          ) : (
-            <span>Datos compartidos de prueba · No ingresar datos reales</span>
-          )}
+          <button onClick={() => setResetOpen(true)}>Reiniciar demo</button>
         </div>
       )}
       <div className="topbar">

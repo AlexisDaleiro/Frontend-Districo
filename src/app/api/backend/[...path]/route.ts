@@ -26,11 +26,7 @@ async function handle(
     if (!origin || origin !== request.nextUrl.origin)
       return reply({ message: "Origen no autorizado." }, 403);
   }
-  // Temporary Vercel demo: prefer the private service binding over a stale external URL.
-  const binding = process.env.BACKEND_SERVICE_URL;
-  const base = binding
-    ? `${binding.replace(/\/$/, "")}/api`
-    : process.env.BACKEND_API_URL;
+  const base = process.env.BACKEND_API_URL;
   if (!base) return reply({ message: "La API aún no está configurada." }, 503);
   let body: Record<string, unknown> | undefined;
   if (request.method !== "GET" && request.method !== "DELETE") {
