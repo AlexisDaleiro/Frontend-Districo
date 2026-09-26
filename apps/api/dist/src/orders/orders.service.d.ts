@@ -1,0 +1,233 @@
+import { OrderStatus, Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
+import { JwtUser } from '../common/types/jwt-user.type';
+import { InventoryService } from '../inventory/inventory.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { PromotionsService } from '../promotions/promotions.service';
+export declare class OrdersService {
+    private readonly prisma;
+    private readonly inventory;
+    private readonly promotions;
+    private readonly audit;
+    private readonly notifications;
+    constructor(prisma: PrismaService, inventory: InventoryService, promotions: PromotionsService, audit: AuditService, notifications: NotificationsService);
+    checkout(user: JwtUser, acceptManualReview?: boolean): Promise<({
+        items: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            productId: string;
+            sku: string;
+            subtotal: Prisma.Decimal;
+            productName: string;
+            variantName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            orderId: string;
+        }[];
+        reservations: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            status: import(".prisma/client").$Enums.StockReservationStatus;
+            quantity: number;
+            expiresAt: Date;
+            cartId: string | null;
+            orderId: string | null;
+            releasedAt: Date | null;
+            consumedAt: Date | null;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerAccountId: string | null;
+        userId: string;
+        currency: string;
+        orderNumber: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        requiresManualReview: boolean;
+        reviewReason: string | null;
+        acceptedManualReview: boolean;
+        subtotal: Prisma.Decimal;
+        discountTotal: Prisma.Decimal;
+        total: Prisma.Decimal;
+    }) | null>;
+    findMyOrders(user: JwtUser): Prisma.PrismaPromise<({
+        items: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            productId: string;
+            sku: string;
+            subtotal: Prisma.Decimal;
+            productName: string;
+            variantName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            orderId: string;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerAccountId: string | null;
+        userId: string;
+        currency: string;
+        orderNumber: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        requiresManualReview: boolean;
+        reviewReason: string | null;
+        acceptedManualReview: boolean;
+        subtotal: Prisma.Decimal;
+        discountTotal: Prisma.Decimal;
+        total: Prisma.Decimal;
+    })[]>;
+    findMyOrder(user: JwtUser, id: string): Promise<{
+        items: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            productId: string;
+            sku: string;
+            subtotal: Prisma.Decimal;
+            productName: string;
+            variantName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            orderId: string;
+        }[];
+        reservations: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            status: import(".prisma/client").$Enums.StockReservationStatus;
+            quantity: number;
+            expiresAt: Date;
+            cartId: string | null;
+            orderId: string | null;
+            releasedAt: Date | null;
+            consumedAt: Date | null;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerAccountId: string | null;
+        userId: string;
+        currency: string;
+        orderNumber: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        requiresManualReview: boolean;
+        reviewReason: string | null;
+        acceptedManualReview: boolean;
+        subtotal: Prisma.Decimal;
+        discountTotal: Prisma.Decimal;
+        total: Prisma.Decimal;
+    }>;
+    findAdminOrders(): Prisma.PrismaPromise<({
+        customerAccount: {
+            id: string;
+            rut: string;
+            businessName: string;
+            legalName: string;
+            phone: string | null;
+            address: string | null;
+            city: string | null;
+            department: string | null;
+            creditStatus: import(".prisma/client").$Enums.CreditStatus;
+            creditLimit: Prisma.Decimal | null;
+            internalCreditNote: string | null;
+            accountStatus: import(".prisma/client").$Enums.AccountStatus;
+            medicationPermission: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        } | null;
+        user: {
+            email: string;
+        };
+        items: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            productId: string;
+            sku: string;
+            subtotal: Prisma.Decimal;
+            productName: string;
+            variantName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            orderId: string;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerAccountId: string | null;
+        userId: string;
+        currency: string;
+        orderNumber: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        requiresManualReview: boolean;
+        reviewReason: string | null;
+        acceptedManualReview: boolean;
+        subtotal: Prisma.Decimal;
+        discountTotal: Prisma.Decimal;
+        total: Prisma.Decimal;
+    })[]>;
+    updateStatus(id: string, status: OrderStatus, userId?: string, reviewReason?: string): Promise<({
+        items: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            productId: string;
+            sku: string;
+            subtotal: Prisma.Decimal;
+            productName: string;
+            variantName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            orderId: string;
+        }[];
+        reservations: {
+            id: string;
+            createdAt: Date;
+            variantId: string;
+            status: import(".prisma/client").$Enums.StockReservationStatus;
+            quantity: number;
+            expiresAt: Date;
+            cartId: string | null;
+            orderId: string | null;
+            releasedAt: Date | null;
+            consumedAt: Date | null;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerAccountId: string | null;
+        userId: string;
+        currency: string;
+        orderNumber: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        requiresManualReview: boolean;
+        reviewReason: string | null;
+        acceptedManualReview: boolean;
+        subtotal: Prisma.Decimal;
+        discountTotal: Prisma.Decimal;
+        total: Prisma.Decimal;
+    }) | null>;
+    private assertCanCheckout;
+    private canBuyMedication;
+    private lineGross;
+    private toPromotionLines;
+    private releaseActiveCartReservations;
+    private releaseReservations;
+    private consumeReservations;
+}
