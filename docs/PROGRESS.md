@@ -2,7 +2,26 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 05a · carrito persistente por usuario
+## Último paso terminado: 05b · checkout e historial
+
+Contrastado con `apps/api/src/orders` (solo lectura): `POST checkout` `{acceptManualReview}` revalida precio, cantidades y permisos y vacía el carrito; `orders/me` y `orders/me/:id` solo exigen sesión y filtran por usuario (otro pedido → 404); importes decimales llegan como texto; estados `DRAFT…CANCELLED`. Sin campos de pago ni envío.
+
+- **Error corregido en el proxy (afecta todo el modo real), `src/app/api/backend/[...path]/route.ts`:** con `next start`/`next dev`, `request.nextUrl.origin` vale `http://localhost:3000` aunque el navegador use `http://127.0.0.1:3000` (la dirección documentada). El control de origen rechazaba con 403 todas las escrituras, incluido el login. Ahora el host del `Origin` se compara con `nextUrl.host`, `Host` y `X-Forwarded-Host`; un origen ajeno o `null` sigue en 403. Las pruebas de 04a no lo detectaban porque usaban `http://localhost`.
+- `src/components/orders.tsx`: resultado incierto (red, 0 o ≥500) → el carrito se reemplaza por el aviso «No sabemos si el pedido se confirmó…» y «Ver mis pedidos» (antes el aviso vivía en el resumen y desaparecía si el carrito se releía vacío porque el pedido sí se había registrado). Tras cualquier error del checkout se invalida la caché: el historial (en caché 20 s) ya muestra el pedido y un 4xx (stock o precio) relee el carrito. Detalle de un pedido inexistente o ajeno: «No encontramos ese pedido» con enlace al historial, sin «Intentar nuevamente». «1 producto» en singular en el historial.
+- `src/lib/commerce.ts`: etiqueta «Borrador» para `DRAFT`.
+- `tests/proxy.test.ts`: host del navegador distinto del de Next → 200; `https://evil.test` y `null` → 403. Falla con el proxy anterior.
+
+Verificación:
+- `npm test`: 26/26. Typecheck, eslint y prettier: correctos. `npm run build` (demo y real): correcto.
+- `npm run test:e2e -- --grep "pedido|cliente envía"`: 2/2. Suite e2e completa: 16/16.
+- Modo real contra una API falsa local (script temporal en el scratchpad, no versionado) que registra el pedido y corta la conexión: login en `127.0.0.1:3000` con cookies HttpOnly; el checkout llega una sola vez a la API; aparece el aviso, sin botón de envío ni carrito; «Ver mis pedidos» muestra DIS-0001 «1 producto · $ 780,00» y su detalle; `/cuenta/pedidos/otro-id` → «No encontramos ese pedido». Sin desbordamiento a 390 px.
+- No probado contra la API real del socio.
+
+Pendiente: si el usuario recarga el carrito tras un resultado incierto, el aviso no persiste (la API no ofrece idempotencia; `docs/API.md`, punto 7).
+
+Siguiente tarea: `docs/prompts/06a-clientes.md`.
+
+## Paso anterior: 05a · carrito persistente por usuario
 
 Contrastado con `apps/api/src/cart` y `orders` (solo lectura): `POST cart/items` hace upsert con cantidad absoluta; agregar y modificar exigen `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS` y validan permiso de medicamentos, precio vigente, mínimo, múltiplo y stock. `PATCH`/`DELETE` de una línea inexistente o ajena → 404. El carrito devuelve `unitPrice` 0 si la variante perdió el precio. El checkout vuelve a validar precio, cantidades y permisos.
 
@@ -16,8 +35,6 @@ Verificación:
 - `npm run test:e2e -- --grep "cliente envía"`: 1/1 correcta (también tras el último cambio).
 - Navegador (demo, 360 px): guardar 2 y luego 3 deja 3 en una sola línea (subtotal $ 1.170,00). Con la línea quitada en otra pestaña, «Actualizar» relee y muestra el carrito vacío. Línea sin precio: «Sin precio», aviso y envío deshabilitado. Otra cuenta (revisión de pedidos): carrito vacío y contador 0. Sin desbordamiento.
 - No probado contra la API real.
-
-Siguiente tarea: `docs/prompts/05b-pedidos.md`.
 
 ## Paso anterior: 04b · solicitud de cuenta
 

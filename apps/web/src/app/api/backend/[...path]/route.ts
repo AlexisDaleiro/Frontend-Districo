@@ -22,8 +22,19 @@ async function handle(
   if (process.env.NEXT_PUBLIC_DATA_MODE !== "real")
     return reply({ message: "Esta instalación funciona en modo demo." }, 503);
   if (request.method !== "GET") {
-    const origin = request.headers.get("origin");
-    if (!origin || origin !== request.nextUrl.origin)
+    // Next puede informar localhost en nextUrl aunque el navegador use otra
+    // dirección (p. ej. 127.0.0.1). Se compara con el host que usó el navegador;
+    // un sitio ajeno no puede falsificar Host ni X-Forwarded-Host.
+    const hosts = [
+      request.nextUrl.host,
+      request.headers.get("host"),
+      request.headers.get("x-forwarded-host"),
+    ];
+    let originHost: string | undefined;
+    try {
+      originHost = new URL(request.headers.get("origin") ?? "").host;
+    } catch {}
+    if (!originHost || !hosts.includes(originHost))
       return reply({ message: "Origen no autorizado." }, 403);
   }
   const base = process.env.BACKEND_API_URL;

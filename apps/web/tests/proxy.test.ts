@@ -34,6 +34,23 @@ describe("Frontera entre frontend y API", () => {
     expect(result.status).toBe(503);
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("acepta el host usado por el navegador aunque Next informe localhost", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({})));
+    const send = (origin: string) =>
+      POST(
+        new NextRequest("http://localhost:3000/api/backend/checkout", {
+          method: "POST",
+          headers: { host: "127.0.0.1:3000", origin },
+          body: "{}",
+        }),
+        params("checkout"),
+      );
+    expect((await send("http://127.0.0.1:3000")).status).toBe(200);
+    expect((await send("https://evil.test")).status).toBe(403);
+    expect((await send("null")).status).toBe(403);
+  });
   it("rechaza escrituras desde otro origen", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
     const result = await POST(
@@ -120,14 +137,12 @@ describe("Frontera entre frontend y API", () => {
   it("renueva con la cookie, ignora el cuerpo del navegador y rota ambas cookies", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          accessToken: "new-access",
-          refreshToken: "new-refresh",
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const result = await POST(
       new NextRequest("http://localhost/api/backend/auth/refresh", {

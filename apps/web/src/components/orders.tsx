@@ -110,6 +110,9 @@ function CartContent() {
       router.push(`/cuenta/pedidos/${order.id}?confirmado=1`);
     },
     onError: (error) => {
+      // El carrito o el historial pudieron cambiar (stock, precio o un pedido
+      // registrado sin confirmación): se releen en lugar de reintentar a ciegas.
+      void client.invalidateQueries();
       if (
         !(error instanceof ApiError) ||
         error.status === 0 ||
@@ -123,6 +126,20 @@ function CartContent() {
       <Empty title="Tu cuenta no está habilitada para enviar pedidos">
         <ActionLink href="/contacto">Consultar</ActionLink>
       </Empty>
+    );
+  // Sin respuesta al enviar: el pedido pudo registrarse (y el carrito vaciarse).
+  // Se reemplaza el carrito por el aviso para no reenviar a ciegas.
+  if (uncertain)
+    return (
+      <div className="error-box" role="alert">
+        <p>
+          No sabemos si el pedido se confirmó. Revisá tus pedidos antes de
+          volver a enviar.
+        </p>
+        <Link className="button secondary small" href="/cuenta/pedidos">
+          Ver mis pedidos
+        </Link>
+      </div>
     );
   if (q.isPending) return <Loading />;
   if (q.error)
@@ -198,32 +215,17 @@ function CartContent() {
             Revisá las líneas marcadas antes de enviar el pedido.
           </p>
         )}
-        {checkout.error && <ErrorBox error={checkout.error} />}{" "}
-        {uncertain ? (
-          <div className="error-box">
-            <p>
-              No sabemos si el pedido se confirmó. Revisá tus pedidos antes de
-              volver a enviar.
-            </p>
-            <Link className="button secondary small" href="/cuenta/pedidos">
-              Ver mis pedidos
-            </Link>
-          </div>
-        ) : (
-          <button
-            className="button"
-            disabled={
-              checkout.isPending ||
-              (manual && !accept) ||
-              q.isFetching ||
-              blocked
-            }
-            onClick={() => checkout.mutate()}
-          >
-            {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
-            <ArrowUpRight size={17} />
-          </button>
-        )}
+        {checkout.error && <ErrorBox error={checkout.error} />}
+        <button
+          className="button"
+          disabled={
+            checkout.isPending || (manual && !accept) || q.isFetching || blocked
+          }
+          onClick={() => checkout.mutate()}
+        >
+          {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
+          <ArrowUpRight size={17} />
+        </button>
         {DEMO && (
           <p className="info-note">
             Operación simulada. No genera pedidos comerciales.
@@ -290,6 +292,13 @@ function OrdersContent({ id }: { id?: string }) {
     !!user,
   );
   if (q.isPending) return <Loading />;
+  if (id && q.error instanceof ApiError && q.error.status === 404)
+    return (
+      <Empty title="No encontramos ese pedido">
+        <p>Puede no existir o pertenecer a otra cuenta.</p>
+        <ActionLink href="/cuenta/pedidos">Ver mis pedidos</ActionLink>
+      </Empty>
+    );
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const orders = Array.isArray(q.data) ? q.data : [q.data];
@@ -329,7 +338,8 @@ function OrdersContent({ id }: { id?: string }) {
           ) : (
             <div className="row between">
               <span>
-                {order.items.length} productos ·{" "}
+                {order.items.length}{" "}
+                {order.items.length === 1 ? "producto" : "productos"} ·{" "}
                 <strong>{money(order.total, order.currency)}</strong>
               </span>
               <ActionLink href={`/cuenta/pedidos/${order.id}`} secondary>

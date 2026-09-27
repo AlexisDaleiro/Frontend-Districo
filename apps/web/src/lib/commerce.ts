@@ -44,6 +44,7 @@ export const purchasable = (variant: Variant) =>
 export const reviewRequired = (status?: string) =>
   ["PAYMENT_DELAY", "PAYMENT_PENDING", "RESTRICTED"].includes(status ?? "");
 export const labels: Record<string, string> = {
+  DRAFT: "Borrador",
   SUBMITTED: "Enviado",
   PENDING: "Pendiente",
   PENDING_REVIEW: "En revisión",
