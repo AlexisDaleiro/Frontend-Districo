@@ -2,6 +2,8 @@
 
 Backend demo B2B para el nuevo e-commerce mayorista de DISTRICO S.A.
 
+**Pendientes y errores conocidos:** [`docs/BACKEND-PENDIENTES.md`](../../docs/BACKEND-PENDIENTES.md) (ubicación, comportamiento esperado, arreglo sugerido y cómo verificar cada uno).
+
 ## Alcance implementado
 
 Fase 1:

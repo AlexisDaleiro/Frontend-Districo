@@ -61,6 +61,8 @@ El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba p
 
 ## Dependencias y problemas para coordinar con el socio
 
+Detalle para corregir cada problema (archivo, línea, arreglo y verificación): `docs/BACKEND-PENDIENTES.md`.
+
 1. **API publicada y datos reales:** faltan URL, entorno de prueba y catálogo efectivamente importado. Los scripts versionados inspeccionados crean ejemplos hardcodeados; no prueban que el scrapeo completo esté cargado.
 2. **Recuperación de contraseña:** `forgotPassword` devuelve `resetToken` a quien solicita recuperación sin verificar control del correo. Por eso el frontend ofrece contacto asistido y el proxy bloquea esa ruta con 501. El token no se muestra ni se persiste. Tu socio debe implementar entrega segura antes de habilitar autoservicio.
 3. **Datos sensibles en respuestas:** solicitudes/aprobaciones incluyen hashes de contraseña en la revisión inspeccionada. El proxy los elimina; el socio debe sanear también la API pública.

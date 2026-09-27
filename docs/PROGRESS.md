@@ -2,6 +2,10 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Documentación: pendientes del backend (27/09)
+
+A pedido, `docs/BACKEND-PENDIENTES.md`: 17 problemas confirmados leyendo `apps/api/src` en `51952c6` (sin cambiar código), con prioridad, archivo y línea, comportamiento actual y esperado, arreglo sugerido y verificación. Detalla la auditoría del 26/09: el checkout usa el precio anterior porque el filtro de vigencia congela `new Date()` al arrancar (C1); un pedido nuevo libera las reservas de los anteriores del mismo cliente (C2); más `resetToken`, `passwordHash`, secretos JWT por defecto, `accountStatus`, transiciones, sobreventa y `logout`. Enlazado desde `apps/api/README.md` (solo documentación), `README.md` y `docs/API.md`.
+
 ## Último paso terminado: 06a · solicitudes y clientes
 
 Contrastado con `apps/api` (solo lectura): aprobar crea cuenta `APPROVED` y usuario con `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS` (+ `CAN_BUY_MEDICATIONS` si se pide); `PATCH admin/customers/:id` actualiza `accountStatus`, `creditStatus`, `creditLimit`, `internalCreditNote` y sincroniza `CAN_BUY_MEDICATIONS`. La estrategia JWT relee permisos de la base en cada solicitud; `accountStatus` no se verifica en ningún lado; `reject` no controla el estado de la solicitud.
