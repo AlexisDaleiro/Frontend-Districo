@@ -979,6 +979,15 @@ footer {
   font-size: 12px;
   font-weight: 400;
 }
+.check-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.check-copy small {
+  font-size: 11px;
+  color: var(--muted);
+}
 .check-field input {
   margin-top: 4px;
   accent-color: var(--ink);

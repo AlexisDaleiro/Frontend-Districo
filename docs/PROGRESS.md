@@ -6,7 +6,27 @@
 
 A pedido, `docs/BACKEND-PENDIENTES.md`: 17 problemas confirmados leyendo `apps/api/src` en `51952c6` (sin cambiar código), con prioridad, archivo y línea, comportamiento actual y esperado, arreglo sugerido y verificación. Detalla la auditoría del 26/09: el checkout usa el precio anterior porque el filtro de vigencia congela `new Date()` al arrancar (C1); un pedido nuevo libera las reservas de los anteriores del mismo cliente (C2); más `resetToken`, `passwordHash`, secretos JWT por defecto, `accountStatus`, transiciones, sobreventa y `logout`. Enlazado desde `apps/api/README.md` (solo documentación), `README.md` y `docs/API.md`.
 
-## Último paso terminado: 06b · gestión de pedidos
+## Último paso terminado: 07a · productos, presentaciones y medios
+
+Contrastado con `apps/api/src/catalog/products` (solo lectura): `POST products` deriva el `slug` del nombre si falta; `PATCH products/:id` lo **regenera** si se envía `name` sin `slug` e ignora campos ausentes (no se puede quitar marca, laboratorio ni variante de una imagen). `GET products` y `GET products/:slug` filtran `active:true` también para `ADMIN` (M3). Las variantes inactivas sí llegan en la respuesta; carrito y checkout no verifican `variant.active` (M9, nuevo). Medios: `IsUrl`, `variantId` opcional que debe pertenecer al producto (400), orden principal primero y luego `position`; `DELETE` → `{success:true}`, 404 si no existe. `slug`/`sku`/`ean` repetidos → 500 por falta de filtro de Prisma (M10, nuevo). Sin subida de archivos.
+
+- `src/components/admin.tsx` (catálogo): crear un producto abre su panel «Presentaciones e imágenes» (con desplazamiento al panel) y la confirmación pide agregar presentación e imagen; editar mantiene el panel si cambia el `slug` y lo cierra si se desactiva («…: desactivado. Ya no aparece en el catálogo.»). El aviso de productos inactivos pasó a la casilla «Producto activo». Panel: secciones «Presentaciones» e «Imágenes» con estados vacíos (sin presentación no se puede comprar; sin imagen se usa la genérica); cada presentación muestra presentación comercial, mínimo, múltiplo y la marca «Inactiva». Imágenes: un solo editor para alta y edición con URL (aclara que no se suben archivos), texto alternativo obligatorio, **presentación opcional** (el catálogo ya mostraba imágenes por presentación, pero no había forma de cargarlas), orden y principal (propuesta como principal si es la primera); cada tarjeta dice «Principal · General/presentación · Orden N». Eliminar: botón con nombre accesible por imagen, diálogo con vista previa, «el archivo en su dirección de origen no se modifica», «Eliminando…», Cancelar deshabilitado durante el envío, error limpio al reabrir, aviso «Imagen eliminada del producto.» y relectura también tras un error. Error del detalle con «Intentar nuevamente».
+- `src/components/admin-form.tsx`: `hint` también en casillas; `placeholder` para la opción vacía de un select. `src/app/globals.css`: `.check-copy`. `src/lib/types.ts`: `Media.position`, `variantId` nulo.
+- `src/lib/demo.ts`: como la API, medios ordenados (principal, luego posición), `slug` con el `slugify` de la API y regenerado al renombrar sin `slug`, 404 para producto/imagen inexistente, 400 si la imagen apunta a una presentación de otro producto, valores por omisión de medios y mínimo = múltiplo. `slug` o SKU repetido → 409 (la API responde 500: M10).
+- `tests/demo.test.ts`: prueba nueva «productos, presentaciones y medios como la API». Falla con el `demo.ts` anterior. `tests/e2e/admin-complete.spec.ts`: agrega dos imágenes, comprueba «Principal · General · Orden 0», cancela y luego confirma el borrado de una, y verifica la imagen en la tarjeta del catálogo y en la ficha antes de guardar en el carrito.
+- Documentación: `docs/API.md` punto 5 (inactivos y límites de edición); `docs/BACKEND-PENDIENTES.md` M3 ampliado, M9 y M10 nuevos.
+
+Verificación:
+- `npm run typecheck`, `npm run lint` y prettier: correctos. `npm test`: 30/30 (antes 29). `npm run build` (demo): correcto.
+- `npm run test:e2e -- --grep "administración"`: 4/4. Suite e2e completa (cambio compartido de `AdminForm`): 17/17. Chromium `/opt/pw-browsers/chromium-1194` con configuración temporal, ya eliminada (sin ella Playwright pide `playwright install`).
+- Navegador (demo, 360 px): crear producto → panel visible con estados vacíos; presentación e imagen asignada a la presentación; diálogo de borrado con vista previa; la ficha muestra la imagen de la presentación («Bolsa frente»). Sin desbordamiento horizontal.
+- Condición de cierre cumplida en demo: producto con presentación, precio, stock e imagen visible en catálogo y ficha, que se guarda en el carrito. No probado contra la API real.
+
+Pendiente (backend): listar/reactivar productos inactivos (M3), `variant.active` en carrito y checkout (M9), 409 para únicos repetidos (M10).
+
+Siguiente tarea: `docs/prompts/07b-precios-stock.md`.
+
+## Paso anterior: 06b · gestión de pedidos
 
 Contrastado con `apps/api` (solo lectura): `GET admin/orders` devuelve todos los pedidos (más recientes primero) con `items`, `user.email` y `customerAccount`; `PATCH admin/orders/:id/status` `{status, reviewReason?}` exige un estado del enum, **acepta cualquier transición** (BACKEND-PENDIENTES A2) y responde el pedido actualizado. Aprobar o preparar consume las reservas `ACTIVE` (baja stock físico y reservado); rechazar o cancelar libera las `ACTIVE`; una reserva ya consumida no vuelve al cancelar. Sin `reviewReason` se conserva el anterior. Las reservas de un pedido vencen a las 48 h (M6). Los importes (`unitPrice`, `subtotal`, `total`) se guardan al confirmar y ningún cambio de estado los toca.
 
@@ -25,7 +45,6 @@ Verificación:
 
 Pendiente (backend): tabla de transiciones en el servidor (A2), vencimiento de reservas de pedidos abiertos (M6) y reservas liberadas por un pedido posterior (C2). Hasta entonces, cancelar un pedido aprobado exige ajustar existencias a mano (la UI lo avisa).
 
-Siguiente tarea: `docs/prompts/07a-productos.md`.
 
 ## Paso anterior: 06a · solicitudes y clientes
 

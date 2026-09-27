@@ -16,6 +16,8 @@ export type Field = {
   step?: string;
   options?: { value: string; label: string }[];
   hint?: string;
+  // Texto de la opción vacía de un select.
+  placeholder?: string;
 };
 export type Editor = {
   title: string;
@@ -125,7 +127,10 @@ export function AdminForm({
           field.type === "checkbox" ? (
             <label key={field.key} className="check-field span-2">
               <input type="checkbox" {...form.register(field.key)} />
-              {field.label}
+              <span className="check-copy">
+                {field.label}
+                {field.hint && <small>{field.hint}</small>}
+              </span>
             </label>
           ) : (
             <label
@@ -136,7 +141,7 @@ export function AdminForm({
               {field.required ? " *" : ""}
               {field.type === "select" ? (
                 <select {...form.register(field.key)}>
-                  <option value="">Seleccionar</option>
+                  <option value="">{field.placeholder ?? "Seleccionar"}</option>
                   {field.options?.map((o) => (
                     <option value={o.value} key={o.value}>
                       {o.label}

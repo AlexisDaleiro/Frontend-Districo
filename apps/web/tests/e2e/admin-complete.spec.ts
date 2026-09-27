@@ -45,17 +45,41 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
     .fill("24");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await page.getByRole("button", { name: "Agregar imagen por URL" }).click();
+  const image = "http://127.0.0.1:3000/images/banner-granplus.png";
+  for (const alt of ["Imagen de prueba", "Imagen a eliminar"]) {
+    await page.getByRole("button", { name: "Agregar imagen por URL" }).click();
+    await page.getByLabel("URL de la imagen").fill(image);
+    await page.getByLabel("Texto alternativo").fill(alt);
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+  }
+  // La primera imagen se propone como principal.
+  await expect(page.getByText("Principal · General · Orden 0")).toBeVisible();
   await page
-    .getByLabel("URL de la imagen")
-    .fill("http://127.0.0.1:3000/images/placeholder.svg");
-  await page.getByLabel("Texto alternativo").fill("Imagen de prueba");
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+    .getByRole("button", { name: "Eliminar imagen Imagen a eliminar" })
+    .click();
+  const confirm = page.getByRole("dialog", { name: "Eliminar imagen" });
+  await confirm.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByAltText("Imagen a eliminar")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Eliminar imagen Imagen a eliminar" })
+    .click();
+  await confirm.getByRole("button", { name: "Eliminar imagen" }).click();
+  await expect(confirm).not.toBeVisible();
+  await expect(page.getByAltText("Imagen a eliminar")).toHaveCount(0);
+  await page.goto("/catalogo?search=AA%20Producto");
+  await expect(page.locator(".product-card img").first()).toHaveAttribute(
+    "src",
+    image,
+  );
   await page.goto("/producto/aa-producto-prueba");
   await expect(
     page.getByRole("heading", { name: "AA Producto de prueba" }),
   ).toBeVisible();
+  await expect(page.locator(".detail-image img")).toHaveAttribute(
+    "alt",
+    "Imagen de prueba",
+  );
   await expect(page.getByText("SKU PRUEBA-100")).toBeVisible();
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
   await expect(

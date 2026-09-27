@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Plus, Pencil, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
@@ -20,6 +20,7 @@ import type {
   Customer,
   Entity,
   Expiration,
+  Media,
   Order,
   Product,
   ProductList,
@@ -508,6 +509,11 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
     `products?limit=12&page=${page}&search=${encodeURIComponent(search)}`,
   );
   const detail = useApi<Product>(`products/${selectedSlug}`, !!selectedSlug);
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Lleva al detalle al abrirlo (en móvil queda debajo de la lista).
+    if (selectedSlug) detailRef.current?.scrollIntoView({ block: "start" });
+  }, [selectedSlug]);
   const brands = useApi<Entity[]>("brands"),
     categories = useApi<Entity[]>("categories"),
     labs = useApi<Entity[]>("laboratories");
@@ -539,7 +545,10 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
     select("categoryId", "Categoría principal", entities(categories.data)),
     bool("requiresMedicationPermission", "Requiere permiso para medicamentos"),
     bool("featured", "Mostrar entre destacados"),
-    bool("active", "Producto activo"),
+    {
+      ...bool("active", "Producto activo"),
+      hint: "Si lo desactivás, deja de verse en el catálogo y en esta lista. La API no lista productos inactivos: no se puede reactivar desde el panel.",
+    },
   ];
   function productEditor(p?: Product) {
     edit({
@@ -564,8 +573,19 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
             ]
           : (p?.categories.map((c) => c.categoryId) ?? []),
       }),
-      description:
-        "La API pública lista productos activos. Conservá activo el producto para poder volver a encontrarlo en esta versión.",
+      success: (result) => {
+        const saved = result as Product;
+        if (!p) {
+          // Abre el detalle para agregar presentación e imagen.
+          setSelectedSlug(saved.slug);
+          return `${saved.name}: creado. Agregá una presentación y una imagen.`;
+        }
+        if (selectedSlug === p.slug)
+          setSelectedSlug(saved.active === false ? "" : saved.slug);
+        return saved.active === false
+          ? `${saved.name}: desactivado. Ya no aparece en el catálogo.`
+          : "Cambios guardados.";
+      },
     });
   }
   if (q.isPending) return <Loading />;
@@ -664,7 +684,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
         </button>
       </div>
       {selectedSlug && (
-        <div className="panel" style={{ marginTop: 30 }}>
+        <div className="panel" style={{ marginTop: 30 }} ref={detailRef}>
           <div className="row between">
             <h2>Presentaciones e imágenes</h2>
             <button
@@ -677,7 +697,10 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
           {detail.isPending ? (
             <Loading />
           ) : detail.error ? (
-            <ErrorBox error={detail.error} />
+            <ErrorBox
+              error={detail.error}
+              retry={() => void detail.refetch()}
+            />
           ) : (
             <VariantManagement product={detail.data} edit={edit} />
           )}
@@ -696,18 +719,64 @@ function VariantManagement({
   const [remove, setRemove] = useState<string | null>(null),
     [stockId, setStockId] = useState("");
   const client = useQueryClient();
+  const { notify } = useSession();
   const stock = useApi<{
     physicalStock: number;
     reservedStock: number;
     availableStock: number;
   }>(`inventory/variants/${stockId}/stock`, !!stockId);
   const deletion = useMutation({
-    mutationFn: () => request(`products/media/${remove}`, "DELETE"),
+    mutationFn: (mediaId: string) =>
+      request(`products/media/${mediaId}`, "DELETE"),
     onSuccess: () => {
-      void client.invalidateQueries();
+      notify("Imagen eliminada del producto.");
       setRemove(null);
     },
+    // También tras un error: el borrado pudo haberse aplicado.
+    onSettled: () => void client.invalidateQueries(),
   });
+  const removing = product.media.find((m) => m.id === remove);
+  function closeRemoval() {
+    setRemove(null);
+    deletion.reset();
+  }
+  const variantOptions = product.variants.map((v) => ({
+    value: v.id,
+    label: `${v.name} · ${v.sku}`,
+  }));
+  const variantName = (id?: string | null) =>
+    product.variants.find((v) => v.id === id)?.name;
+  function mediaEditor(m?: Media) {
+    edit({
+      title: m ? "Editar imagen" : "Agregar imagen",
+      path: m ? `products/media/${m.id}` : `products/${product.id}/media`,
+      method: m ? "PATCH" : "POST",
+      fields: [
+        {
+          ...text("url", "URL de la imagen"),
+          type: "url",
+          hint: "Dirección pública HTTP o HTTPS de una imagen ya publicada. No se suben archivos.",
+        },
+        text("alt", "Texto alternativo"),
+        {
+          ...select("variantId", "Presentación", variantOptions, false),
+          placeholder: m?.variantId ? undefined : "Todas (imagen general)",
+          hint: m?.variantId
+            ? "La API no permite volver a general: para eso, eliminála y agregala de nuevo."
+            : "Sin presentación, la imagen es general del producto.",
+        },
+        number("position", "Orden", 0),
+        {
+          ...bool("isPrimary", "Imagen principal"),
+          hint: "La principal se muestra primero en la tarjeta del catálogo y en la ficha.",
+        },
+      ],
+      initial: m
+        ? { ...m, position: m.position ?? 0, variantId: m.variantId ?? "" }
+        : { position: 0, isPrimary: product.media.length === 0 },
+      transform: (data) => (m ? data : { ...data, type: "IMAGE" }),
+    });
+  }
   const fields: Field[] = [
     text("sku", "SKU"),
     text("name", "Nombre de la presentación"),
@@ -715,7 +784,10 @@ function VariantManagement({
     text("presentation", "Descripción de presentación", false),
     number("saleMultiple", "Múltiplo de venta", 1),
     number("minimumOrderQuantity", "Cantidad mínima", 1),
-    bool("active", "Presentación activa"),
+    {
+      ...bool("active", "Presentación activa"),
+      hint: "Una presentación inactiva se oculta en el catálogo y sigue listada acá para reactivarla.",
+    },
   ];
   function variantEditor(v?: Variant) {
     edit({
@@ -737,31 +809,38 @@ function VariantManagement({
         </button>
         <button
           className="button secondary small"
-          onClick={() =>
-            edit({
-              title: "Agregar imagen",
-              path: `products/${product.id}/media`,
-              fields: [
-                { ...text("url", "URL de la imagen"), type: "url" },
-                text("alt", "Texto alternativo"),
-                number("position", "Orden", 0),
-                bool("isPrimary", "Imagen principal"),
-              ],
-              initial: { position: 0, isPrimary: false },
-              transform: (data) => ({ ...data, type: "IMAGE" }),
-            })
-          }
+          onClick={() => mediaEditor()}
         >
           Agregar imagen por URL
         </button>
       </div>
-      <div className="stack" style={{ marginTop: 20 }}>
+      <h3 style={{ marginTop: 25 }}>Presentaciones</h3>
+      {product.variants.length === 0 && (
+        <p className="small-copy muted">
+          Sin presentaciones: el producto se ve en el catálogo, pero no puede
+          guardarse en el carrito. Agregá una y cargá su precio y stock.
+        </p>
+      )}
+      <div className="stack" style={{ marginTop: 12 }}>
         {product.variants.map((v) => (
           <div className="card" key={v.id}>
-            <h3>{v.name}</h3>
+            <h3>
+              {v.name}
+              {v.active === false && (
+                <>
+                  {" "}
+                  <span className="status-pill pending">Inactiva</span>
+                </>
+              )}
+            </h3>
             <p className="small-copy muted">
               {v.sku} · Disponible: {v.availableStock} ·{" "}
               {v.price ? money(v.price.amount, v.price.currency) : "Sin precio"}
+              {v.presentation && <> · {v.presentation}</>}
+            </p>
+            <p className="small-copy muted">
+              Mínimo {v.minimumOrderQuantity} · Múltiplo {v.saleMultiple}
+              {v.active === false && " · No se muestra en el catálogo"}
             </p>
             <div className="actions">
               <button
@@ -849,7 +928,13 @@ function VariantManagement({
           )}
         </div>
       )}
-      <div className="admin-cards" style={{ marginTop: 25 }}>
+      <h3 style={{ marginTop: 25 }}>Imágenes</h3>
+      {product.media.length === 0 && (
+        <p className="small-copy muted">
+          Sin imágenes: el catálogo muestra una imagen genérica.
+        </p>
+      )}
+      <div className="admin-cards" style={{ marginTop: 12 }}>
         {product.media.map((m) => (
           <div className="card" key={m.id}>
             <Picture
@@ -857,29 +942,24 @@ function VariantManagement({
               alt={m.alt ?? product.name}
               style={{ height: 110, width: "100%", objectFit: "contain" }}
             />
+            <p className="small-copy muted">
+              {m.isPrimary ? "Principal · " : ""}
+              {variantName(m.variantId) ?? "General"} · Orden {m.position ?? 0}
+            </p>
             <div className="actions">
               <button
                 className="button secondary small"
-                onClick={() =>
-                  edit({
-                    title: "Editar imagen",
-                    path: `products/media/${m.id}`,
-                    method: "PATCH",
-                    fields: [
-                      { key: "url", label: "URL", type: "url", required: true },
-                      text("alt", "Texto alternativo", false),
-                      bool("isPrimary", "Imagen principal"),
-                    ],
-                    initial: { ...m },
-                  })
-                }
+                onClick={() => mediaEditor(m)}
               >
                 Editar imagen
               </button>
               <button
                 className="icon-button"
-                aria-label="Eliminar imagen"
-                onClick={() => setRemove(m.id)}
+                aria-label={`Eliminar imagen ${m.alt ?? ""}`.trim()}
+                onClick={() => {
+                  deletion.reset();
+                  setRemove(m.id);
+                }}
               >
                 <Trash2 size={16} />
               </button>
@@ -887,22 +967,32 @@ function VariantManagement({
           </div>
         ))}
       </div>
-      <Modal
-        open={!!remove}
-        onClose={() => setRemove(null)}
-        title="Eliminar imagen"
-      >
-        <p>Se quitará la referencia de esta imagen del producto.</p>
+      <Modal open={!!remove} onClose={closeRemoval} title="Eliminar imagen">
+        {removing && (
+          <Picture
+            src={removing.url}
+            alt={removing.alt ?? product.name}
+            style={{ height: 110, width: "100%", objectFit: "contain" }}
+          />
+        )}
+        <p>
+          Se quitará esta imagen de {product.name}. El archivo en su dirección
+          de origen no se modifica. Esta acción no se puede deshacer.
+        </p>
         {deletion.error && <ErrorBox error={deletion.error} />}
         <div className="actions">
           <button
             className="button danger"
-            disabled={deletion.isPending}
-            onClick={() => deletion.mutate()}
+            disabled={deletion.isPending || !remove}
+            onClick={() => remove && deletion.mutate(remove)}
           >
-            Eliminar imagen
+            {deletion.isPending ? "Eliminando…" : "Eliminar imagen"}
           </button>
-          <button className="button secondary" onClick={() => setRemove(null)}>
+          <button
+            className="button secondary"
+            disabled={deletion.isPending}
+            onClick={closeRemoval}
+          >
             Cancelar
           </button>
         </div>

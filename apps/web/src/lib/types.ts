@@ -50,7 +50,8 @@ export type Media = {
   alt?: string;
   type: "IMAGE" | "VIDEO";
   isPrimary?: boolean;
-  variantId?: string;
+  position?: number;
+  variantId?: string | null;
 };
 export type Product = {
   id: string;

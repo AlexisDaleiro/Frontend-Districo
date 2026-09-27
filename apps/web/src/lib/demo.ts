@@ -86,6 +86,22 @@ function write(state: State) {
   }
 }
 const id = () => crypto.randomUUID();
+// Igual que `slugify` de la API.
+const slugify = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+// La API ordena los medios con la principal primero y luego por posición.
+const sortMedia = (media: Product["media"]) =>
+  [...media].sort(
+    (a, b) =>
+      Number(!!b.isPrimary) - Number(!!a.isPrimary) ||
+      (a.position ?? 0) - (b.position ?? 0),
+  );
 function descendants(categories: Entity[], rootId: string) {
   const ids = new Set([rootId]);
   for (let added = true; added;) {
@@ -104,6 +120,7 @@ function publicProduct(p: Product, user?: User): Product {
     (!p.requiresMedicationPermission || can(user, "CAN_BUY_MEDICATIONS"));
   return {
     ...p,
+    media: sortMedia(p.media),
     medicationRestricted:
       p.requiresMedicationPermission && !can(user, "CAN_BUY_MEDICATIONS"),
     variants: p.variants.map((v) => ({
@@ -596,13 +613,17 @@ export async function demoRequest<T>(
       o.status = status;
       result = o;
     } else if (route === "products" && method === "POST") {
+      const slug = String(b.slug || slugify(String(b.name ?? "")));
+      // La API responde 500 por la restricción única; el demo lo explica.
+      if (s.products.some((p) => p.slug === slug))
+        throw new ApiError("Ya existe un producto con ese identificador.", 409);
       const p: Product = {
         ...b,
         id: id(),
         name: String(b.name),
         productType: String(b.productType ?? "OTHER"),
         requiresMedicationPermission: !!b.requiresMedicationPermission,
-        slug: String(b.slug || `producto-${id()}`),
+        slug,
         variants: [],
         media: [],
         categories: ((b.categoryIds as string[]) ?? []).map((categoryId) => ({
@@ -619,37 +640,62 @@ export async function demoRequest<T>(
         .flatMap((p) => p.variants)
         .find((v) => v.id === parts[2]);
       if (!v) throw new ApiError("Presentación no encontrada.", 404);
+      if (
+        b.sku &&
+        s.products.some((p) =>
+          p.variants.some((x) => x !== v && x.sku === b.sku),
+        )
+      )
+        throw new ApiError("Ya existe una presentación con ese SKU.", 409);
       Object.assign(v, b);
       result = v;
     } else if (parts[0] === "products" && parts[2] === "variants") {
-      const p = s.products.find((p) => p.id === parts[1])!;
+      const p = s.products.find((p) => p.id === parts[1]);
+      if (!p) throw new ApiError("Producto no encontrado.", 404);
+      if (s.products.some((p) => p.variants.some((x) => x.sku === b.sku)))
+        throw new ApiError("Ya existe una presentación con ese SKU.", 409);
       const v = {
         id: id(),
         availableStock: Number(b.physicalStock ?? 0),
         saleMultiple: 1,
-        minimumOrderQuantity: 1,
+        minimumOrderQuantity: Number(b.saleMultiple ?? 1),
+        active: true,
         ...b,
       } as Product["variants"][number];
       p.variants.push(v);
       result = v;
     } else if (parts[0] === "products" && parts[1] === "media") {
-      const p = s.products.find((p) => p.media.some((m) => m.id === parts[2]))!;
-      if (method === "DELETE")
-        p.media = p.media.filter((m) => m.id !== parts[2]);
-      else
-        Object.assign(
-          p.media.find((m) => m.id === parts[2])!,
-          b,
-        );
-      result = { success: true };
+      const p = s.products.find((p) => p.media.some((m) => m.id === parts[2]));
+      const m = p?.media.find((m) => m.id === parts[2]);
+      if (!p || !m) throw new ApiError("Imagen o video no encontrado.", 404);
+      if (b.variantId && !p.variants.some((v) => v.id === b.variantId))
+        throw new ApiError("La variante no pertenece al producto.", 400);
+      if (method === "DELETE") {
+        p.media = p.media.filter((x) => x !== m);
+        result = { success: true };
+      } else result = Object.assign(m, b);
     } else if (parts[0] === "products" && parts[2] === "media") {
-      const p = s.products.find((p) => p.id === parts[1])!;
-      const m = { id: id(), ...b } as Product["media"][number];
+      const p = s.products.find((p) => p.id === parts[1]);
+      if (!p) throw new ApiError("Producto no encontrado.", 404);
+      if (b.variantId && !p.variants.some((v) => v.id === b.variantId))
+        throw new ApiError("La variante no pertenece al producto.", 400);
+      const m = {
+        id: id(),
+        type: "IMAGE",
+        position: 0,
+        isPrimary: false,
+        ...b,
+      } as Product["media"][number];
       p.media.push(m);
       result = m;
     } else if (parts[0] === "products" && method === "PATCH") {
-      const p = s.products.find((p) => p.id === parts[1])!;
-      Object.assign(p, b);
+      const p = s.products.find((p) => p.id === parts[1]);
+      if (!p) throw new ApiError("Producto no encontrado.", 404);
+      // Como la API: sin identificador, se deriva del nombre.
+      const slug = b.slug ?? (b.name ? slugify(String(b.name)) : p.slug);
+      if (s.products.some((x) => x !== p && x.slug === slug))
+        throw new ApiError("Ya existe un producto con ese identificador.", 409);
+      Object.assign(p, b, { slug });
       if (b.brandId) p.brand = s.brands.find((x) => x.id === b.brandId);
       if (b.laboratoryId)
         p.laboratory = s.laboratories.find((x) => x.id === b.laboratoryId);

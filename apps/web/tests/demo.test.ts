@@ -4,6 +4,7 @@ import type {
   Application,
   Cart,
   Order,
+  Product,
   ProductList,
   User,
 } from "../src/lib/types";
@@ -291,5 +292,69 @@ describe("Demo B2B: recorrido comercial", () => {
       status: 400,
     });
     expect(await api("orders/me")).toEqual([]);
+  });
+  it("productos, presentaciones y medios como la API", async () => {
+    await login("admin@districo.com");
+    const created = await api<Product>("products", "POST", {
+      name: "Ración Único",
+      categoryIds: ["alimentacion"],
+    });
+    // Sin identificador, se deriva del nombre (slugify de la API).
+    expect(created.slug).toBe("racion-unico");
+    await expect(
+      api("products", "POST", { name: "Otra", slug: "racion-unico" }),
+    ).rejects.toMatchObject({ status: 409 });
+    const variant = await api<{ id: string }>(
+      `products/${created.id}/variants`,
+      "POST",
+      { sku: "PRUEBA-1", name: "Bolsa", saleMultiple: 2 },
+    );
+    await expect(
+      api(`products/${created.id}/variants`, "POST", {
+        sku: "PRUEBA-1",
+        name: "Repetida",
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      api(`products/${created.id}/media`, "POST", {
+        url: "https://example.com/a.png",
+        variantId: "variant-0",
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    const general = await api<{ id: string }>(
+      `products/${created.id}/media`,
+      "POST",
+      { url: "https://example.com/general.png", alt: "General", position: 1 },
+    );
+    await api(`products/${created.id}/media`, "POST", {
+      url: "https://example.com/bolsa.png",
+      alt: "Bolsa",
+      position: 2,
+      isPrimary: true,
+      variantId: variant.id,
+    });
+    let detail = await api<Product>("products/racion-unico");
+    // Principal primero, luego por posición.
+    expect(detail.media.map((m) => m.alt)).toEqual(["Bolsa", "General"]);
+    expect(detail.media[0].variantId).toBe(variant.id);
+    expect(detail.variants[0]).toMatchObject({
+      minimumOrderQuantity: 2,
+      active: true,
+    });
+    await api(`products/media/${general.id}`, "DELETE");
+    await expect(
+      api(`products/media/${general.id}`, "DELETE"),
+    ).rejects.toMatchObject({ status: 404 });
+    detail = await api<Product>("products/racion-unico");
+    expect(detail.media).toHaveLength(1);
+    // Al renombrar sin identificador, la API regenera el slug.
+    await api(`products/${created.id}`, "PATCH", { name: "Ración Dos" });
+    await expect(api("products/racion-unico")).rejects.toMatchObject({
+      status: 404,
+    });
+    await api(`products/${created.id}`, "PATCH", { active: false });
+    await expect(api("products/racion-dos")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 });
