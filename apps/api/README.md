@@ -2,6 +2,15 @@
 
 Backend demo B2B para el nuevo e-commerce mayorista de DISTRICO S.A.
 
+## Catalogo real y Supabase
+
+- [Extraccion e importacion revisable de DISTRICO](CATALOG-IMPORT.md).
+- [Conexion privada del backend a PostgreSQL de Supabase](SUPABASE.md).
+- [Datos ficticios y cuentas para probar el backend local](LOCAL-TEST-DATA.md).
+- Los scripts `import:districo`, `import:raicor` e `import:magnis` originales
+  siguen siendo ejemplos ficticios; el catalogo publico usa `catalog:scrape`
+  y `catalog:import`. No se cambia el frontend demo.
+
 ## Alcance implementado
 
 Fase 1:

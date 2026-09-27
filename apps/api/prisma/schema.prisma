@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -255,6 +256,9 @@ model Product {
   laboratoryId                 String?
   laboratory                   Laboratory?             @relation(fields: [laboratoryId], references: [id])
   source                       ProductSource           @default(DISTRICO)
+  sourceExternalId             String?
+  sourceUrl                    String?
+  sourceFetchedAt              DateTime?
   requiresMedicationPermission Boolean                 @default(false)
   active                       Boolean                 @default(true)
   featured                     Boolean                 @default(false)
@@ -267,6 +271,8 @@ model Product {
   createdAt                    DateTime                @default(now())
   updatedAt                    DateTime                @updatedAt
   deletedAt                    DateTime?
+
+  @@unique([source, sourceExternalId])
 }
 
 model ProductVariant {
