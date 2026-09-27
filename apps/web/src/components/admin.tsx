@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowUpRight, Plus, Pencil, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
-import { request, useApi, useSession } from "./providers";
+import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { OrderItems } from "./orders";
@@ -108,17 +108,26 @@ function Applications({ edit }: { edit: OpenEditor }) {
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
+  // Pendientes primero; el resto conserva el orden de la API.
+  const list = [
+    ...q.data.filter((a) => a.status === "PENDING"),
+    ...q.data.filter((a) => a.status !== "PENDING"),
+  ];
+  const pending = list.filter((a) => a.status === "PENDING").length;
   return (
     <>
       <div className="admin-toolbar">
         <h2>Solicitudes de acceso</h2>
-        <span className="muted small-copy">{q.data.length} solicitudes</span>
+        <span className="muted small-copy">
+          {pending} {pending === 1 ? "pendiente" : "pendientes"} · {list.length}{" "}
+          en total
+        </span>
       </div>
-      {!q.data.length ? (
-        <Empty title="No hay solicitudes pendientes" />
+      {!list.length ? (
+        <Empty title="No hay solicitudes" />
       ) : (
         <div className="admin-cards">
-          {q.data.map((a) => (
+          {list.map((a) => (
             <article className="card" key={a.id}>
               <div className="row between">
                 <h3>{a.businessName}</h3>
@@ -279,8 +288,9 @@ function Customers({ edit }: { edit: OpenEditor }) {
                         "Habilitar compra de medicamentos",
                       ),
                     ],
-                    description:
-                      "Los cambios de permisos pueden requerir que el cliente vuelva a iniciar sesión en la API actual.",
+                    // Límite del backend actual: la API relee permisos en cada
+                    // solicitud, pero no consulta accountStatus (docs/API.md).
+                    description: `El permiso de medicamentos se aplica desde la siguiente solicitud del cliente. Suspender la cuenta no bloquea su sesión ni sus pedidos en la API actual, que no verifica el estado de cuenta; para cortar el acceso hace falta un cambio en el backend.${DEMO ? " En esta demo, una cuenta suspendida no puede comprar." : ""}`,
                   })
                 }
               >

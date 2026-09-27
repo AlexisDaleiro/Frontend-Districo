@@ -2,7 +2,25 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 05b · checkout e historial
+## Último paso terminado: 06a · solicitudes y clientes
+
+Contrastado con `apps/api` (solo lectura): aprobar crea cuenta `APPROVED` y usuario con `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS` (+ `CAN_BUY_MEDICATIONS` si se pide); `PATCH admin/customers/:id` actualiza `accountStatus`, `creditStatus`, `creditLimit`, `internalCreditNote` y sincroniza `CAN_BUY_MEDICATIONS`. La estrategia JWT relee permisos de la base en cada solicitud; `accountStatus` no se verifica en ningún lado; `reject` no controla el estado de la solicitud.
+
+- `src/components/admin.tsx`: el editor de clientes describe el límite real (el permiso de medicamentos rige desde la siguiente solicitud; suspender no bloquea sesión ni pedidos en la API actual; en demo sí se bloquea). Antes decía que los permisos podían requerir volver a iniciar sesión, lo que no coincide con la API. Solicitudes: pendientes primero y contador «N pendiente(s) · M en total»; vacío «No hay solicitudes».
+- `docs/API.md`, punto 4: corregido («los permisos viajan en JWT» era inexacto) y registrado que `reject` no verifica el estado.
+- `tests/e2e/flows.spec.ts` («solicitud aprobada»): aprueba con permiso de medicamentos y comprueba que la cuenta nueva puede guardar en el carrito un producto de uso profesional.
+- Revisado sin cambios: acceso restringido a `ADMIN` en la UI (`AccessGate admin`) y en la demo (`needAdmin`); aprobar/rechazar solo para pendientes; rechazo con motivo obligatorio (la API lo acepta opcional).
+
+Verificación:
+- `npm run test:e2e -- --grep "solicitud aprobada|permisos"`: 3/3. Typecheck y eslint: correctos. `npm run build`: correcto.
+- Navegador (demo, 360 px): con una solicitud rechazada y otra pendiente, la lista muestra la pendiente primero, un solo botón «Aprobar» y el contador; quitar medicamentos a «Veterinaria Demo» cambia la tarjeta y esa cuenta ya no puede comprar Alizin. Sin desbordamiento en solicitudes ni clientes.
+- No probado contra la API real.
+
+Pendiente (backend): aplicar `accountStatus` en el servidor o permitir desactivar usuarios; controlar el estado en `reject`. Vaciar la nota interna o el límite de crédito no es posible desde el formulario (los campos vacíos no se envían).
+
+Siguiente tarea: `docs/prompts/06b-pedidos-admin.md`.
+
+## Paso anterior: 05b · checkout e historial
 
 Contrastado con `apps/api/src/orders` (solo lectura): `POST checkout` `{acceptManualReview}` revalida precio, cantidades y permisos y vacía el carrito; `orders/me` y `orders/me/:id` solo exigen sesión y filtran por usuario (otro pedido → 404); importes decimales llegan como texto; estados `DRAFT…CANCELLED`. Sin campos de pago ni envío.
 
@@ -18,8 +36,6 @@ Verificación:
 - No probado contra la API real del socio.
 
 Pendiente: si el usuario recarga el carrito tras un resultado incierto, el aviso no persiste (la API no ofrece idempotencia; `docs/API.md`, punto 7).
-
-Siguiente tarea: `docs/prompts/06a-clientes.md`.
 
 ## Paso anterior: 05a · carrito persistente por usuario
 

@@ -74,6 +74,7 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await login(page, "Administración");
   await page.goto("/admin/solicitudes");
   await page.getByRole("button", { name: "Aprobar", exact: true }).click();
+  await page.getByLabel("Habilitar compra de medicamentos").check();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(page.locator(".admin-cards")).toContainText("Aprobado");
@@ -85,6 +86,11 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(/\/catalogo$/);
+  // Aprobada con permiso veterinario: puede comprar productos de uso profesional.
+  await page.goto("/producto/alizin-10ml");
+  await expect(
+    page.getByRole("button", { name: /Guardar en carrito/ }),
+  ).toBeVisible();
 });
 test("pedido con revisión requiere aceptación", async ({ page }) => {
   await login(page, "Cliente con revisión de pedidos");
