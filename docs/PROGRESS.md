@@ -2,6 +2,12 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: paleta institucional y navbar petróleo (27/09)
+
+`src/app/globals.css`: tokens nuevos en `:root` (ver `docs/MASTER.md`) y unos 30 hex sueltos (pasteles, bordes, grises, lima oscura) reemplazados por tokens. `.topbar` en `--ink-deep`; `.header` y `footer` en `--ink` con texto blanco o `--on-ink-muted`. El link activo del navbar va en lima con subrayado, el buscador en blanco y el foco y los hover en lima dentro de las zonas petróleo. El menú mobile (modal blanca) no cambia. Solo CSS, sin cambios de layout.
+
+Verificación: `typecheck`, `lint` y `test` (33/33) en verde. Contraste calculado: blanco/`#204F5F` 9:1, `#636466`/`#EFEFEF` 5.2:1, `#5F7300`/blanco 5.3:1, `#204F5F`/`#B1CA00` 4.8:1. Falta la revisión visual en el navegador (inicio, catálogo, ficha, cuenta, carrito, admin, a 375px y en desktop): la extensión de Chrome no carga en la sesión. `prettier --check` ya fallaba en `globals.css` antes de este cambio.
+
 ## Mejora: lupa en la imagen de la ficha (27/09)
 
 `src/components/catalog.tsx`: `.detail-image` guarda la posición del mouse en la variable CSS `--zoom-origin` (`onPointerMove`, solo cuando `pointerType === "mouse"`, sin estado de React). `src/app/globals.css`: `.detail-image` recorta con `overflow: hidden`. La imagen se amplía con `scale(2)` desde ese punto, pero solo con `@media (hover: hover) and (pointer: fine)`; en pantallas táctiles no cambia nada. La regla global de `prefers-reduced-motion` ya quita la transición.

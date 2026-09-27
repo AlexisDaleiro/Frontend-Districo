@@ -5,11 +5,19 @@
   --font-sans: "Manrope Variable", sans-serif;
 }
 :root {
+  /* Paleta de districo.com.uy (Elementor post-11.css y post-53.css) */
   --ink: #204f5f;
+  --ink-deep: #163d4a;
   --lime: #b1ca00;
-  --muted: #647579;
-  --line: #dfe5e3;
-  --paper: #f6f7f3;
+  --lime-text: #5f7300;
+  --lime-soft: color-mix(in srgb, var(--lime) 18%, white);
+  --text: #636466;
+  --muted: #636466;
+  --line: #dcdcdc;
+  --paper: #efefef;
+  --on-ink: #ffffff;
+  --on-ink-muted: #c9d6da;
+  --on-ink-line: rgb(255 255 255 / 0.14);
   --radius: 18px;
 }
 * {
@@ -91,18 +99,18 @@ button {
     transform 0.18s;
 }
 a:hover {
-  color: #577000;
+  color: var(--lime-text);
 }
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #688300;
+  outline: 3px solid var(--lime-text);
   outline-offset: 4px;
 }
 ::selection {
-  background: #e6eda6;
+  background: var(--lime-soft);
 }
 svg {
   flex-shrink: 0;
@@ -157,7 +165,7 @@ svg {
   line-height: 1.4;
 }
 .button:hover {
-  background: #163d4a;
+  background: var(--ink-deep);
   color: white;
   transform: translateY(-1px);
 }
@@ -217,8 +225,8 @@ svg {
   justify-content: center;
   align-items: center;
   gap: 24px;
-  background: #edf0d4;
-  color: #3a4b12;
+  background: var(--lime-soft);
+  color: var(--ink);
   padding: 5px 16px;
   font-size: 10px;
   letter-spacing: 0.02em;
@@ -234,12 +242,12 @@ svg {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #839600;
+  background: var(--lime);
   margin-right: 6px;
 }
 .topbar {
-  background: var(--ink);
-  color: #e0e8ea;
+  background: var(--ink-deep);
+  color: var(--on-ink-muted);
   font-size: 10px;
   padding: 7px 0;
   letter-spacing: 0.04em;
@@ -254,7 +262,8 @@ svg {
   align-items: center;
 }
 .header {
-  background: white;
+  background: var(--ink);
+  color: var(--on-ink);
   position: relative;
   z-index: 10;
 }
@@ -275,8 +284,9 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--paper);
-  border: 1px solid #e8ebe5;
+  background: white;
+  color: var(--ink);
+  border: 0;
   border-radius: 7px;
   padding: 9px 13px;
   flex: 1;
@@ -284,7 +294,7 @@ svg {
   max-width: 580px;
 }
 .search:focus-within {
-  outline: 3px solid #688300;
+  outline: 3px solid var(--lime);
   outline-offset: 2px;
 }
 .search input {
@@ -320,7 +330,7 @@ svg {
 }
 .account-link small {
   display: block;
-  color: var(--muted);
+  color: var(--on-ink-muted);
   font-size: 10px;
   font-weight: 400;
   max-width: 160px;
@@ -343,7 +353,21 @@ svg {
   text-align: center;
 }
 .navline {
-  border-block: 1px solid var(--line);
+  border-top: 1px solid var(--on-ink-line);
+}
+.header a:hover,
+.topbar a:hover {
+  color: var(--lime);
+}
+.header :focus-visible,
+.topbar :focus-visible {
+  outline-color: var(--lime);
+}
+.header .icon-button {
+  color: inherit;
+}
+.header .icon-button:hover {
+  background: var(--on-ink-line);
 }
 .navline nav {
   display: flex;
@@ -353,9 +377,12 @@ svg {
   font-size: 12px;
   font-weight: 600;
 }
-.navline .active,
+.navline .active {
+  color: var(--lime);
+  box-shadow: inset 0 -3px var(--lime);
+}
 .mobile-nav .active {
-  color: #6d7c00;
+  color: var(--lime-text);
 }
 .be-client {
   margin-left: auto;
@@ -416,9 +443,9 @@ svg {
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  border: 1px solid #e6e9e1;
+  border: 1px solid var(--line);
   margin: 0 auto 10px;
-  background: #f0f2e9;
+  background: var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,10 +455,10 @@ svg {
   overflow: hidden;
 }
 .need:nth-child(2n) .need-circle {
-  background: #eef1f0;
+  background: var(--paper);
 }
 .need:nth-child(3n) .need-circle {
-  background: #f6f0e6;
+  background: var(--paper);
 }
 .need-circle img {
   height: 72px;
@@ -445,7 +472,7 @@ svg {
 }
 .hero {
   border-radius: var(--radius);
-  background: #eaf0e1;
+  background: var(--paper);
   overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 1.12fr;
@@ -465,10 +492,10 @@ svg {
 }
 .hero h1 em {
   font-style: normal;
-  color: #6b8000;
+  color: var(--lime-text);
 }
 .hero-copy > p:not(.eyebrow) {
-  color: #5f716b;
+  color: var(--text);
   max-width: 340px;
   font-size: 13px;
   margin-top: 20px;
@@ -479,7 +506,7 @@ svg {
 .hero-visual {
   position: relative;
   overflow: hidden;
-  background: #dce9cc;
+  background: var(--paper);
 }
 .hero-visual picture,
 .hero-visual img {
@@ -520,7 +547,7 @@ svg {
   font-size: 12px;
 }
 .benefits svg {
-  color: #7b8d14;
+  color: var(--lime-text);
 }
 .section-title {
   display: flex;
@@ -540,7 +567,7 @@ svg {
 }
 .line-card {
   min-height: 265px;
-  background: #f2f4ed;
+  background: var(--paper);
   border-radius: 12px;
   padding: 28px;
   position: relative;
@@ -582,10 +609,10 @@ svg {
   place-items: center;
 }
 .line-card:nth-child(2) {
-  background: #edf2f4;
+  background: var(--paper);
 }
 .line-card:nth-child(3) {
-  background: #faf1e6;
+  background: var(--paper);
 }
 .brand-strip {
   background: var(--paper);
@@ -602,7 +629,7 @@ svg {
   font-size: 25px;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #657477;
+  color: var(--text);
 }
 .brand-word:hover {
   color: var(--ink);
@@ -620,9 +647,9 @@ svg {
   flex-direction: column;
 }
 .product-image {
-  background: #f8f9f6;
+  background: var(--paper);
   aspect-ratio: 1/1.02;
-  border: 1px solid #edf0e9;
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 24px;
   display: flex;
@@ -699,7 +726,7 @@ svg {
   overflow: hidden;
 }
 .cta-band p {
-  color: #cfdddd;
+  color: var(--on-ink-muted);
   font-size: 13px;
   margin-top: 12px;
 }
@@ -710,8 +737,8 @@ svg {
   white-space: nowrap;
 }
 footer {
-  background: #f4f6f2;
-  border-top: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--on-ink);
   padding-top: 55px;
 }
 .footer-grid {
@@ -727,7 +754,7 @@ footer {
 }
 .footer-grid p {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--on-ink-muted);
   margin-block: 14px;
 }
 .footer-grid p svg {
@@ -735,6 +762,7 @@ footer {
   vertical-align: middle;
 }
 .footer-grid h3 {
+  color: var(--on-ink);
   font-size: 12px;
   letter-spacing: 0;
   margin-bottom: 18px;
@@ -746,17 +774,23 @@ footer {
 }
 .footer-pill {
   font-size: 9px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--on-ink-line);
   padding: 6px 10px;
   border-radius: 20px;
 }
 .footer-bottom {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--on-ink-line);
   padding-block: 20px;
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: var(--muted);
+  color: var(--on-ink-muted);
+}
+footer a:hover {
+  color: var(--lime);
+}
+footer :focus-visible {
+  outline-color: var(--lime);
 }
 .catalog-layout {
   display: grid;
@@ -897,8 +931,8 @@ footer {
 .status-pill {
   display: inline-block;
   font-size: 10px;
-  background: #eef3dc;
-  color: #4b6218;
+  background: var(--lime-soft);
+  color: var(--ink);
   padding: 4px 10px;
   border-radius: 30px;
 }
@@ -963,7 +997,7 @@ footer {
 .field select,
 .field textarea,
 .form-input {
-  border: 1px solid #ced8d6;
+  border: 1px solid var(--line);
   background: white;
   color: var(--ink);
   border-radius: 6px;
@@ -1011,7 +1045,7 @@ footer {
 }
 .auth-aside {
   padding: 40px;
-  background: #edf2e5;
+  background: var(--paper);
   border-radius: 16px;
 }
 .auth-aside h2 {
@@ -1029,7 +1063,7 @@ footer {
   gap: 8px;
 }
 .demo-accounts button {
-  border: 1px solid #ccd5c3;
+  border: 1px solid var(--line);
   background: white;
   border-radius: 6px;
   text-align: left;
@@ -1072,8 +1106,8 @@ footer {
 }
 .success-box {
   padding: 20px;
-  border: 1px solid #d3dfb1;
-  background: #f2f6e8;
+  border: 1px solid color-mix(in srgb, var(--lime) 45%, white);
+  background: var(--lime-soft);
   border-radius: 10px;
 }
 .empty {

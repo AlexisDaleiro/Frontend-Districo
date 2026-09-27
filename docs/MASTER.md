@@ -10,7 +10,7 @@ La administración ampliada permite trabajar con productos, variantes, medios po
 
 Inicio limpio, centrado en necesidades con círculos desplazables en móvil. Categorías/especies se mantienen en navegación y filtros. Sección breve de productos destacados. Referencias: navegación por necesidades de Amy Myers y organización del catálogo de Increíbles.
 
-Paleta observada en el CSS público de DISTRICO: `#204F5F`, `#B1CA00`, `#636466`, `#EFEFEF`. No es una certificación de manual de marca. Manrope alojada localmente mediante paquete npm. Documentación de imágenes en `docs/ASSETS.md`.
+Paleta observada en el CSS público de DISTRICO: `#204F5F`, `#B1CA00`, `#636466`, `#EFEFEF`. No es una certificación de manual de marca. Tomada de `wp-content/uploads/elementor/css/post-11.css` (paleta global) y `post-53.css` (header petróleo `#204F5F`, subrayado lima). Tokens en `:root` de `src/app/globals.css`: `--ink`, `--ink-deep`, `--lime`, `--lime-text` (lima legible sobre blanco), `--lime-soft`, `--text`/`--muted`, `--line`, `--paper`, `--on-ink*`. Header, topbar y footer van sobre petróleo; el logo (`logo-districo.png`, mismo archivo que el sitio real) trae fondo petróleo propio. Los colores de estado (error, aviso) quedan fuera de la paleta. Manrope alojada localmente mediante paquete npm. Documentación de imágenes en `docs/ASSETS.md`.
 
 ## Mapa del repositorio
 
