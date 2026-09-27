@@ -25,6 +25,8 @@ export type Editor = {
   initial?: Record<string, unknown>;
   transform?: (data: Record<string, unknown>) => unknown;
   description?: string;
+  // Mensaje de confirmación a partir de la respuesta de la API.
+  success?: (result: unknown) => string;
 };
 export function AdminForm({
   editor,
@@ -97,16 +99,18 @@ export function AdminForm({
     }
     if (invalid) return;
     try {
-      await request(
+      const result = await request(
         editor.path,
         editor.method ?? "POST",
         editor.transform ? editor.transform(data) : data,
       );
       await client.invalidateQueries();
-      notify("Cambios guardados.");
+      notify(editor.success?.(result) ?? "Cambios guardados.");
       onDone();
     } catch (e) {
       setError(e);
+      // Ante un error (también incierto) se relee lo que quedó en la API.
+      void client.invalidateQueries();
     }
   }
   return (

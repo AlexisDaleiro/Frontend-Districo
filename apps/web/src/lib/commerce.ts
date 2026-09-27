@@ -67,3 +67,38 @@ export const labels: Record<string, string> = {
   OTHER: "Otros",
 };
 export const label = (key: string) => labels[key] ?? key;
+// Estados de pedido de la API (enum OrderStatus).
+export const orderStatuses = [
+  "DRAFT",
+  "SUBMITTED",
+  "PENDING_REVIEW",
+  "APPROVED",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+  "REJECTED",
+  "CANCELLED",
+];
+// Cambios de estado que ofrece administración. La API acepta cualquier
+// transición (docs/BACKEND-PENDIENTES.md, A2); esta tabla es la sugerida allí
+// y evita, por ejemplo, reabrir un pedido cancelado. Estados finales: ninguno.
+export const orderTransitions: Record<string, string[]> = {
+  SUBMITTED: ["PENDING_REVIEW", "APPROVED", "REJECTED", "CANCELLED"],
+  PENDING_REVIEW: ["APPROVED", "REJECTED", "CANCELLED"],
+  APPROVED: ["PROCESSING", "CANCELLED"],
+  PROCESSING: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED"],
+};
+// Efecto sobre reservas y stock según la API: aprobar o preparar consume las
+// reservas activas (baja el stock físico); rechazar o cancelar libera las
+// activas. Una reserva ya consumida no se devuelve al cancelar.
+export function orderStockEffect(from: string, to: string) {
+  const open = ["SUBMITTED", "PENDING_REVIEW"].includes(from);
+  if (open && ["APPROVED", "PROCESSING"].includes(to))
+    return "descuenta del stock físico las unidades reservadas.";
+  if (open && ["REJECTED", "CANCELLED"].includes(to))
+    return "libera las unidades reservadas; vuelven a estar disponibles.";
+  if (to === "CANCELLED")
+    return "no devuelve stock: las unidades ya se descontaron al aprobar. Ajustá las existencias en Catálogo si vuelven al depósito.";
+  return "no modifica reservas ni stock.";
+}

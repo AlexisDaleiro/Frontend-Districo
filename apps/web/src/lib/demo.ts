@@ -10,7 +10,7 @@ import type {
   Rule,
   User,
 } from "./types";
-import { can, quantityError, reviewRequired } from "./commerce";
+import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
 type State = {
   version: number;
@@ -458,6 +458,8 @@ export async function demoRequest<T>(
       customerAccount: u.customerAccount,
       status: review ? "PENDING_REVIEW" : "SUBMITTED",
       requiresManualReview: review,
+      acceptedManualReview: !!b.acceptManualReview,
+      reviewReason: review ? u.customerAccount?.creditStatus : undefined,
       createdAt: new Date().toISOString(),
       currency: "UYU",
       subtotal: cart.total,
@@ -557,7 +559,11 @@ export async function demoRequest<T>(
         if (b.medicationPermission) u.permissions.push("CAN_BUY_MEDICATIONS");
       }
       result = u.customerAccount;
-    } else if (route === "admin/orders") result = s.orders;
+    } else if (route === "admin/orders")
+      result = s.orders.map((o) => ({
+        ...o,
+        user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" },
+      }));
     else if (route.startsWith("admin/orders/")) {
       const o = s.orders.find((o) => o.id === parts[2]);
       if (!o) throw new ApiError("Pedido no encontrado.", 404);
@@ -567,6 +573,11 @@ export async function demoRequest<T>(
           : parts[3] === "reject"
             ? "REJECTED"
             : String(b.status);
+      // Como la API: estado del enum y cualquier transición; sin observación
+      // se conserva la anterior.
+      if (!orderStatuses.includes(status))
+        throw new ApiError("Estado de pedido inválido.", 400);
+      if (typeof b.reviewReason === "string") o.reviewReason = b.reviewReason;
       if (
         ["SUBMITTED", "PENDING_REVIEW"].includes(o.status) &&
         ["APPROVED", "PROCESSING", "REJECTED", "CANCELLED"].includes(status)
@@ -574,7 +585,8 @@ export async function demoRequest<T>(
         for (const item of o.items) {
           const v = s.products
             .flatMap((p) => p.variants)
-            .find((v) => v.id === item.variantId)!;
+            .find((v) => v.id === item.variantId);
+          if (!v) continue;
           v.reservedStock = Math.max(0, (v.reservedStock ?? 0) - item.quantity);
           if (["REJECTED", "CANCELLED"].includes(status))
             v.availableStock += item.quantity;

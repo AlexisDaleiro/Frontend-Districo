@@ -107,6 +107,65 @@ test("pedido con revisión requiere aceptación", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
   await expect(page.locator(".status-pill")).toContainText("En revisión");
 });
+test("administración gestiona un pedido en revisión y ajusta reservas", async ({
+  page,
+}) => {
+  await login(page, "Cliente con revisión de pedidos");
+  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(
+    page.getByRole("link", { name: "Ver mi carrito", exact: true }),
+  ).toBeVisible();
+  await page.goto("/carrito");
+  await page.getByLabel("Acepto que este pedido").check();
+  await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
+  await expect(page.locator(".status-pill")).toContainText("En revisión");
+  await page.goto("/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await login(page, "Administración");
+  await expect(page.locator(".stat").nth(2)).toContainText("1");
+  await page.goto("/admin/pedidos");
+  await page
+    .getByLabel("Filtrar estado de pedidos")
+    .selectOption("PENDING_REVIEW");
+  const row = page.locator("tbody tr");
+  await expect(row).toHaveCount(1);
+  await row.locator(".text-link").click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Aceptada por el cliente");
+  await expect(dialog).toContainText("Pago pendiente");
+  const total = await row.locator("td").nth(3).innerText();
+  await expect(dialog).toContainText(total);
+  await dialog.getByRole("button", { name: "Cambiar estado" }).click();
+  await expect(dialog).toContainText("Aprobado: descuenta del stock físico");
+  await expect(
+    dialog.getByLabel("Nuevo estado *").locator("option"),
+  ).toHaveText(["Seleccionar", "Aprobado", "Rechazado", "Cancelado"]);
+  await dialog.getByLabel("Nuevo estado *").selectOption("APPROVED");
+  await dialog.getByLabel("Observación").fill("Pago verificado");
+  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText(/: Aprobado\.$/)).toBeVisible();
+  await expect(page.getByText("No hay pedidos en este estado")).toBeVisible();
+  await page.getByLabel("Filtrar estado de pedidos").selectOption("APPROVED");
+  await expect(row.locator(".status-pill")).toHaveText("Aprobado");
+  await expect(row.locator("td").nth(3)).toHaveText(total);
+  await row.locator(".text-link").click();
+  await expect(dialog).toContainText("Pago verificado");
+  await page.keyboard.press("Escape");
+  await page.goto("/admin/catalogo");
+  await page
+    .getByLabel("Buscar producto para administrar")
+    .fill("BIOFRESH para cachorros");
+  await page.getByLabel("Buscar producto para administrar").press("Enter");
+  await page
+    .getByRole("button", { name: "Presentaciones e imágenes" })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Existencias", exact: true }).click();
+  await expect(
+    page.getByText("Stock físico: 39 · Reservado: 0 · Disponible: 39"),
+  ).toBeVisible();
+});
 test("permisos y cierre de sesión eliminan precios privados", async ({
   page,
 }) => {

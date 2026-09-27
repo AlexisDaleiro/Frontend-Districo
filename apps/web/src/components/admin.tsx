@@ -8,7 +8,13 @@ import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { OrderItems } from "./orders";
-import { label, money } from "@/lib/commerce";
+import {
+  label,
+  money,
+  orderStatuses,
+  orderStockEffect,
+  orderTransitions,
+} from "@/lib/commerce";
 import type {
   Application,
   Customer,
@@ -305,18 +311,51 @@ function Customers({ edit }: { edit: OpenEditor }) {
     </>
   );
 }
+function orderEditor(o: Order): Editor {
+  const next = orderTransitions[o.status] ?? [];
+  return {
+    title: `Gestionar ${o.orderNumber}`,
+    path: `admin/orders/${o.id}/status`,
+    method: "PATCH",
+    fields: [
+      select("status", "Nuevo estado", options(next)),
+      text("reviewReason", "Observación", false),
+    ],
+    description: [
+      `Estado actual: ${label(o.status)}.`,
+      ...next.map((to) => `${label(to)}: ${orderStockEffect(o.status, to)}`),
+      "Los importes del pedido no cambian. Sin observación se conserva la anterior.",
+      ...(DEMO
+        ? []
+        : [
+            "La API vence las reservas de un pedido a las 48 h; si vencieron, aprobar no descuenta stock.",
+          ]),
+    ].join(" "),
+    success: (result) => {
+      const r = result as Partial<Order> | undefined;
+      return `${o.orderNumber}: ${label(r?.status ?? "")}.`;
+    },
+  };
+}
 function AdminOrders({ edit }: { edit: OpenEditor }) {
   const q = useApi<Order[]>("admin/orders");
   const [status, setStatus] = useState("");
-  const [detail, setDetail] = useState<Order | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const rows = q.data.filter((o) => !status || o.status === status);
+  // El detalle se lee de la lista vigente: tras un cambio muestra el estado nuevo.
+  const detail = q.data.find((o) => o.id === detailId);
+  const count = (key: string) => q.data.filter((o) => o.status === key).length;
   return (
     <>
       <div className="admin-toolbar">
         <h2>Pedidos</h2>
+        <span className="muted small-copy">
+          {rows.length} {rows.length === 1 ? "pedido" : "pedidos"}
+          {status ? ` · ${q.data.length} en total` : ""}
+        </span>
         <select
           className="form-input"
           aria-label="Filtrar estado de pedidos"
@@ -324,20 +363,13 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
           onChange={(e) => setStatus(e.target.value)}
         >
           <option value="">Todos los estados</option>
-          {options([
-            "SUBMITTED",
-            "PENDING_REVIEW",
-            "APPROVED",
-            "PROCESSING",
-            "SHIPPED",
-            "DELIVERED",
-            "REJECTED",
-            "CANCELLED",
-          ]).map((o) => (
-            <option value={o.value} key={o.value}>
-              {o.label}
-            </option>
-          ))}
+          {orderStatuses
+            .filter((key) => key !== "DRAFT" || count(key))
+            .map((key) => (
+              <option value={key} key={key}>
+                {label(key)} ({count(key)})
+              </option>
+            ))}
         </select>
       </div>
       {rows.length ? (
@@ -356,7 +388,10 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               {rows.map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <button className="text-link" onClick={() => setDetail(o)}>
+                    <button
+                      className="text-link"
+                      onClick={() => setDetailId(o.id)}
+                    >
                       {o.orderNumber}
                     </button>
                     <br />
@@ -368,38 +403,17 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
                   </td>
                   <td>{money(o.total, o.currency)}</td>
                   <td>
-                    <button
-                      className="button small secondary"
-                      onClick={() =>
-                        edit({
-                          title: `Gestionar ${o.orderNumber}`,
-                          path: `admin/orders/${o.id}/status`,
-                          method: "PATCH",
-                          initial: { status: o.status },
-                          fields: [
-                            select(
-                              "status",
-                              "Nuevo estado",
-                              options([
-                                "SUBMITTED",
-                                "PENDING_REVIEW",
-                                "APPROVED",
-                                "PROCESSING",
-                                "SHIPPED",
-                                "DELIVERED",
-                                "REJECTED",
-                                "CANCELLED",
-                              ]),
-                            ),
-                            text("reviewReason", "Observación", false),
-                          ],
-                          description:
-                            "Aprobar o preparar puede consumir reservas. Rechazar o cancelar libera las reservas activas según las reglas del backend.",
-                        })
-                      }
-                    >
-                      Gestionar
-                    </button>
+                    {orderTransitions[o.status] ? (
+                      <button
+                        className="button small secondary"
+                        aria-label={`Gestionar ${o.orderNumber}`}
+                        onClick={() => edit(orderEditor(o))}
+                      >
+                        Gestionar
+                      </button>
+                    ) : (
+                      <span className="muted small-copy">Estado final</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -407,14 +421,81 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
           </table>
         </div>
       ) : (
-        <Empty title="No hay pedidos en este estado" />
+        <Empty
+          title={
+            q.data.length
+              ? "No hay pedidos en este estado"
+              : "Todavía no hay pedidos"
+          }
+        />
       )}
       <Modal
         open={!!detail}
-        onClose={() => setDetail(null)}
+        onClose={() => setDetailId(null)}
         title={detail?.orderNumber ?? "Pedido"}
       >
-        {detail && <OrderItems order={detail} />}
+        {detail && (
+          <>
+            <dl className="order-meta">
+              <div>
+                <dt>Cliente</dt>
+                <dd>
+                  {detail.customerAccount?.businessName ?? "Cliente"}
+                  {detail.user?.email ? ` · ${detail.user.email}` : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Fecha</dt>
+                <dd>
+                  {new Date(detail.createdAt).toLocaleString("es-UY", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>
+                  <span className="status-pill">{label(detail.status)}</span>
+                </dd>
+              </div>
+              {detail.requiresManualReview && (
+                <div>
+                  <dt>Revisión manual</dt>
+                  <dd>
+                    {detail.acceptedManualReview === false
+                      ? "Requerida"
+                      : "Aceptada por el cliente"}
+                  </dd>
+                </div>
+              )}
+              {detail.reviewReason && (
+                <div>
+                  <dt>Observación</dt>
+                  <dd>{label(detail.reviewReason)}</dd>
+                </div>
+              )}
+            </dl>
+            <OrderItems order={detail} />
+            <p className="muted small-copy" style={{ marginTop: 12 }}>
+              Importes registrados al confirmar el pedido; no cambian con
+              precios posteriores.
+            </p>
+            {orderTransitions[detail.status] && (
+              <div className="actions">
+                <button
+                  className="button secondary"
+                  onClick={() => {
+                    setDetailId(null);
+                    edit(orderEditor(detail));
+                  }}
+                >
+                  Cambiar estado
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </Modal>
     </>
   );

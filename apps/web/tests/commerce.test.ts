@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   canBuy,
   hiddenPriceText,
+  orderStockEffect,
+  orderTransitions,
   purchasable,
   quantityError,
 } from "../src/lib/commerce";
@@ -56,5 +58,19 @@ describe("Ficha: precio y compra según permisos", () => {
     expect(purchasable(v)).toBe(false);
     expect(purchasable({ ...v, availableStock: 6 })).toBe(true);
     expect(quantityError(v, 5)).toBe("Elegí un múltiplo de 2.");
+  });
+});
+describe("gestión de pedidos", () => {
+  it("no ofrece cambios desde estados finales ni volver atrás", () => {
+    for (const final of ["DELIVERED", "REJECTED", "CANCELLED"])
+      expect(orderTransitions[final]).toBeUndefined();
+    expect(orderTransitions.APPROVED).not.toContain("SUBMITTED");
+    expect(orderTransitions.PENDING_REVIEW).toContain("APPROVED");
+  });
+  it("describe el efecto sobre reservas según el estado de origen", () => {
+    expect(orderStockEffect("PENDING_REVIEW", "APPROVED")).toMatch(/descuenta/);
+    expect(orderStockEffect("SUBMITTED", "REJECTED")).toMatch(/libera/);
+    expect(orderStockEffect("APPROVED", "CANCELLED")).toMatch(/no devuelve/);
+    expect(orderStockEffect("APPROVED", "PROCESSING")).toMatch(/no modifica/);
   });
 });

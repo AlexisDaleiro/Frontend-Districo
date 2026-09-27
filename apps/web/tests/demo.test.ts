@@ -176,6 +176,54 @@ describe("Demo B2B: recorrido comercial", () => {
     await login();
     expect((await api<Order>(`orders/me/${order.id}`)).total).toBe(351);
   });
+  it("administración cambia estados: consume o libera reservas y conserva importes", async () => {
+    type Stock = {
+      physicalStock: number;
+      reservedStock: number;
+      availableStock: number;
+    };
+    const stock = () => api<Stock>("inventory/variants/variant-0/stock");
+    await login();
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 2 });
+    const order = await api<Order>("checkout", "POST", {});
+    await login("admin@districo.com");
+    await api("pricing/variants/variant-0", "PATCH", { amount: 900 });
+    await expect(
+      api(`admin/orders/${order.id}/status`, "PATCH", { status: "OTRO" }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(await stock()).toMatchObject({
+      physicalStock: 40,
+      reservedStock: 2,
+      availableStock: 38,
+    });
+    const approved = await api<Order>(
+      `admin/orders/${order.id}/status`,
+      "PATCH",
+      { status: "APPROVED", reviewReason: "Stock confirmado" },
+    );
+    expect(approved.status).toBe("APPROVED");
+    expect(await stock()).toMatchObject({
+      physicalStock: 38,
+      reservedStock: 0,
+      availableStock: 38,
+    });
+    // Cancelar lo ya aprobado no devuelve unidades (como la API).
+    await api(`admin/orders/${order.id}/status`, "PATCH", {
+      status: "CANCELLED",
+    });
+    expect(await stock()).toMatchObject({
+      physicalStock: 38,
+      availableStock: 38,
+    });
+    const [listed] = await api<Order[]>("admin/orders");
+    expect(listed).toMatchObject({
+      status: "CANCELLED",
+      reviewReason: "Stock confirmado",
+      total: order.total,
+      user: { email: "cliente@gmail.com" },
+    });
+    expect(listed.items[0].unitPrice).toBe(order.items[0].unitPrice);
+  });
   it("reinicio elimina pedidos y sesión", async () => {
     await login();
     await api("cart/items", "POST", { variantId: "variant-0", quantity: 1 });

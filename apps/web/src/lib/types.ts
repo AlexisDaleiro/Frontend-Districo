@@ -103,7 +103,10 @@ export type Order = {
   discountTotal: number;
   currency: string;
   requiresManualReview?: boolean;
+  acceptedManualReview?: boolean;
+  reviewReason?: string | null;
   customerAccount?: Customer;
+  user?: { email: string };
   items: {
     id?: string;
     variantId: string;
