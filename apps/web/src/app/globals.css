@@ -844,12 +844,23 @@ footer {
   align-items: center;
   justify-content: center;
   padding: 50px;
+  overflow: hidden;
 }
 .detail-image img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   mix-blend-mode: multiply;
+  transform-origin: var(--zoom-origin, 50% 50%);
+  transition: transform 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .detail-image {
+    cursor: zoom-in;
+  }
+  .detail-image:hover img {
+    transform: scale(2);
+  }
 }
 .thumbs {
   display: flex;

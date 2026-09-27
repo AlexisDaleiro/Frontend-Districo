@@ -566,7 +566,17 @@ function ProductDetailContent({ product }: { product: Product }) {
   return (
     <div className="detail-grid">
       <div>
-        <div className="detail-image">
+        <div
+          className="detail-image"
+          onPointerMove={(e) => {
+            if (e.pointerType !== "mouse") return;
+            const r = e.currentTarget.getBoundingClientRect();
+            e.currentTarget.style.setProperty(
+              "--zoom-origin",
+              `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`,
+            );
+          }}
+        >
           <Picture
             src={image?.url ?? "/images/placeholder.svg"}
             alt={image?.alt || product.name}

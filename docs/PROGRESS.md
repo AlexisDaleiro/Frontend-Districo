@@ -2,6 +2,12 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: lupa en la imagen de la ficha (27/09)
+
+`src/components/catalog.tsx`: `.detail-image` guarda la posición del mouse en la variable CSS `--zoom-origin` (`onPointerMove`, solo cuando `pointerType === "mouse"`, sin estado de React). `src/app/globals.css`: `.detail-image` recorta con `overflow: hidden`. La imagen se amplía con `scale(2)` desde ese punto, pero solo con `@media (hover: hover) and (pointer: fine)`; en pantallas táctiles no cambia nada. La regla global de `prefers-reduced-motion` ya quita la transición.
+
+Verificación: `typecheck`, `lint` y `test` (33/33) en verde. Falta la prueba manual en el navegador (`/producto/[slug]`): no se pudo cargar la extensión de Chrome en la sesión. Pendiente opcional: zoom en mobile o por teclado (modal).
+
 ## Corrección: desnivel en tarjetas de producto (27/09)
 
 `src/app/globals.css`: `.product-card` pasa a columna flex y `.product-bottom` usa `margin-top: auto` (el espacio bajo el nombre queda en `h3 { margin-bottom: 14px }`). Así el pie con precio y botón queda alineado en cada fila aunque el nombre ocupe más líneas.
