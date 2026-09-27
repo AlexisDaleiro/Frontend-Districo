@@ -60,36 +60,49 @@ export function AdminForm({
         }
         continue;
       }
-      let schema: z.ZodType =
-        field.type === "number"
-          ? z.coerce
-              .number()
-              .min(field.min ?? 0)
-              .max(field.max ?? Number.MAX_SAFE_INTEGER)
-          : field.type === "date"
-            ? z.iso.date()
-            : field.type === "url"
-              ? z
-                  .url()
-                  .refine(
-                    (s) => /^https?:\/\//.test(s),
-                    "Usá una URL HTTP o HTTPS.",
+      if (field.type === "number") {
+        // Paso "any": cualquier decimal; "0.01": hasta dos decimales;
+        // sin paso o "1": entero.
+        const decimals =
+          field.step === "any"
+            ? Infinity
+            : (field.step?.split(".")[1]?.length ?? 0);
+        const n = Number(value);
+        const message =
+          !Number.isFinite(n) || String(value).trim() === ""
+            ? "Ingresá un número válido."
+            : decimals === 0 && !Number.isInteger(n)
+              ? "Ingresá un número entero."
+              : decimals !== Infinity &&
+                  !new RegExp(`^-?\\d*(\\.\\d{0,${decimals}})?$`).test(
+                    String(value).trim(),
                   )
-              : z.string().min(1);
-      if (field.type === "number" && field.step !== "any")
-        schema = z.coerce
-          .number()
-          .int()
-          .min(field.min ?? 0)
-          .max(field.max ?? Number.MAX_SAFE_INTEGER);
+                ? `Usá hasta ${decimals} decimales.`
+                : n < (field.min ?? 0)
+                  ? `El mínimo es ${(field.min ?? 0).toLocaleString("es-UY")}.`
+                  : field.max !== undefined && n > field.max
+                    ? `El máximo es ${field.max.toLocaleString("es-UY")}.`
+                    : "";
+        if (message) {
+          form.setError(field.key, { message });
+          invalid = true;
+        } else data[field.key] = n;
+        continue;
+      }
+      const schema: z.ZodType =
+        field.type === "date"
+          ? z.iso.date()
+          : field.type === "url"
+            ? z
+                .url()
+                .refine(
+                  (s) => /^https?:\/\//.test(s),
+                  "Usá una URL HTTP o HTTPS.",
+                )
+            : z.string().min(1);
       const parsed = schema.safeParse(value);
       if (!parsed.success) {
-        form.setError(field.key, {
-          message:
-            field.type === "number"
-              ? "Ingresá un número válido."
-              : "Revisá este valor.",
-        });
+        form.setError(field.key, { message: "Revisá este valor." });
         invalid = true;
       } else
         data[field.key] =

@@ -33,16 +33,12 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Precio", exact: true }).click();
-  await page
-    .getByRole("spinbutton", { name: "Precio *", exact: true })
-    .fill("900");
+  await page.getByLabel("Precio en pesos (UYU) *").fill("900");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Existencias", exact: true }).click();
   await page.getByRole("button", { name: "Actualizar", exact: true }).click();
-  await page
-    .getByRole("spinbutton", { name: "Stock físico *", exact: true })
-    .fill("24");
+  await page.getByLabel("Stock físico *").fill("24");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   const image = "http://127.0.0.1:3000/images/banner-granplus.png";

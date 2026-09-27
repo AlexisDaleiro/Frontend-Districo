@@ -657,6 +657,8 @@ export async function demoRequest<T>(
       const v = {
         id: id(),
         availableStock: Number(b.physicalStock ?? 0),
+        physicalStock: 0,
+        reservedStock: 0,
         saleMultiple: 1,
         minimumOrderQuantity: Number(b.saleMultiple ?? 1),
         active: true,
@@ -711,17 +713,28 @@ export async function demoRequest<T>(
         .find((v) => v.id === parts[2]);
       if (!v) throw new ApiError("Presentación no encontrada.", 404);
       if (method === "PATCH") {
-        if (parts[0] === "pricing")
-          v.price = {
-            amount: Number(b.amount),
-            currency: String(b.currency ?? "UYU"),
-          };
-        else {
-          v.physicalStock = Number(b.physicalStock);
-          v.availableStock = v.physicalStock - (v.reservedStock ?? 0);
+        if (parts[0] === "pricing") {
+          const amount = Number(b.amount);
+          if (b.amount === undefined || !Number.isFinite(amount) || amount < 0)
+            throw new ApiError("amount must not be less than 0", 400);
+          // Nuevo precio vigente; los pedidos guardan su propio importe.
+          v.price = { amount, currency: String(b.currency ?? "UYU") };
+          result = { ...v.price, priceList: "Lista Mayorista Districo" };
+        } else {
+          const physical = Number(b.physicalStock);
+          if (!Number.isInteger(physical) || physical < 0)
+            throw new ApiError("physicalStock must not be less than 0", 400);
+          // Como la API: las reservas se conservan y no pueden superar el físico.
+          if ((v.reservedStock ?? 0) > physical)
+            throw new ApiError(
+              "El stock reservado no puede superar el stock fisico.",
+              400,
+            );
+          v.physicalStock = physical;
+          v.availableStock = physical - (v.reservedStock ?? 0);
+          result = v;
         }
-      }
-      result = v;
+      } else result = v;
     } else if (
       [
         "promotions",

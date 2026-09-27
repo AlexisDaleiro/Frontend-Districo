@@ -204,25 +204,75 @@ test("permisos: la identidad cambia sin recargar al ingresar y al salir", async 
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {
+  // Un pedido previo deja unidades reservadas y un importe histórico.
+  await login(page);
+  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(
+    page.getByRole("link", { name: "Ver mi carrito", exact: true }),
+  ).toBeVisible();
+  await page.goto("/carrito");
+  await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Pedido recibido" }),
+  ).toBeVisible();
+  await page.goto("/cuenta/pedidos");
+  const previous = await page.locator(".orders-list .card").innerText();
+  await page.goto("/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "Administración");
   await page.goto("/admin/catalogo");
   await page
-    .getByRole("button", { name: "Presentaciones e imágenes" })
-    .first()
-    .click();
+    .getByLabel("Buscar producto para administrar")
+    .fill("cachorros – razas medianas");
+  await page.getByLabel("Buscar producto para administrar").press("Enter");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await page.getByRole("button", { name: "Presentaciones e imágenes" }).click();
   await page.getByRole("button", { name: "Precio", exact: true }).click();
-  await page.getByLabel("Precio *", { exact: true }).fill("750");
+  const price = page.getByLabel("Precio en pesos (UYU) *");
+  await price.fill("750.555");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.getByText("Usá hasta 2 decimales.")).toBeVisible();
+  await price.fill("750");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText(/precio vigente \$\s750,00\.$/)).toBeVisible();
   await page.getByRole("button", { name: "Existencias", exact: true }).click();
+  await expect(page.getByText(/Reservado: [1-9]/)).toBeVisible();
+  const reserved = Number(
+    (await page.getByText(/Reservado: \d+/).innerText()).match(
+      /Reservado: (\d+)/,
+    )![1],
+  );
   await page.getByRole("button", { name: "Actualizar", exact: true }).click();
-  await page
-    .getByRole("spinbutton", { name: "Stock físico *", exact: true })
-    .fill("50");
+  const physical = page.getByLabel("Stock físico *");
+  await physical.fill(String(reserved - 1));
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText(`El mínimo es ${reserved}.`)).toBeVisible();
+  await physical.fill("50");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(
-    page.getByText("Stock físico: 50", { exact: false }),
+    page.getByText(
+      `Stock físico: 50 · Reservado: ${reserved} · Disponible: ${50 - reserved}`,
+    ),
   ).toBeVisible();
+  // El cliente ve el precio nuevo; su pedido anterior conserva el importe.
+  await page.goto("/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await login(page);
+  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await expect(page.getByText("$ 750,00").first()).toBeVisible();
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await page.goto("/carrito");
+  await expect(page.locator("main")).toContainText("$ 750,00");
+  await page.goto("/cuenta/pedidos");
+  const card = page.locator(".orders-list .card");
+  await expect(card).toHaveCount(1);
+  // Mismo importe que antes del cambio de precio.
+  await expect(card).toContainText(previous.match(/\$\s[\d.]+,\d{2}/)![0]);
+  await expect(card).not.toContainText("750,00");
+  await page.goto("/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await login(page, "Administración");
   await page.goto("/admin/recomendaciones");
   await page.getByRole("button", { name: "Crear recomendación" }).click();
   await page.getByLabel("Nombre de la regla").fill("Recomendación prueba");

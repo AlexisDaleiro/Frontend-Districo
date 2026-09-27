@@ -27,8 +27,8 @@ Prioridad: **C** crítico (dinero, stock o seguridad), **A** alta, **M** media.
 | M6 | M | Las reservas de un pedido vencen a las 48 h aunque siga en revisión | `orders/orders.service.ts`, `cart/cart.service.ts` |
 | M7 | M | El checkout no exige `CAN_VIEW_PRICES` (el carrito sí) | `orders/orders.service.ts` |
 | M8 | M | Vencimiento del refresh token fijo en 7 días | `auth/auth.service.ts` |
-| M9 | M | Carrito y checkout aceptan presentaciones inactivas | `cart/cart.service.ts`, `orders/orders.service.ts` |
-| M10 | M | `slug`, `sku` o `ean` repetido responde 500 sin mensaje | `catalog/products/products.service.ts` |
+| M9 | M | `slug`, `sku` o `ean` repetido responde 500 sin mensaje | `catalog/products/products.service.ts` |
+| M10 | M | Precios en otra moneda se suman y registran como UYU | `orders/orders.service.ts`, `cart/cart.service.ts` |
 
 ## Críticos
 
@@ -108,8 +108,8 @@ Prioridad: **C** crítico (dinero, stock o seguridad), **A** alta, **M** media.
 - **M6 · Vencimiento de reservas de pedidos** (`orders/orders.service.ts:124`, `cart/cart.service.ts:149-169`, tarea cada 5 min): las reservas de un pedido vencen a las 48 h aunque el pedido siga `PENDING_REVIEW`, y el stock vuelve a quedar disponible sin avisar. Decidir con DISTRICO si es intencional; si no, excluir reservas con `orderId` o extender mientras el pedido esté abierto.
 - **M7 · Permisos del checkout** (`orders/orders.service.ts:196-201`): exige `CAN_PLACE_ORDERS` pero no `CAN_VIEW_PRICES`, a diferencia del carrito (`cart.service.ts:203-208`). Unificar la regla.
 - **M8 · Vencimiento del refresh** (`auth/auth.service.ts:165`): `expiresAt` fijo en 7 días aunque `JWT_REFRESH_EXPIRES_IN` sea otro valor. Derivarlo de la misma configuración.
-- **M9 · Presentaciones inactivas comprables** (`cart/cart.service.ts:186` `findVariantForCart`, y el checkout en `orders/orders.service.ts`): se verifica `deletedAt` de la variante y `active` del producto, pero no `variant.active`. Una presentación desactivada puede guardarse en el carrito y pedirse con una llamada directa (la UI la oculta). Sugerido: agregar `!variant.active` a la condición y revalidarlo en el checkout.
-- **M10 · Únicos repetidos → 500** (`catalog/products/products.service.ts` `create`, `createVariant`, `update`; sin filtro de excepciones de Prisma): un `slug`, `sku` o `ean` repetido lanza `P2002` y la API responde 500 sin mensaje útil. Sugerido: un filtro global que traduzca `P2002` a 409 con el campo afectado. La demo ya responde 409.
+- **M9 · Únicos repetidos → 500** (`catalog/products/products.service.ts` `create`, `createVariant`, `update`; sin filtro de excepciones de Prisma): un `slug`, `sku` o `ean` repetido lanza `P2002` y la API responde 500 sin mensaje útil. Sugerido: un filtro global que traduzca `P2002` a 409 con el campo afectado. La demo ya responde 409.
+- **M10 · Moneda** (`pricing/dto/set-variant-price.dto.ts` acepta cualquier `currency`; `orders/orders.service.ts:84` guarda `currency: 'UYU'` fijo; `cart/cart.service.ts` suma subtotales sin mirar la moneda): una presentación con precio en USD se sumaría al total en pesos y el pedido quedaría registrado como UYU. Sugerido: restringir `currency` a `UYU` (o un enum) hasta definir con DISTRICO si habrá precios en dólares y cómo se convierten. **Frontend hoy:** el formulario de precio solo envía `UYU`.
 
 ## Fuera del código
 

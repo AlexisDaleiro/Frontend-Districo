@@ -1,20 +1,40 @@
 # Registro de avance
 
-Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
+Última actualización: 27 de septiembre de 2026 (07b). Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9; 07a en `11de11f`; 07b en el commit siguiente.
 
 ## Documentación: pendientes del backend (27/09)
 
 A pedido, `docs/BACKEND-PENDIENTES.md`: 17 problemas confirmados leyendo `apps/api/src` en `51952c6` (sin cambiar código), con prioridad, archivo y línea, comportamiento actual y esperado, arreglo sugerido y verificación. Detalla la auditoría del 26/09: el checkout usa el precio anterior porque el filtro de vigencia congela `new Date()` al arrancar (C1); un pedido nuevo libera las reservas de los anteriores del mismo cliente (C2); más `resetToken`, `passwordHash`, secretos JWT por defecto, `accountStatus`, transiciones, sobreventa y `logout`. Enlazado desde `apps/api/README.md` (solo documentación), `README.md` y `docs/API.md`.
 
-## Último paso terminado: 07a · productos, presentaciones y medios
+## Último paso terminado: 07b · precios y existencias
 
-Contrastado con `apps/api/src/catalog/products` (solo lectura): `POST products` deriva el `slug` del nombre si falta; `PATCH products/:id` lo **regenera** si se envía `name` sin `slug` e ignora campos ausentes (no se puede quitar marca, laboratorio ni variante de una imagen). `GET products` y `GET products/:slug` filtran `active:true` también para `ADMIN` (M3). Las variantes inactivas sí llegan en la respuesta; carrito y checkout no verifican `variant.active` (M9, nuevo). Medios: `IsUrl`, `variantId` opcional que debe pertenecer al producto (400), orden principal primero y luego `position`; `DELETE` → `{success:true}`, 404 si no existe. `slug`/`sku`/`ean` repetidos → 500 por falta de filtro de Prisma (M10, nuevo). Sin subida de archivos.
+Contrastado con `apps/api/src/pricing` e `inventory` (solo lectura): `PATCH pricing/variants/:id` cierra el precio vigente y crea otro desde ahora (con `priceHistory`), acepta `amount ≥ 0` y cualquier `currency`; `PATCH inventory/variants/:id/stock` exige entero ≥0, conserva `reservedStock` y responde 400 si el físico queda por debajo. Los pedidos guardan sus importes al confirmar. Hallazgos: el pedido se registra siempre en `UYU` y el carrito suma sin mirar la moneda (**M10, nuevo**); C1 sigue vigente (el checkout puede usar el precio anterior hasta reiniciar la API). **Corrección de 07a:** el M9 anterior («carrito acepta presentaciones inactivas») era falso: `validateAvailableStock` verifica `variant.active`; se retiró y «únicos repetidos → 500» pasó a M9.
+
+- `src/components/admin.tsx`: formulario de precio «Precio en pesos (UYU)»: muestra el vigente, explica que se ve en catálogo y carritos y que los pedidos enviados conservan sus importes; en modo real advierte C1. Solo envía `UYU` (antes ofrecía USD, que la API registraría como pesos). Mínimo 0,01 y hasta dos decimales (`Decimal(12,2)`). Confirmación con el precio devuelto («…: precio vigente $ 750,00.»). Existencias: el bloque se abre dentro de la tarjeta de la presentación (antes aparecía debajo de todas, sin nombre), con `aria-expanded` y reintento ante error; «Actualizar» **relee el stock** antes de abrir el formulario, que fija el mínimo en el reservado, lo explica («No puede ser menor a N…») y confirma físico y disponible devueltos.
+- `src/components/admin-form.tsx`: validación numérica propia con mensajes concretos («Ingresá un número entero.», «Usá hasta 2 decimales.», «El mínimo es N.» con formato `es-UY`); paso `"0.01"` admite dos decimales (antes todo paso distinto de `"any"` exigía entero). `src/app/globals.css`: `.stock-box`.
+- `src/lib/demo.ts`: como la API, stock físico entero ≥0 y **no menor al reservado** (400; antes lo aceptaba y el disponible quedaba negativo), precio ≥0 (400), respuesta del precio con `priceList`; presentaciones nuevas con físico y reservado 0.
+- Pruebas: `tests/demo.test.ts`, «precio vigente y stock físico…» (físico 1 y 2,5 rechazados con 2 reservadas; físico = reservado deja disponible 0; precio −1 rechazado; 912,50 visible en catálogo y carrito; el pedido previo conserva total y precio unitario). Falla con el `demo.ts` anterior. `tests/e2e/flows.spec.ts` «administración modifica precio y stock…»: el cliente envía un pedido; administración ve «750.555» rechazado, guarda 750, ve el reservado, intenta físico = reservado − 1 («El mínimo es N.») y guarda 50; el cliente ve $ 750,00 en ficha y carrito y su pedido anterior conserva el importe. Localizadores de «Stock físico» y «Precio» actualizados en `admin-complete.spec.ts` (la pista forma parte del nombre accesible).
+- Documentación: `docs/API.md` (filas de stock y precio; detalle en el punto 5; M9 corregido), `docs/BACKEND-PENDIENTES.md` (M9 retirado, M10 moneda).
+
+Verificación:
+- `npm test`: 31/31. Typecheck, `npm run lint` y prettier (código): correctos. `npm run build` (demo): correcto.
+- `npm run test:e2e -- --grep "administración modifica"`: 1/1. Suite e2e completa (cambio compartido de `AdminForm`): 17/17. Chromium `/opt/pw-browsers/chromium-1194` con configuración temporal, ya eliminada. Nota: un `next start` previo quedó vivo con un build viejo y Playwright lo reutilizó (`reuseExistingServer`), lo que hizo fallar el login; cerrarlo antes de correr la e2e.
+- Navegador (demo, 360 px): bloque de existencias dentro de la tarjeta; formulario de precio con vigente, pista y «El mínimo es 0,01.». Sin desbordamiento.
+- Condición de cierre cumplida en demo. No probado contra la API real; ahí, C1 impide garantizar que el pedido nuevo use el precio nuevo.
+
+Pendiente (backend): C1 (precio del checkout), M10 (moneda).
+
+Siguiente tarea: `docs/prompts/07c-organizacion.md`.
+
+## Paso anterior: 07a · productos, presentaciones y medios
+
+Contrastado con `apps/api/src/catalog/products` (solo lectura): `POST products` deriva el `slug` del nombre si falta; `PATCH products/:id` lo **regenera** si se envía `name` sin `slug` e ignora campos ausentes (no se puede quitar marca, laboratorio ni variante de una imagen). `GET products` y `GET products/:slug` filtran `active:true` también para `ADMIN` (M3). Las variantes inactivas sí llegan en la respuesta; carrito y checkout las rechazan (`validateAvailableStock`; corregido en 07b: la versión anterior de este registro decía lo contrario). Medios: `IsUrl`, `variantId` opcional que debe pertenecer al producto (400), orden principal primero y luego `position`; `DELETE` → `{success:true}`, 404 si no existe. `slug`/`sku`/`ean` repetidos → 500 por falta de filtro de Prisma (M9). Sin subida de archivos.
 
 - `src/components/admin.tsx` (catálogo): crear un producto abre su panel «Presentaciones e imágenes» (con desplazamiento al panel) y la confirmación pide agregar presentación e imagen; editar mantiene el panel si cambia el `slug` y lo cierra si se desactiva («…: desactivado. Ya no aparece en el catálogo.»). El aviso de productos inactivos pasó a la casilla «Producto activo». Panel: secciones «Presentaciones» e «Imágenes» con estados vacíos (sin presentación no se puede comprar; sin imagen se usa la genérica); cada presentación muestra presentación comercial, mínimo, múltiplo y la marca «Inactiva». Imágenes: un solo editor para alta y edición con URL (aclara que no se suben archivos), texto alternativo obligatorio, **presentación opcional** (el catálogo ya mostraba imágenes por presentación, pero no había forma de cargarlas), orden y principal (propuesta como principal si es la primera); cada tarjeta dice «Principal · General/presentación · Orden N». Eliminar: botón con nombre accesible por imagen, diálogo con vista previa, «el archivo en su dirección de origen no se modifica», «Eliminando…», Cancelar deshabilitado durante el envío, error limpio al reabrir, aviso «Imagen eliminada del producto.» y relectura también tras un error. Error del detalle con «Intentar nuevamente».
 - `src/components/admin-form.tsx`: `hint` también en casillas; `placeholder` para la opción vacía de un select. `src/app/globals.css`: `.check-copy`. `src/lib/types.ts`: `Media.position`, `variantId` nulo.
 - `src/lib/demo.ts`: como la API, medios ordenados (principal, luego posición), `slug` con el `slugify` de la API y regenerado al renombrar sin `slug`, 404 para producto/imagen inexistente, 400 si la imagen apunta a una presentación de otro producto, valores por omisión de medios y mínimo = múltiplo. `slug` o SKU repetido → 409 (la API responde 500: M10).
 - `tests/demo.test.ts`: prueba nueva «productos, presentaciones y medios como la API». Falla con el `demo.ts` anterior. `tests/e2e/admin-complete.spec.ts`: agrega dos imágenes, comprueba «Principal · General · Orden 0», cancela y luego confirma el borrado de una, y verifica la imagen en la tarjeta del catálogo y en la ficha antes de guardar en el carrito.
-- Documentación: `docs/API.md` punto 5 (inactivos y límites de edición); `docs/BACKEND-PENDIENTES.md` M3 ampliado, M9 y M10 nuevos.
+- Documentación: `docs/API.md` punto 5 (inactivos y límites de edición); `docs/BACKEND-PENDIENTES.md` M3 ampliado y M9 (únicos → 500).
 
 Verificación:
 - `npm run typecheck`, `npm run lint` y prettier: correctos. `npm test`: 30/30 (antes 29). `npm run build` (demo): correcto.
@@ -22,9 +42,8 @@ Verificación:
 - Navegador (demo, 360 px): crear producto → panel visible con estados vacíos; presentación e imagen asignada a la presentación; diálogo de borrado con vista previa; la ficha muestra la imagen de la presentación («Bolsa frente»). Sin desbordamiento horizontal.
 - Condición de cierre cumplida en demo: producto con presentación, precio, stock e imagen visible en catálogo y ficha, que se guarda en el carrito. No probado contra la API real.
 
-Pendiente (backend): listar/reactivar productos inactivos (M3), `variant.active` en carrito y checkout (M9), 409 para únicos repetidos (M10).
+Pendiente (backend): listar/reactivar productos inactivos (M3), 409 para únicos repetidos (M9).
 
-Siguiente tarea: `docs/prompts/07b-precios-stock.md`.
 
 ## Paso anterior: 06b · gestión de pedidos
 

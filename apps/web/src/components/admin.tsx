@@ -789,6 +789,66 @@ function VariantManagement({
       hint: "Una presentación inactiva se oculta en el catálogo y sigue listada acá para reactivarla.",
     },
   ];
+  function priceEditor(v: Variant) {
+    edit({
+      title: `Precio · ${v.name}`,
+      path: `pricing/variants/${v.id}`,
+      method: "PATCH",
+      fields: [
+        {
+          ...number("amount", "Precio en pesos (UYU)", 0.01, "0.01"),
+          hint: "Hasta dos decimales. Mayor que cero.",
+        },
+      ],
+      initial: { amount: v.price?.amount },
+      // La API registra los pedidos en UYU sin convertir: solo pesos.
+      transform: (data) => ({ ...data, currency: "UYU" }),
+      description: [
+        v.price
+          ? `Precio vigente: ${money(v.price.amount, v.price.currency)}.`
+          : "Esta presentación no tiene precio vigente.",
+        "El nuevo precio reemplaza al vigente en la lista mayorista desde ahora: se ve en el catálogo y en los carritos. Los pedidos ya enviados conservan sus importes.",
+        ...(DEMO
+          ? []
+          : [
+              "Atención: por un error conocido de la API, un pedido confirmado puede registrarse con el precio anterior hasta que se reinicie el servidor.",
+            ]),
+      ].join(" "),
+      success: (result) => {
+        const price = result as { amount?: number | string };
+        return price?.amount !== undefined
+          ? `${v.name}: precio vigente ${money(price.amount)}.`
+          : "Precio actualizado.";
+      },
+    });
+  }
+  async function stockEditor(v: Variant) {
+    // Relee las reservas justo antes de editar: pueden haber cambiado.
+    const { data, error } = await stock.refetch();
+    if (error || !data) return;
+    edit({
+      title: `Stock físico · ${v.name}`,
+      path: `inventory/variants/${v.id}/stock`,
+      method: "PATCH",
+      fields: [
+        {
+          ...number("physicalStock", "Stock físico", data.reservedStock),
+          hint:
+            data.reservedStock === 0
+              ? "Sin unidades reservadas."
+              : `No puede ser menor a ${data.reservedStock} (${data.reservedStock === 1 ? "unidad reservada" : "unidades reservadas"}).`,
+        },
+      ],
+      initial: { physicalStock: data.physicalStock },
+      description: `Hoy: físico ${data.physicalStock}, reservado ${data.reservedStock}, disponible ${data.availableStock}. Las reservas no cambian al guardar: disponible = físico − reservado.`,
+      success: (result) => {
+        const r = result as { physicalStock?: number; availableStock?: number };
+        return r?.availableStock !== undefined
+          ? `${v.name}: stock físico ${r.physicalStock} · disponible ${r.availableStock}.`
+          : "Stock actualizado.";
+      },
+    });
+  }
   function variantEditor(v?: Variant) {
     edit({
       title: v ? "Editar presentación" : "Nueva presentación",
@@ -851,83 +911,56 @@ function VariantManagement({
               </button>
               <button
                 className="button small secondary"
-                onClick={() =>
-                  edit({
-                    title: `Precio · ${v.name}`,
-                    path: `pricing/variants/${v.id}`,
-                    method: "PATCH",
-                    fields: [
-                      number("amount", "Precio", 0, "any"),
-                      select("currency", "Moneda", options(["UYU", "USD"])),
-                    ],
-                    initial: {
-                      amount: v.price?.amount,
-                      currency: v.price?.currency ?? "UYU",
-                    },
-                    description:
-                      "Se actualizará el precio vigente en la lista mayorista del backend.",
-                  })
-                }
+                onClick={() => priceEditor(v)}
               >
                 Precio
               </button>
               <button
                 className="button small secondary"
-                onClick={() => setStockId(v.id)}
+                aria-expanded={stockId === v.id}
+                onClick={() => setStockId(stockId === v.id ? "" : v.id)}
               >
                 Existencias
               </button>
             </div>
+            {stockId === v.id && (
+              <div className="stock-box" aria-live="polite">
+                {stock.isPending ? (
+                  <Loading />
+                ) : stock.error ? (
+                  <ErrorBox
+                    error={stock.error}
+                    retry={() => void stock.refetch()}
+                  />
+                ) : (
+                  <>
+                    <p>
+                      Stock físico: {stock.data.physicalStock} · Reservado:{" "}
+                      {stock.data.reservedStock} · Disponible:{" "}
+                      {stock.data.availableStock}
+                    </p>
+                    <div className="actions">
+                      <button
+                        className="button small"
+                        disabled={stock.isFetching}
+                        onClick={() => void stockEditor(v)}
+                      >
+                        Actualizar
+                      </button>
+                      <button
+                        className="button secondary small"
+                        onClick={() => setStockId("")}
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
-      {stockId && (
-        <div className="card" style={{ marginTop: 20 }}>
-          {stock.isPending ? (
-            <Loading />
-          ) : stock.error ? (
-            <ErrorBox error={stock.error} />
-          ) : (
-            <>
-              <p>
-                Stock físico: {stock.data.physicalStock} · Reservado:{" "}
-                {stock.data.reservedStock} · Disponible:{" "}
-                {stock.data.availableStock}
-              </p>
-              <div className="actions">
-                <button
-                  className="button small"
-                  onClick={() =>
-                    edit({
-                      title: "Actualizar stock físico",
-                      path: `inventory/variants/${stockId}/stock`,
-                      method: "PATCH",
-                      fields: [
-                        number(
-                          "physicalStock",
-                          "Stock físico",
-                          stock.data.reservedStock,
-                        ),
-                      ],
-                      initial: { physicalStock: stock.data.physicalStock },
-                      description:
-                        "Las reservas se mantienen. El stock físico no puede ser menor al reservado.",
-                    })
-                  }
-                >
-                  Actualizar
-                </button>
-                <button
-                  className="button secondary small"
-                  onClick={() => setStockId("")}
-                >
-                  Cerrar
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
       <h3 style={{ marginTop: 25 }}>Imágenes</h3>
       {product.media.length === 0 && (
         <p className="small-copy muted">

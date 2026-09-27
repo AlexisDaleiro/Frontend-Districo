@@ -357,4 +357,63 @@ describe("Demo B2B: recorrido comercial", () => {
       status: 404,
     });
   });
+  it("precio vigente y stock físico: reservas intactas, pedidos con su importe", async () => {
+    const stock = () =>
+      api<{ physicalStock: number; reservedStock: number }>(
+        "inventory/variants/variant-0/stock",
+      );
+    await login();
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 2 });
+    const order = await api<Order>("checkout", "POST", {});
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 3 });
+    await login("admin@districo.com");
+    // Reservado 2: el físico no puede quedar por debajo.
+    await expect(
+      api("inventory/variants/variant-0/stock", "PATCH", { physicalStock: 1 }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      api("inventory/variants/variant-0/stock", "PATCH", {
+        physicalStock: 2.5,
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(await stock()).toMatchObject({
+      physicalStock: 40,
+      reservedStock: 2,
+    });
+    await api("inventory/variants/variant-0/stock", "PATCH", {
+      physicalStock: 2,
+    });
+    expect(await stock()).toMatchObject({
+      physicalStock: 2,
+      reservedStock: 2,
+      availableStock: 0,
+    });
+    await api("inventory/variants/variant-0/stock", "PATCH", {
+      physicalStock: 10,
+    });
+    await expect(
+      api("pricing/variants/variant-0", "PATCH", { amount: -1 }),
+    ).rejects.toMatchObject({ status: 400 });
+    const price = await api<{ amount: number }>(
+      "pricing/variants/variant-0",
+      "PATCH",
+      { amount: 912.5, currency: "UYU" },
+    );
+    expect(price.amount).toBe(912.5);
+    await login();
+    const list = await api<ProductList>("products?limit=100");
+    const variant = list.items
+      .flatMap((p) => p.variants)
+      .find((v) => v.id === "variant-0")!;
+    expect(variant).toMatchObject({
+      availableStock: 8,
+      price: { amount: 912.5 },
+    });
+    const cart = await api<Cart>("cart");
+    expect(cart.items[0]).toMatchObject({ unitPrice: 912.5, subtotal: 2737.5 });
+    const [previous] = await api<Order[]>("orders/me");
+    expect(previous.total).toBe(order.total);
+    expect(previous.items[0].unitPrice).toBe(order.items[0].unitPrice);
+    expect(Number(order.items[0].unitPrice)).not.toBe(912.5);
+  });
 });
