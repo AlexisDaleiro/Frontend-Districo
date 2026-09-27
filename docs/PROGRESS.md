@@ -2,7 +2,24 @@
 
 Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
-## Último paso terminado: 04b · solicitud de cuenta
+## Último paso terminado: 05a · carrito persistente por usuario
+
+Contrastado con `apps/api/src/cart` y `orders` (solo lectura): `POST cart/items` hace upsert con cantidad absoluta; agregar y modificar exigen `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS` y validan permiso de medicamentos, precio vigente, mínimo, múltiplo y stock. `PATCH`/`DELETE` de una línea inexistente o ajena → 404. El carrito devuelve `unitPrice` 0 si la variante perdió el precio. El checkout vuelve a validar precio, cantidades y permisos.
+
+- `src/components/orders.tsx`: tras cualquier resultado de actualizar o quitar (también si falla) se relee el carrito; el error queda visible y, como la cantidad es absoluta, reintentar es seguro. Una línea sin precio vigente muestra «Sin precio» y un aviso (antes $ 0,00). «Enviar pedido» se deshabilita con «Revisá las líneas marcadas…» si alguna línea guardada no tiene precio o ya no cumple mínimo, múltiplo o stock (la API la rechazaría). «1 producto» en singular.
+- `src/lib/demo.ts`: `PATCH`/`DELETE` de una línea inexistente → 404 «Item de carrito no encontrado.» (antes el borrado respondía bien); el checkout rechaza líneas sin precio vigente, como la API.
+- `tests/demo.test.ts`: prueba nueva (404 al repetir un borrado o modificar la línea borrada; carrito con `unitPrice` 0 y checkout rechazado sin crear pedido). Falla con el `demo.ts` anterior y pasa con el nuevo. El aislamiento por cuenta y la cantidad absoluta ya tenían prueba.
+- Revisado sin cambios: `Quantity` (mínimo = primera cantidad válida, múltiplos, tope de stock); `BuyForm` avisa que guardar reemplaza la cantidad; claves de caché por usuario.
+
+Verificación:
+- `npm test`: 25/25 (antes 24). Typecheck, eslint y prettier: correctos. `npm run build`: correcto.
+- `npm run test:e2e -- --grep "cliente envía"`: 1/1 correcta (también tras el último cambio).
+- Navegador (demo, 360 px): guardar 2 y luego 3 deja 3 en una sola línea (subtotal $ 1.170,00). Con la línea quitada en otra pestaña, «Actualizar» relee y muestra el carrito vacío. Línea sin precio: «Sin precio», aviso y envío deshabilitado. Otra cuenta (revisión de pedidos): carrito vacío y contador 0. Sin desbordamiento.
+- No probado contra la API real.
+
+Siguiente tarea: `docs/prompts/05b-pedidos.md`.
+
+## Paso anterior: 04b · solicitud de cuenta
 
 Contrastado con `apps/api/src/applications` (solo lectura): `CreateApplicationDto` exige comercio, razón social, RUT, correo y contraseña ≥8; el resto es opcional. El servicio guarda el correo en minúsculas, rechaza correos de usuarios existentes y guarda solo el hash de la contraseña. El formulario pide además contacto, teléfono, dirección y tipo como obligatorios (decisión de negocio ya existente, sin cambios).
 
@@ -17,8 +34,6 @@ Verificación:
 - No probado contra la API real: el envío real y la notificación (proveedor de consola) dependen del backend.
 
 Pendiente: el backend admite varias solicitudes pendientes con el mismo correo; el demo las rechaza. No hay subida de documentos (la API solo acepta URLs existentes; ver `docs/API.md`, punto 9).
-
-Siguiente tarea: `docs/prompts/05a-carrito.md`.
 
 ## Paso anterior: 04a · acceso y sesión
 

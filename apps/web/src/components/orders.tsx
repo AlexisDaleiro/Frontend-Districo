@@ -28,7 +28,9 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
         remove ? "DELETE" : "PATCH",
         remove ? undefined : { quantity },
       ),
-    onSuccess: () => void client.invalidateQueries(),
+    // Tras un error también se relee el carrito: muestra lo que quedó guardado
+    // (otra pestaña pudo cambiarlo) y la cantidad absoluta se puede reintentar.
+    onSettled: () => void client.invalidateQueries(),
   });
   return (
     <div className="cart-item">
@@ -71,9 +73,16 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
           </button>
         </div>
         {error && <p className="field-error">{error}</p>}
+        {!item.unitPrice && (
+          <p className="field-error">
+            Sin precio vigente. Quitala o consultá a DISTRICO.
+          </p>
+        )}
         {mutation.error && <ErrorBox error={mutation.error} />}
       </div>
-      <strong>{money(item.subtotal, item.currency)}</strong>
+      <strong>
+        {item.unitPrice ? money(item.subtotal, item.currency) : "Sin precio"}
+      </strong>
     </div>
   );
 }
@@ -89,6 +98,10 @@ function CartContent() {
   const router = useRouter();
   const client = useQueryClient();
   const manual = reviewRequired(user?.customerAccount?.creditStatus);
+  // Líneas guardadas que la API rechazaría al confirmar (precio o cantidad).
+  const blocked = !!q.data?.items.some(
+    (i) => !i.unitPrice || quantityError(i.variant, i.quantity),
+  );
   const checkout = useMutation({
     mutationFn: () =>
       request<Order>("checkout", "POST", { acceptManualReview: accept }),
@@ -156,7 +169,10 @@ function CartContent() {
       <aside className="summary">
         <h2>Resumen del pedido</h2>
         <div className="row between">
-          <span>{q.data.items.length} productos</span>
+          <span>
+            {q.data.items.length}{" "}
+            {q.data.items.length === 1 ? "producto" : "productos"}
+          </span>
           <span>{money(q.data.total, q.data.items[0]?.currency)}</span>
         </div>
         <div className="row between total">
@@ -177,6 +193,11 @@ function CartContent() {
             Acepto que este pedido quede sujeto a revisión comercial.
           </label>
         )}
+        {blocked && (
+          <p className="field-error">
+            Revisá las líneas marcadas antes de enviar el pedido.
+          </p>
+        )}
         {checkout.error && <ErrorBox error={checkout.error} />}{" "}
         {uncertain ? (
           <div className="error-box">
@@ -191,7 +212,12 @@ function CartContent() {
         ) : (
           <button
             className="button"
-            disabled={checkout.isPending || (manual && !accept) || q.isFetching}
+            disabled={
+              checkout.isPending ||
+              (manual && !accept) ||
+              q.isFetching ||
+              blocked
+            }
             onClick={() => checkout.mutate()}
           >
             {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}

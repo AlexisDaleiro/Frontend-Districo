@@ -397,6 +397,9 @@ export async function demoRequest<T>(
     const u = needBuyer();
     const items = (s.carts[u.id] ??= []);
     const itemId = route.split("/")[2];
+    // Igual que la API: modificar o quitar una línea inexistente es un 404.
+    if (itemId && !items.some((i) => i.id === itemId))
+      throw new ApiError("Item de carrito no encontrado.", 404);
     if (method === "DELETE") {
       s.carts[u.id] = items.filter((i) => i.id !== itemId);
     } else {
@@ -438,6 +441,8 @@ export async function demoRequest<T>(
     for (const item of cart.items) {
       const error = quantityError(item.variant, item.quantity);
       if (error) throw new ApiError(error, 400);
+      if (!item.variant.price)
+        throw new ApiError("La variante no tiene precio vigente.", 400);
       if (
         item.product.requiresMedicationPermission &&
         !can(u, "CAN_BUY_MEDICATIONS")

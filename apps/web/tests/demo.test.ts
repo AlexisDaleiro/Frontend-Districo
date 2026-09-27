@@ -219,4 +219,29 @@ describe("Demo B2B: recorrido comercial", () => {
     expect(all.items.map((p) => p.name)).toEqual(names.slice(5, 10));
     expect((await api<ProductList>("products?page=abc")).meta.page).toBe(1);
   });
+  it("carrito como la API: línea inexistente es 404 y no confirma líneas sin precio", async () => {
+    await login();
+    const cart = await api<Cart>("cart/items", "POST", {
+      variantId: "variant-0",
+      quantity: 2,
+    });
+    const itemId = cart.items[0].id;
+    await api(`cart/items/${itemId}`, "DELETE");
+    await expect(api(`cart/items/${itemId}`, "DELETE")).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      api(`cart/items/${itemId}`, "PATCH", { quantity: 3 }),
+    ).rejects.toMatchObject({ status: 404 });
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 2 });
+    // La presentación pierde su precio vigente después de agregarla.
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    delete state.products[0].variants[0].price;
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    expect((await api<Cart>("cart")).items[0].unitPrice).toBe(0);
+    await expect(api("checkout", "POST", {})).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(await api("orders/me")).toEqual([]);
+  });
 });
