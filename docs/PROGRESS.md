@@ -2,6 +2,12 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Corrección: desnivel en tarjetas de producto (27/09)
+
+`src/app/globals.css`: `.product-card` pasa a columna flex y `.product-bottom` usa `margin-top: auto` (el espacio bajo el nombre queda en `h3 { margin-bottom: 14px }`). Así el pie con precio y botón queda alineado en cada fila aunque el nombre ocupe más líneas.
+
+Verificación: navegador en `/catalogo` (local, Supabase): 12 tarjetas en 4 filas, los pies de cada fila a la misma altura.
+
 ## Corrección: «Quiero ser cliente» con sesión iniciada (27/09)
 
 Falla solo del frontend: la API no interviene en qué enlaces se muestran (`POST applications` es público por diseño). Con sesión de cliente ya no se ofrece solicitar cuenta.

@@ -615,6 +615,9 @@ svg {
 .product-card {
   min-width: 0;
   position: relative;
+  /* Columna flexible: el pie queda alineado aunque el nombre ocupe más líneas. */
+  display: flex;
+  flex-direction: column;
 }
 .product-image {
   background: #f8f9f6;
@@ -662,10 +665,11 @@ svg {
   margin-top: 5px;
   font-weight: 600;
   min-height: 42px;
+  margin-bottom: 14px;
 }
 .product-bottom {
   border-top: 1px solid var(--line);
-  margin-top: 14px;
+  margin-top: auto;
   padding-top: 12px;
   display: flex;
   align-items: center;
