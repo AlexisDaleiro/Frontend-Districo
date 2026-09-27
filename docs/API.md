@@ -48,7 +48,7 @@ El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba p
 | Administración        | GET `admin/dashboard`, `admin/customers`, `admin/applications`, `admin/orders`                                                              |
 | Solicitudes           | POST `admin/applications/:id/approve` `{medicationPermission}` o `/reject` `{rejectionReason}`                                              |
 | Clientes              | PATCH `admin/customers/:id`: `accountStatus`, `creditStatus`, `creditLimit`, `internalCreditNote`, `medicationPermission`                   |
-| Pedidos               | PATCH `admin/orders/:id/status` `{status,reviewReason}`                                                                                     |
+| Pedidos               | PATCH `admin/orders/:id/status` `{status,reviewReason}`; la API acepta cualquier transición, la UI ofrece solo `orderTransitions` (06b)       |
 | Productos             | POST `products`, PATCH `products/:id`; relaciones por `brandId`, `laboratoryId`, `categoryIds`                                              |
 | Variantes             | POST `products/:id/variants`, PATCH `products/variants/:id`                                                                                 |
 | Medios                | POST `products/:id/media`, PATCH/DELETE `products/media/:id`; URL existente, sin subida de archivos                                         |

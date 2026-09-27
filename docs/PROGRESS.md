@@ -1,12 +1,33 @@
 # Registro de avance
 
-Última actualización: 26 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
+Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
 ## Documentación: pendientes del backend (27/09)
 
 A pedido, `docs/BACKEND-PENDIENTES.md`: 17 problemas confirmados leyendo `apps/api/src` en `51952c6` (sin cambiar código), con prioridad, archivo y línea, comportamiento actual y esperado, arreglo sugerido y verificación. Detalla la auditoría del 26/09: el checkout usa el precio anterior porque el filtro de vigencia congela `new Date()` al arrancar (C1); un pedido nuevo libera las reservas de los anteriores del mismo cliente (C2); más `resetToken`, `passwordHash`, secretos JWT por defecto, `accountStatus`, transiciones, sobreventa y `logout`. Enlazado desde `apps/api/README.md` (solo documentación), `README.md` y `docs/API.md`.
 
-## Último paso terminado: 06a · solicitudes y clientes
+## Último paso terminado: 06b · gestión de pedidos
+
+Contrastado con `apps/api` (solo lectura): `GET admin/orders` devuelve todos los pedidos (más recientes primero) con `items`, `user.email` y `customerAccount`; `PATCH admin/orders/:id/status` `{status, reviewReason?}` exige un estado del enum, **acepta cualquier transición** (BACKEND-PENDIENTES A2) y responde el pedido actualizado. Aprobar o preparar consume las reservas `ACTIVE` (baja stock físico y reservado); rechazar o cancelar libera las `ACTIVE`; una reserva ya consumida no vuelve al cancelar. Sin `reviewReason` se conserva el anterior. Las reservas de un pedido vencen a las 48 h (M6). Los importes (`unitPrice`, `subtotal`, `total`) se guardan al confirmar y ningún cambio de estado los toca.
+
+- `src/lib/commerce.ts`: `orderStatuses` (enum de la API); `orderTransitions`, tabla sugerida en A2 (enviado/en revisión → aprobado, rechazado, cancelado; aprobado → en preparación, cancelado; en preparación → despachado, cancelado; despachado → entregado; entregado, rechazado y cancelado son finales); `orderStockEffect()` describe el efecto real de cada cambio sobre las reservas. La API no aplica la tabla: es una guía de la UI, no una barrera.
+- `src/components/admin.tsx` (pedidos): «Gestionar» ofrece solo los estados siguientes al actual y explica el efecto de cada uno sobre las reservas (en modo real, además, el vencimiento de 48 h); en estados finales muestra «Estado final» (antes se ofrecían los 8 estados desde cualquiera, incluso reabrir un pedido cancelado). La confirmación muestra el estado **devuelto por la API** («DIS-…: Aprobado.»). El filtro muestra la cantidad por estado y un contador; vacío distingue «Todavía no hay pedidos» de «No hay pedidos en este estado». El detalle se lee de la lista vigente e incluye cliente y correo, fecha y hora, estado, revisión manual, observación, líneas con importes históricos y el botón «Cambiar estado».
+- `src/components/admin-form.tsx`: `success` opcional para armar la confirmación con la respuesta; tras un error se releen los datos (un resultado incierto no deja la lista desactualizada).
+- `src/lib/demo.ts`: igual que la API, rechaza estados fuera del enum (400; antes guardaba cualquier texto) y conserva `reviewReason`; el checkout registra `acceptedManualReview` y el motivo de revisión; `admin/orders` agrega `user.email`. Sin tabla de transiciones en el demo (la API tampoco la aplica).
+- `src/lib/types.ts`: `Order` con `acceptedManualReview`, `reviewReason` y `user`. `src/app/globals.css`: `.order-meta`.
+- Pruebas: `tests/demo.test.ts`, prueba nueva (estado inválido → 400; aprobar consume: físico 40→38, reservado 2→0; cancelar lo aprobado no devuelve stock; importes y precio unitario sin cambios tras subir el precio a 900; observación y correo en la lista). Falla con el `demo.ts` anterior. `tests/commerce.test.ts`: transiciones y efectos. Nueva e2e «administración gestiona un pedido en revisión y ajusta reservas»: cliente con revisión envía el pedido, el panel muestra 1 en revisión, filtro, detalle (revisión aceptada, motivo «Pago pendiente», total), opciones Aprobado/Rechazado/Cancelado, aprobación con observación confirmada y en Catálogo «Stock físico: 39 · Reservado: 0 · Disponible: 39».
+
+Verificación:
+- `npm test`: 29/29 (antes 26). Typecheck, `npm run lint` y prettier: correctos. `npm run build` (demo): correcto.
+- `npm run test:e2e -- --grep "revisión"`: 2/2. Suite e2e completa: 17/17 (por el cambio compartido de `AdminForm`). Chromium `/opt/pw-browsers/chromium-1194` con configuración temporal, ya eliminada.
+- Navegador (demo, 360 px): lista, detalle y editor sin desbordamiento; la tabla de líneas se desplaza dentro de su región.
+- No probado contra la API real.
+
+Pendiente (backend): tabla de transiciones en el servidor (A2), vencimiento de reservas de pedidos abiertos (M6) y reservas liberadas por un pedido posterior (C2). Hasta entonces, cancelar un pedido aprobado exige ajustar existencias a mano (la UI lo avisa).
+
+Siguiente tarea: `docs/prompts/07a-productos.md`.
+
+## Paso anterior: 06a · solicitudes y clientes
 
 Contrastado con `apps/api` (solo lectura): aprobar crea cuenta `APPROVED` y usuario con `CAN_VIEW_PRICES` + `CAN_PLACE_ORDERS` (+ `CAN_BUY_MEDICATIONS` si se pide); `PATCH admin/customers/:id` actualiza `accountStatus`, `creditStatus`, `creditLimit`, `internalCreditNote` y sincroniza `CAN_BUY_MEDICATIONS`. La estrategia JWT relee permisos de la base en cada solicitud; `accountStatus` no se verifica en ningún lado; `reject` no controla el estado de la solicitud.
 
