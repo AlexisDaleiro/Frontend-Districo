@@ -12,11 +12,14 @@ No hay revisión obligatoria por carpeta: ambos socios pueden aprobar y subir ca
 
 ## Requisitos
 
-Node.js 22.9 o posterior. Para el backend, además, Docker (PostgreSQL local).
+Node.js 22.9 o posterior. Para el backend conectado al entorno compartido se
+necesita Internet y un `apps/api/.env` privado con acceso autorizado a Supabase;
+Docker no es necesario para este flujo.
 
 Errores y pendientes conocidos del backend, con ubicación y arreglo sugerido: [docs/BACKEND-PENDIENTES.md](docs/BACKEND-PENDIENTES.md).
 
-Guía paso a paso para levantar el proyecto (demo, backend local y ambos conectados): [docs/INICIO.md](docs/INICIO.md).
+Guía paso a paso para levantar el proyecto en modo demo o conectado al backend
+local con Supabase: [docs/INICIO.md](docs/INICIO.md).
 
 ## Comandos desde la raíz
 

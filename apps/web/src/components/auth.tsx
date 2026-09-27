@@ -150,6 +150,7 @@ const applicationSchema = z.object({
 });
 type ApplicationInput = z.infer<typeof applicationSchema>;
 export function Apply() {
+  const { user } = useSession();
   const [done, setDone] = useState(""),
     [error, setError] = useState<unknown>();
   const form = useForm<ApplicationInput>({
@@ -171,6 +172,16 @@ export function Apply() {
       setError(e);
     }
   }
+  // Quien ya tiene sesión no necesita solicitar cuenta.
+  if (user)
+    return (
+      <div className="container section">
+        <PageHeading title="Ya tenés una cuenta" />
+        <ActionLink href={user.role === "ADMIN" ? "/admin" : "/cuenta"}>
+          Ir a mi cuenta
+        </ActionLink>
+      </div>
+    );
   if (done)
     return (
       <div className="container section">

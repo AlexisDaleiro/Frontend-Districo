@@ -126,13 +126,16 @@ export function Header() {
         <div className="navline">
           <nav aria-label="Navegación principal" className="container">
             {nav}
-            <Link
-              className="be-client"
-              href={user?.role === "ADMIN" ? "/admin" : "/solicitar-cuenta"}
-            >
-              {user?.role === "ADMIN" ? "Administración" : "Quiero ser cliente"}
-              <ArrowUpRight size={16} />
-            </Link>
+            {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
+            {(!user || user.role === "ADMIN") && (
+              <Link
+                className="be-client"
+                href={user ? "/admin" : "/solicitar-cuenta"}
+              >
+                {user ? "Administración" : "Quiero ser cliente"}
+                <ArrowUpRight size={16} />
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -148,9 +151,11 @@ export function Header() {
               Administración
             </Link>
           ) : (
-            <Link href="/solicitar-cuenta" onClick={() => setOpen(false)}>
-              Quiero ser cliente
-            </Link>
+            !user && (
+              <Link href="/solicitar-cuenta" onClick={() => setOpen(false)}>
+                Quiero ser cliente
+              </Link>
+            )
           )}
           {user && (
             <button

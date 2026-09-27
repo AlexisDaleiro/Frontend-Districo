@@ -7,7 +7,7 @@ import {
   Handshake,
   ShieldCheck,
 } from "lucide-react";
-import { useApi } from "./providers";
+import { useApi, useSession } from "./providers";
 import type { Entity, ProductList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductGrid } from "./catalog";
@@ -64,6 +64,7 @@ const needs = [
   },
 ];
 export function Home() {
+  const { user } = useSession();
   const categories = useApi<Entity[]>("categories"),
     featured = useApi<ProductList>("products?featured=true&limit=4"),
     brands = useApi<Entity[]>("brands");
@@ -270,19 +271,21 @@ export function Home() {
             </p>
           )}
         </section>
-        <section className="cta-band" style={{ marginBottom: 64 }}>
-          <div>
-            <p className="eyebrow">Tu negocio, nuestro compromiso</p>
-            <h2>El próximo paso lo damos juntos.</h2>
-            <p>
-              Accedé al catálogo mayorista y gestioná tus pedidos en un solo
-              lugar.
-            </p>
-          </div>
-          <ActionLink href="/solicitar-cuenta" secondary>
-            Quiero ser cliente
-          </ActionLink>
-        </section>
+        {!user && (
+          <section className="cta-band" style={{ marginBottom: 64 }}>
+            <div>
+              <p className="eyebrow">Tu negocio, nuestro compromiso</p>
+              <h2>El próximo paso lo damos juntos.</h2>
+              <p>
+                Accedé al catálogo mayorista y gestioná tus pedidos en un solo
+                lugar.
+              </p>
+            </div>
+            <ActionLink href="/solicitar-cuenta" secondary>
+              Quiero ser cliente
+            </ActionLink>
+          </section>
+        )}
       </div>
     </>
   );
