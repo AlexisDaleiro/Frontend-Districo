@@ -48,6 +48,13 @@ function normalizeUser(
     ),
   } as User;
 }
+export async function setSessionUser(client: QueryClient, user: User | null) {
+  await client.cancelQueries();
+  // Keep the session query attached to its mounted observers during identity changes.
+  client.removeQueries({ predicate: (query) => query.queryKey[0] !== "session" });
+  client.getMutationCache().clear();
+  client.setQueryData<User | null>(["session"], user);
+}
 type Session = {
   user: User | null;
   loading: boolean;
@@ -55,7 +62,7 @@ type Session = {
   error: Error | null;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
-  reset: () => void;
+  reset: () => Promise<void>;
   notify: (text: string) => void;
 };
 const Context = createContext<Session>(null!);
@@ -97,19 +104,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
     retry: false,
     staleTime: 60000,
   });
-  // Borra los datos del usuario anterior sin quitar la consulta ["session"]:
-  // client.clear() la eliminaba y el proveedor seguía mostrando la identidad
-  // vieja hasta recargar. Las demás claves llevan el id del usuario.
-  const replaceSession = useCallback(
-    (user: User | null) => {
-      client.removeQueries({
-        predicate: (query) => query.queryKey[0] !== "session",
-      });
-      client.setQueryData(["session"], user);
-    },
-    [client],
-  );
-  const expire = useCallback(() => replaceSession(null), [replaceSession]);
+  const expire = useCallback(() => setSessionUser(client, null), [client]);
   useEffect(() => {
     window.addEventListener("session-expired", expire);
     return () => window.removeEventListener("session-expired", expire);
@@ -122,8 +117,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     await request("auth/login", "POST", { email, password });
     const user = normalizeUser(await request("auth/me"));
-    await client.cancelQueries();
-    replaceSession(user);
+    await setSessionUser(client, user);
     sessionChannel.current?.postMessage("changed");
     return user;
   }
@@ -131,14 +125,13 @@ function SessionProvider({ children }: { children: ReactNode }) {
     try {
       await request("auth/logout", "POST", {});
     } finally {
-      await client.cancelQueries();
-      expire();
+      await expire();
       sessionChannel.current?.postMessage("changed");
     }
   }
-  function reset() {
+  async function reset() {
     resetDemo();
-    replaceSession(null);
+    await expire();
     setNotice("Escenario de demostración reiniciado.");
     sessionChannel.current?.postMessage("changed");
   }
