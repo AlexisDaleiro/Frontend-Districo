@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   description:
     "Descubrí nuestras marcas y soluciones para tu negocio. Catálogo y acceso mayorista de DISTRICO Uruguay.",
   robots: { index: false, follow: false },
+  openGraph: {
+    type: "website",
+    locale: "es_UY",
+    siteName: "DISTRICO",
+  },
+  twitter: { card: "summary_large_image" },
 };
 export default function RootLayout({
   children,

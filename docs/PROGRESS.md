@@ -2,6 +2,15 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: vista previa al compartir, favicon y título de ficha (28/09)
+
+- `src/app/layout.tsx`: Open Graph (`website`, `es_UY`, `siteName`) y `twitter.card = summary_large_image`.
+- `src/app/opengraph-image.tsx`: imagen 1200×630 generada con `next/og`, con fondo petróleo, marca en lima y lema. No agrega dependencias.
+- `src/app/icon.svg`: favicon provisional (una «D» lima sobre petróleo). Reemplazarlo por el isotipo oficial cuando esté disponible.
+- `src/app/producto/[slug]/page.tsx`: `generateMetadata` con título, descripción e imagen principal del producto. Lee solo datos públicos: en modo real `GET products/:slug` sin token (revalidación 300 s); en modo demo, `seedProducts()`. Si el producto no existe, el título es «Producto».
+- Pruebas: `tsc`, lint, 38/38 tests y Prettier en los archivos tocados, todo correcto. Con `curl` en dev se comprobaron las etiquetas `og:*`/`twitter:*` en portada, ficha e inexistente, y que `/opengraph-image` (PNG 200) e `/icon.svg` responden 200.
+- Pendiente: sin `metadataBase`, Next usa `localhost` en dev y la URL de Vercel en el despliegue. Si se usa un dominio propio, definir `metadataBase`. Falta probar la vista previa real en WhatsApp con el link publicado.
+
 ## Auditoría previa a la reunión con el cliente (28/09, sin cambios de código)
 
 - Automatizada con Playwright + axe-core contra `next dev` en modo real (API local en 3001). Cubre 13 rutas públicas o sin sesión a 390px y 1440px. No incluye las pantallas con sesión iniciada ni una inspección visual humana de las capturas.
