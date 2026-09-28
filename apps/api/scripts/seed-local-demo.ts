@@ -4,13 +4,13 @@ import { hash } from 'bcryptjs';
 import {
   assertDemoTarget,
   demoProductProfile,
-  DEMO_BRANDS,
   DEMO_LABORATORY,
   DEMO_PRICE_LIST,
   DEMO_TAG,
   DEMO_USERS,
 } from './catalog/demo-data';
 import { databaseError, loadBackendEnv } from './script-env';
+import { DISTRICO_BRANDS } from './catalog/districo-brands';
 
 async function seed(tx: Prisma.TransactionClient, passwordHash: string, apply: boolean) {
   const products = await tx.product.findMany({
@@ -43,7 +43,11 @@ async function seed(tx: Prisma.TransactionClient, passwordHash: string, apply: b
   };
   if (!apply) return result;
 
-  for (const brand of DEMO_BRANDS) await tx.brand.upsert({ where: { id: brand.id }, create: brand, update: {} });
+  const brandIds = new Map<string, string>();
+  for (const { name, slug } of DISTRICO_BRANDS) {
+    const stored = await tx.brand.upsert({ where: { slug }, create: { name, slug }, update: {} });
+    brandIds.set(slug, stored.id);
+  }
   await tx.laboratory.upsert({ where: { id: DEMO_LABORATORY.id }, create: DEMO_LABORATORY, update: {} });
   await tx.priceList.upsert({ where: { id: DEMO_PRICE_LIST.id }, create: DEMO_PRICE_LIST, update: {} });
 
@@ -79,7 +83,7 @@ async function seed(tx: Prisma.TransactionClient, passwordHash: string, apply: b
     });
     const data = {
       active: true,
-      brandId: profile.brandId,
+      brandId: product.brandId ?? (profile.brandSlug ? brandIds.get(profile.brandSlug) : null),
       laboratoryId: profile.laboratoryId,
       requiresMedicationPermission: profile.requiresMedicationPermission,
       tags: [...product.tags, DEMO_TAG],

@@ -10,6 +10,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { UpdateProductMediaDto } from './dto/update-product-media.dto';
 import { ProductsRepository } from './products.repository';
+import { sortProductVariants } from './variant-order';
 
 type CatalogProduct = NonNullable<Awaited<ReturnType<ProductsRepository['findBySlug']>>>;
 
@@ -154,7 +155,7 @@ export class ProductsService {
     return {
       ...publicProduct,
       medicationRestricted: product.requiresMedicationPermission && !this.canBuyMedication(user),
-      variants: product.variants.map(({ physicalStock, reservedStock, isDemoData: _isDemoData, deletedAt: _variantDeletedAt, prices, ...variant }) => {
+      variants: sortProductVariants(product.variants).map(({ physicalStock, reservedStock, isDemoData: _isDemoData, deletedAt: _variantDeletedAt, prices, ...variant }) => {
         const currentPrice = prices[0];
         const availableStock = physicalStock - reservedStock;
         return {

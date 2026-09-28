@@ -10,7 +10,7 @@ const productInclude = () =>
     categories: { include: { category: true } },
     variants: {
       where: { deletedAt: null },
-      orderBy: { name: 'asc' },
+      orderBy: [{ weight: 'asc' }, { name: 'asc' }],
       include: {
         prices: {
           where: {
@@ -62,9 +62,10 @@ export class ProductsRepository {
     };
 
     const skip = (filters.page - 1) * filters.limit;
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
+        relationLoadStrategy: 'join',
         include: productInclude(),
         orderBy: { name: 'asc' },
         skip,
@@ -79,6 +80,7 @@ export class ProductsRepository {
   findBySlug(slug: string) {
     return this.prisma.product.findFirst({
       where: { slug, deletedAt: null, active: true },
+      relationLoadStrategy: 'join',
       include: productInclude(),
     });
   }

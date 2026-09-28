@@ -6,12 +6,17 @@ Backend demo B2B para el nuevo e-commerce mayorista de DISTRICO S.A.
 
 ## Catalogo real y Supabase
 
-- [Extraccion e importacion revisable de DISTRICO](CATALOG-IMPORT.md).
+- [Mapeo e importacion revisable de DISTRICO, Raicor y Magnis](CATALOG-IMPORT.md).
 - [Conexion privada del backend a PostgreSQL de Supabase](SUPABASE.md).
 - [Datos ficticios y cuentas para probar el backend local](LOCAL-TEST-DATA.md).
+- [Marcas reales verificadas de DISTRICO y reemplazo de marcas ficticias](DISTRICO-BRANDS.md).
+- [Precios y stock ficticios de Raicor y Magnis, con marcas por laboratorio](PROVIDER-TEST-DATA.md).
 - Los scripts `import:districo`, `import:raicor` e `import:magnis` originales
   siguen siendo ejemplos ficticios; el catalogo publico usa `catalog:scrape`
   y `catalog:import`. No se cambia el frontend demo.
+- Raicor y Magnis se seleccionan con `catalog:scrape -- --source RAICOR|MAGNIS`.
+  Sus catalogos publicos estan verificados; el caso de `robots.txt` no disponible
+  se maneja con una opcion explicita conforme a RFC 9309. Ver la guia.
 
 ## Alcance implementado
 

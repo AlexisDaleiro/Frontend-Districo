@@ -3,13 +3,14 @@ import { slugify } from '../../common/utils/slugify';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 import { BrandsRepository } from './brands.repository';
+import { orderBrands } from './brand-order';
 
 @Injectable()
 export class BrandsService {
   constructor(private readonly brandsRepository: BrandsRepository) {}
 
-  findAll() {
-    return this.brandsRepository.findAll();
+  async findAll() {
+    return orderBrands(await this.brandsRepository.findAll());
   }
 
   create(dto: CreateBrandDto) {

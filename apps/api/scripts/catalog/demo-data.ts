@@ -1,12 +1,8 @@
 import { Permission, Role } from '@prisma/client';
+import { districoBrandFor } from './districo-brands';
 
 export const DEMO_TAG = 'DATOS_COMERCIALES_FICTICIOS';
 export const DEMO_PRICE_LIST = { id: 'local-demo-price-list', name: 'Lista Mayorista Districo' };
-export const DEMO_BRANDS = ['A', 'B', 'C'].map((letter) => ({
-  id: `local-demo-brand-${letter.toLowerCase()}`,
-  slug: `marca-ficticia-${letter.toLowerCase()}`,
-  name: `Marca ficticia ${letter}`,
-}));
 export const DEMO_LABORATORY = {
   id: 'local-demo-laboratory',
   slug: 'laboratorio-ficticio',
@@ -53,7 +49,7 @@ export function demoProductProfile(externalId: string, categorySlugs: string[]) 
     sku: `DEMO-DIS-${externalId}`,
     price: 390 + (number % 20) * 85,
     stock: 40 + (number % 7) * 10,
-    brandId: DEMO_BRANDS[number % DEMO_BRANDS.length].id,
+    brandSlug: districoBrandFor(externalId)?.slug ?? null,
     laboratoryId: restricted ? DEMO_LABORATORY.id : null,
     requiresMedicationPermission: restricted,
   };

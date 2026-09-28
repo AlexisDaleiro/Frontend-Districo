@@ -1,15 +1,32 @@
 # Datos ficticios sobre Supabase
 
 Este escenario conserva los productos importados, sus descripciones, categorias
-e imagenes. Agrega marcas y laboratorio ficticios, una variante por producto,
+e imagenes. Usa las marcas reales verificadas cuando existe mapeo y agrega
+laboratorio ficticio, inicialmente una variante por producto,
 SKU DEMO, precio UYU y stock de prueba. Activa esos productos solo para probar
 el backend local. No representa precios, existencias ni permisos comerciales reales.
+
+Las marcas A/B/C del escenario anterior se reemplazan mediante
+[la sincronizacion de marcas reales](DISTRICO-BRANDS.md). No se vuelven a
+generar. Los productos nuevos sin marca verificada quedan sin asociacion.
+
+Raicor y Magnis tienen una [preparacion separada](PROVIDER-TEST-DATA.md) que
+usa los laboratorios de origen como marcas y no modifica los productos DISTRICO.
 
 Las variantes llevan `isDemoData=true` y los productos la etiqueta
 `DATOS_COMERCIALES_FICTICIOS`. Las restricciones de medicamentos son escenarios
 de prueba, no una clasificacion sanitaria. Las categorias desconocidas y cuidado
 de mascotas conservan la restriccion; alimentos, snacks y arenas se usan para
 el escenario de compra general. Revisar todo antes de una publicacion real.
+
+El producto APOLO para perros Adultos (DISTRICO 1461) puede prepararse ademas
+con bolsas de 1, 7 y 20 kg, tamaños publicados en
+[su ficha de origen](https://www.districo.com.uy/alimento-para-mascotas/perros/adultos-todas-las-razas-carne-y-cereales/).
+El peso de cada bolsa es real; sus SKU, precios y existencias siguen siendo
+ficticios. La carga no toca variantes con carritos, reservas o pedidos y hace
+un respaldo previo en `apps/api/imports/`, carpeta ignorada por Git.
+Para el resto de los productos y los otros dos proveedores, ver
+[presentaciones oficiales](PRESENTATIONS.md).
 
 ## Preparacion explicita
 
@@ -22,6 +39,8 @@ Desde la raiz, reemplazando PROJECT_REF por el proyecto de prueba autorizado:
 ```sh
 npm run demo:prepare -w apps/api -- --project-ref PROJECT_REF
 npm run demo:prepare -w apps/api -- --project-ref PROJECT_REF --apply
+npm run demo:presentations -w apps/api -- --project-ref PROJECT_REF
+npm run demo:presentations -w apps/api -- --project-ref PROJECT_REF --apply
 ```
 
 Sin `--apply` solo se consulta el estado. Se exige coincidencia explicita del

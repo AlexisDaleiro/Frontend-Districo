@@ -1,25 +1,34 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { CatalogProduct, CatalogSnapshot, parseSnapshot } from './districo';
+import { catalogConfig, CatalogSource } from './sources';
+import { districoBrandFor } from './districo-brands';
 
-export function productCreateData(item: CatalogProduct, fetchedAt: string): Prisma.ProductCreateInput {
+export function productCreateData(
+  item: CatalogProduct,
+  fetchedAt: string,
+  source: CatalogSource = 'DISTRICO',
+): Prisma.ProductCreateInput {
+  const { slugPrefix } = catalogConfig(source);
+  const brand = districoBrandFor(item.externalId, source);
   return {
     name: item.name,
-    slug: `districo-web-${item.externalId}`,
+    slug: `${slugPrefix}-${item.externalId}`,
     shortDescription: item.shortDescription || null,
     description: item.description || null,
-    source: 'DISTRICO',
+    source,
     sourceExternalId: item.externalId,
     sourceUrl: item.sourceUrl,
     sourceFetchedAt: new Date(fetchedAt),
     productType: 'OTHER',
     active: false,
     requiresMedicationPermission: true,
+    ...(brand ? { brand: { connectOrCreate: { where: { slug: brand.slug }, create: { name: brand.name, slug: brand.slug } } } } : {}),
     categories: {
       create: item.categories.map((category) => ({
         category: {
           connectOrCreate: {
-            where: { slug: `districo-web-category-${category.externalId}` },
-            create: { name: category.name, slug: `districo-web-category-${category.externalId}` },
+            where: { slug: `${slugPrefix}-category-${category.externalId}` },
+            create: { name: category.name, slug: `${slugPrefix}-category-${category.externalId}` },
           },
         },
       })),
@@ -40,12 +49,12 @@ export async function importCatalog(prisma: PrismaClient, value: CatalogSnapshot
   const snapshot = parseSnapshot(value);
   const result = { created: 0, skipped: 0 };
   for (const item of snapshot.products) {
-    const where = { source_sourceExternalId: { source: 'DISTRICO' as const, sourceExternalId: item.externalId } };
+    const where = { source_sourceExternalId: { source: snapshot.source, sourceExternalId: item.externalId } };
     try {
       // One transaction per product keeps retries resumable without partial categories/media.
       const created = await prisma.$transaction(async (tx) => {
         if (await tx.product.findUnique({ where, select: { id: true } })) return false;
-        await tx.product.create({ data: productCreateData(item, snapshot.fetchedAt) });
+        await tx.product.create({ data: productCreateData(item, snapshot.fetchedAt, snapshot.source) });
         return true;
       });
       if (created) result.created++;
