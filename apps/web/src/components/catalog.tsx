@@ -150,6 +150,7 @@ function CategoryPicker({
   return (
     <details
       className="picker"
+      open
       onKeyDown={(e) => {
         if (e.key !== "Escape" || !e.currentTarget.open) return;
         e.currentTarget.open = false;

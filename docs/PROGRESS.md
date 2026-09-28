@@ -6,7 +6,7 @@
 
 - `apps/api/src/catalog/products/dto/product-filter.dto.ts` y `products.repository.ts`: `categoryId` acepta varios ids separados por comas (mismo `@Transform` que `attributeValueIds`). Devuelve la unión con las subcategorías de cada id. Un solo id funciona igual que antes. **Es código del socio: avisarle.**
 - `src/lib/demo.ts`: el modo demo filtra igual (varios ids, unión).
-- `src/components/catalog.tsx`: el componente `CategoryPicker` reemplaza los radios. Usa `<details>`. El resumen muestra «Todas», el nombre o «N categorías». Buscador sin tildes, casillas con sangría (sin sangría al buscar), lista con scroll y «Limpiar selección». Escape cierra el panel. En los filtros activos hay un chip por categoría que quita solo esa.
+- `src/components/catalog.tsx`: el componente `CategoryPicker` reemplaza los radios. Usa `<details open>`: el panel arranca abierto al cargar la página y el usuario puede plegarlo. El resumen muestra «Todas», el nombre o «N categorías». Buscador sin tildes, casillas con sangría (sin sangría al buscar), lista con scroll y «Limpiar selección». Escape cierra el panel. En los filtros activos hay un chip por categoría que quita solo esa.
 - `src/app/globals.css`: estilos `.picker-*`.
 - `tests/demo.test.ts`: caso nuevo para dos categorías (unión).
 
