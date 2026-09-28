@@ -19,6 +19,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es-UY">
+      <head>
+        <link rel="preconnect" href="https://www.districo.com.uy" />
+        <link rel="preconnect" href="https://raicor.com.uy" />
+        <link rel="preconnect" href="https://magnis.com.uy" />
+      </head>
       <body>
         <Providers>
           <Header />

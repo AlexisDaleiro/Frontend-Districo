@@ -32,4 +32,14 @@ describe("Renovación de sesión en el navegador", () => {
     await expect(http("cart")).rejects.toMatchObject({ status: 401 });
     expect(dispatchEvent.mock.calls[0][0].type).toBe("session-expired");
   });
+  it("un visitante sin sesión no borra las consultas públicas", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ message: "x" }, { status: 401 })),
+    );
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("window", { dispatchEvent });
+    await expect(http("auth/me")).rejects.toMatchObject({ status: 401 });
+    expect(dispatchEvent).not.toHaveBeenCalled();
+  });
 });

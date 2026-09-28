@@ -19,6 +19,11 @@ import { http, ApiError } from "@/lib/http";
 import { demoRequest, resetDemo } from "@/lib/demo";
 import type { User } from "@/lib/types";
 export const DEMO = process.env.NEXT_PUBLIC_DATA_MODE !== "real";
+export const apiQueryKey = (path: string, userId?: string) => [
+  DEMO ? "demo" : "real",
+  userId ?? "public",
+  path,
+] as const;
 export async function request<T>(
   path: string,
   method = "GET",
@@ -178,8 +183,15 @@ export function Providers({ children }: { children: ReactNode }) {
 export function useApi<T>(path: string, enabled = true) {
   const { user, ready, loading } = useSession();
   return useQuery<T>({
-    queryKey: [DEMO ? "demo" : "real", user?.id ?? "public", path],
+    queryKey: apiQueryKey(path, user?.id),
     queryFn: () => request<T>(path),
     enabled: ready && !loading && enabled,
+  });
+}
+
+export function usePublicApi<T>(path: string) {
+  return useQuery<T>({
+    queryKey: apiQueryKey(path),
+    queryFn: () => request<T>(path),
   });
 }

@@ -7,10 +7,12 @@ import {
   Handshake,
   ShieldCheck,
 } from "lucide-react";
-import { useApi, useSession } from "./providers";
-import type { Entity, ProductList } from "@/lib/types";
+import { apiQueryKey, request, useApi, usePublicApi, useSession } from "./providers";
+import type { Entity, ProductCardList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductGrid } from "./catalog";
+import { useQueryClient } from "@tanstack/react-query";
+import { catalogCardsPath } from "@/lib/catalog-query";
 const normalize = (text: string) =>
   text
     .toLowerCase()
@@ -64,10 +66,20 @@ const needs = [
   },
 ];
 export function Home() {
-  const { user } = useSession();
-  const categories = useApi<Entity[]>("categories"),
-    featured = useApi<ProductList>("products?featured=true&limit=4"),
-    brands = useApi<Entity[]>("brands");
+  const { user, loading } = useSession();
+  const client = useQueryClient();
+  const prefetchCategory = (id: string) => {
+    if (loading) return;
+    const path = catalogCardsPath(new URLSearchParams({ categoryId: id }));
+    void client.prefetchQuery({
+      queryKey: apiQueryKey(path, user?.id),
+      queryFn: () => request<ProductCardList>(path),
+      staleTime: 20_000,
+    });
+  };
+  const categories = usePublicApi<Entity[]>("categories"),
+    featured = useApi<ProductCardList>("products/cards?featured=true&limit=4"),
+    brands = usePublicApi<Entity[]>("brands");
   // Solo se muestran necesidades que coinciden con una categoría existente.
   const mapped = needs
     .flatMap((n) => {
@@ -108,6 +120,8 @@ export function Home() {
                   href={`/catalogo?categoryId=${n.id}`}
                   className="need"
                   key={n.id}
+                  onMouseEnter={() => prefetchCategory(n.id)}
+                  onFocus={() => prefetchCategory(n.id)}
                 >
                   <span className="need-circle">
                     <Picture src={n.image} alt="" />
@@ -189,6 +203,8 @@ export function Home() {
                   className="line-card"
                   key={n.id}
                   href={`/catalogo?categoryId=${n.id}`}
+                  onMouseEnter={() => prefetchCategory(n.id)}
+                  onFocus={() => prefetchCategory(n.id)}
                 >
                   <Picture src={n.image} alt="" loading="lazy" />
                   <p className="eyebrow">0{i + 1} / Nuestras líneas</p>

@@ -49,7 +49,11 @@ export async function http<T>(
   }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 && !path.includes("login"))
+    if (
+      response.status === 401 &&
+      path !== "auth/me" &&
+      !path.includes("login")
+    )
       window.dispatchEvent(new Event("session-expired"));
     throw new ApiError(
       Array.isArray(result.message)
