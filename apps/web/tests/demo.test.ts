@@ -5,6 +5,7 @@ import type {
   Cart,
   ContactInquiry,
   Order,
+  ProductCardList,
   ProductList,
   User,
 } from "../src/lib/types";
@@ -21,6 +22,14 @@ beforeEach(() => {
 const login = (email = "cliente@gmail.com") =>
   api("auth/login", "POST", { email, password: "Demo1234!" });
 describe("Demo B2B: permisos y aislamiento", () => {
+  it("mantiene el listado de tarjetas disponible en modo demo", async () => {
+    const cards = await api<ProductCardList>("products/cards?limit=4");
+    const products = await api<ProductList>("products?limit=4");
+    expect(cards.items.map((product) => product.id)).toEqual(
+      products.items.map((product) => product.id),
+    );
+    expect(cards.meta).toEqual(products.meta);
+  });
   it("no devuelve precios al visitante ni a clientes sin permiso para medicamentos", async () => {
     let list = await api<ProductList>("products?limit=100");
     expect(list.items.every((p) => p.variants.every((v) => !v.price))).toBe(

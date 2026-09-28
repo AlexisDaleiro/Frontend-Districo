@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductFilterDto } from './dto/product-filter.dto';
+import { CategoryHierarchyService } from '../categories/category-hierarchy.service';
 
 const productInclude = () =>
   ({
@@ -34,11 +35,83 @@ const productInclude = () =>
 
 @Injectable()
 export class ProductsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hierarchy: CategoryHierarchyService,
+  ) {}
 
   async findMany(filters: ProductFilterDto) {
-    const categoryIds = filters.categoryId?.length ? await this.categoryAndDescendantIds(filters.categoryId) : undefined;
-    const where: Prisma.ProductWhereInput = {
+    const where = await this.productWhere(filters);
+    const skip = (filters.page - 1) * filters.limit;
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        relationLoadStrategy: 'join',
+        include: productInclude(),
+        orderBy: { name: 'asc' },
+        skip,
+        take: filters.limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { items, meta: { total, page: filters.page, limit: filters.limit } };
+  }
+
+  async findCards(filters: ProductFilterDto) {
+    const where = await this.productWhere(filters);
+    const now = new Date();
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        relationLoadStrategy: 'join',
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          featured: true,
+          requiresMedicationPermission: true,
+          brand: { select: { id: true, name: true } },
+          laboratory: { select: { id: true, name: true } },
+          media: {
+            where: { type: 'IMAGE' },
+            orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
+            take: 1,
+            select: { id: true, url: true, alt: true, type: true },
+          },
+          variants: {
+            where: { deletedAt: null, active: true },
+            orderBy: [{ weight: 'asc' }, { name: 'asc' }],
+            take: 1,
+            select: {
+              id: true,
+              active: true,
+              prices: {
+                where: {
+                  priceList: { active: true },
+                  validFrom: { lte: now },
+                  OR: [{ validUntil: null }, { validUntil: { gte: now } }],
+                },
+                orderBy: { validFrom: 'desc' },
+                take: 1,
+                select: { amount: true, currency: true, priceList: { select: { name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+        skip: (filters.page - 1) * filters.limit,
+        take: filters.limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { items, meta: { total, page: filters.page, limit: filters.limit } };
+  }
+
+  private async productWhere(filters: ProductFilterDto): Promise<Prisma.ProductWhereInput> {
+    const categoryIds = filters.categoryId?.length ? await this.hierarchy.descendantIds(filters.categoryId) : undefined;
+    return {
       deletedAt: null,
       active: true,
       brandId: filters.brandId,
@@ -60,21 +133,6 @@ export class ProductsRepository {
           ]
         : undefined,
     };
-
-    const skip = (filters.page - 1) * filters.limit;
-    const [items, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        relationLoadStrategy: 'join',
-        include: productInclude(),
-        orderBy: { name: 'asc' },
-        skip,
-        take: filters.limit,
-      }),
-      this.prisma.product.count({ where }),
-    ]);
-
-    return { items, meta: { total, page: filters.page, limit: filters.limit } };
   }
 
   findBySlug(slug: string) {
@@ -125,19 +183,4 @@ export class ProductsRepository {
     return this.prisma.productMedia.delete({ where: { id } });
   }
 
-  private async categoryAndDescendantIds(categoryIds: string[]) {
-    const categories = await this.prisma.category.findMany({
-      where: { deletedAt: null, active: true },
-      select: { id: true, parentId: true },
-    });
-    const ids = new Set(categoryIds);
-    let previousSize: number;
-    do {
-      previousSize = ids.size;
-      for (const category of categories) {
-        if (category.parentId && ids.has(category.parentId)) ids.add(category.id);
-      }
-    } while (ids.size !== previousSize);
-    return [...ids];
-  }
 }

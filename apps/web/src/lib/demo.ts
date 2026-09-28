@@ -324,7 +324,7 @@ export async function demoRequest<T>(
       s.contactInquiries.unshift(inquiry);
       result = { received: true, id: inquiry.id, createdAt: now };
     }
-  } else if (route === "products" && method === "GET") {
+  } else if ((route === "products" || route === "products/cards") && method === "GET") {
     let items = s.products.filter((p) => p.active !== false);
     const term = (query.get("search") ?? "").toLowerCase();
     if (term)

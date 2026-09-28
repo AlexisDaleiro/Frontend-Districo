@@ -78,6 +78,17 @@ export type ProductList = {
   items: Product[];
   meta: { total: number; page: number; limit: number };
 };
+export type ProductCardData = Pick<
+  Product,
+  "id" | "slug" | "name" | "featured" | "requiresMedicationPermission" | "brand" | "laboratory"
+> & {
+  media: Pick<Media, "id" | "url" | "alt" | "type">[];
+  variants: Pick<Variant, "id" | "active" | "price">[];
+};
+export type ProductCardList = {
+  items: ProductCardData[];
+  meta: ProductList["meta"];
+};
 export type Attribute = Entity & { values: { id: string; value: string }[] };
 export type CartItem = {
   id: string;

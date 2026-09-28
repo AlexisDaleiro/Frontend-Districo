@@ -23,6 +23,36 @@ export class ProductsService {
     return { ...result, items: result.items.map((product) => this.toPublicProduct(product, user)) };
   }
 
+  async findCards(filters: ProductFilterDto, user?: JwtUser | null) {
+    const result = await this.productsRepository.findCards(filters);
+    return {
+      ...result,
+      items: result.items.map((product) => {
+        const variant = product.variants[0];
+        const currentPrice = variant?.prices[0];
+        return {
+          id: product.id,
+          slug: product.slug,
+          name: product.name,
+          featured: product.featured,
+          requiresMedicationPermission: product.requiresMedicationPermission,
+          brand: product.brand,
+          laboratory: product.laboratory,
+          media: product.media,
+          variants: variant
+            ? [{
+                id: variant.id,
+                active: variant.active,
+                price: this.canViewPrice(product.requiresMedicationPermission, user) && currentPrice
+                  ? { amount: Number(currentPrice.amount), currency: currentPrice.currency }
+                  : undefined,
+              }]
+            : [],
+        };
+      }),
+    };
+  }
+
   async findBySlug(slug: string, user?: JwtUser | null) {
     const product = await this.productsRepository.findBySlug(slug);
     if (!product) {

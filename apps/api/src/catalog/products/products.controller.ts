@@ -27,6 +27,12 @@ export class ProductsController {
     return this.productsService.findMany(filters, user);
   }
 
+  @Get('cards')
+  @UseGuards(OptionalJwtAuthGuard)
+  findCards(@Query() filters: ProductFilterDto, @CurrentUser() user?: JwtUser | null) {
+    return this.productsService.findCards(filters, user);
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

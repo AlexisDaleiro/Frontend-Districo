@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
@@ -15,7 +15,8 @@ import {
   ChevronRight,
   ShoppingBag,
 } from "lucide-react";
-import { request, useApi, useSession, DEMO } from "./providers";
+import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
+import { catalogCardsPath } from "@/lib/catalog-query";
 import {
   ActionLink,
   Empty,
@@ -30,7 +31,8 @@ import type {
   Cart,
   Entity,
   Product,
-  ProductList,
+  ProductCardData,
+  ProductCardList,
   Variant,
 } from "@/lib/types";
 import {
@@ -42,12 +44,21 @@ import {
   purchasable,
   quantityError,
 } from "@/lib/commerce";
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: ProductCardData }) {
   const variant = product.variants.find((v) => v.active !== false);
   const price = variant?.price;
   const { user } = useSession();
+  const client = useQueryClient();
+  const prefetchDetail = () => {
+    const path = `products/${encodeURIComponent(product.slug)}`;
+    void client.prefetchQuery({
+      queryKey: apiQueryKey(path, user?.id),
+      queryFn: () => request<Product>(path),
+      staleTime: 20_000,
+    });
+  };
   return (
-    <article className="product-card">
+    <article className="product-card" onMouseEnter={prefetchDetail} onFocus={prefetchDetail}>
       <Link
         href={`/producto/${product.slug}`}
         className="product-image"
@@ -97,7 +108,7 @@ export function ProductCard({ product }: { product: Product }) {
     </article>
   );
 }
-export function ProductGrid({ products }: { products: Product[] }) {
+export function ProductGrid({ products }: { products: ProductCardData[] }) {
   return (
     <div className="product-grid">
       {products.map((p) => (
@@ -134,12 +145,22 @@ function CategoryPicker({
   categories,
   selected,
   onChange,
+  onPreview,
 }: {
   categories: Entity[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  onPreview: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+  }, []);
+  const preview = (id: string) => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => onPreview(id), 120);
+  };
   const term = normalize(query.trim());
   const items = categoryTree(categories).filter(
     ({ c }) => !term || normalize(c.name).includes(term),
@@ -182,10 +203,15 @@ function CategoryPicker({
               className="filter-option"
               key={c.id}
               style={depth && !term ? { paddingLeft: depth * 16 } : undefined}
+              onMouseEnter={() => preview(c.id)}
+              onMouseLeave={() => {
+                if (previewTimer.current) clearTimeout(previewTimer.current);
+              }}
             >
               <input
                 type="checkbox"
                 checked={selected.includes(c.id)}
+                onFocus={() => onPreview(c.id)}
                 onChange={(e) =>
                   onChange(
                     e.target.checked
@@ -216,32 +242,28 @@ export function Catalog() {
   const params = useSearchParams(),
     router = useRouter();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtered = new URLSearchParams();
-  for (const key of [
-    "search",
-    "categoryId",
-    "brandId",
-    "laboratoryId",
-    "attributeValueIds",
-    "page",
-    "featured",
-    "productType",
-  ]) {
-    const value = params.get(key);
-    if (key === "page" && !/^[1-9]\d*$/.test(value ?? "")) continue;
-    if (value) filtered.set(key, value);
-  }
-  filtered.set("limit", "12");
-  const products = useApi<ProductList>(`products?${filtered}`),
+  const client = useQueryClient();
+  const { user, loading } = useSession();
+  const products = useApi<ProductCardList>(catalogCardsPath(params)),
     categories = useApi<Entity[]>("categories"),
     brands = useApi<Entity[]>("brands"),
     labs = useApi<Entity[]>("laboratories"),
     attributes = useApi<Attribute[]>("attributes");
+  function prefetchCategory(next: URLSearchParams) {
+    if (loading) return;
+    const path = catalogCardsPath(next);
+    void client.prefetchQuery({
+      queryKey: apiQueryKey(path, user?.id),
+      queryFn: () => request<ProductCardList>(path),
+      staleTime: 20_000,
+    });
+  }
   function set(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.delete("page");
+    if (key === "categoryId") prefetchCategory(next);
     router.push(`/catalogo?${next}`, { scroll: false });
   }
   const categoryIds = (params.get("categoryId") ?? "")
@@ -256,6 +278,16 @@ export function Catalog() {
             categories={categories.data}
             selected={categoryIds}
             onChange={(ids) => set("categoryId", ids.join(","))}
+            onPreview={(id) => {
+              const next = new URLSearchParams(params);
+              const ids = categoryIds.includes(id)
+                ? categoryIds.filter((other) => other !== id)
+                : [...categoryIds, id];
+              if (ids.length) next.set("categoryId", ids.join(","));
+              else next.delete("categoryId");
+              next.delete("page");
+              prefetchCategory(next);
+            }}
           />
         )}
       </div>
