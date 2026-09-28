@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
@@ -418,14 +418,17 @@ test('does not log database credentials in error messages', () => {
 test('prepared migrations include every application table and its RLS protection', () => {
   const migrations = resolve(__dirname, '../../prisma/migrations');
   const initial = readFileSync(resolve(migrations, '202609270001_init/migration.sql'), 'utf8');
-  const protection = readFileSync(resolve(migrations, '202609270002_enable_app_rls/migration.sql'), 'utf8');
+  const prepared = readdirSync(migrations, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => readFileSync(resolve(migrations, entry.name, 'migration.sql'), 'utf8'))
+    .join('\n');
   for (const model of Prisma.dmmf.datamodel.models) {
     const table = model.dbName ?? model.name;
-    assert.ok(initial.includes(`CREATE TABLE "${table}"`), `Missing table: ${table}`);
-    assert.ok(protection.includes(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;`), `Missing RLS: ${table}`);
+    assert.ok(prepared.includes(`CREATE TABLE "${table}"`), `Missing table: ${table}`);
+    assert.ok(prepared.includes(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;`), `Missing RLS: ${table}`);
   }
   assert.ok(initial.includes('CREATE UNIQUE INDEX "Product_source_sourceExternalId_key"'));
-  assert.ok(!initial.includes('DROP TABLE') && !protection.includes('DROP TABLE'));
+  assert.ok(!prepared.includes('DROP TABLE'));
 });
 
 test('migration metadata protection is scoped, atomic and compatible with local PostgreSQL', () => {

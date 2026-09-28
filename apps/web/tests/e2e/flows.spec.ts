@@ -201,6 +201,88 @@ test("permisos: la identidad cambia sin recargar al ingresar y al salir", async 
   );
   await expect(page.locator(".cart-count")).toHaveText("0");
 });
+test("contacto registra consulta, filtra puntos demo y permite gestionarla", async ({
+  page,
+}) => {
+  await page.goto("/contacto");
+  await expect(
+    page.getByRole("heading", { name: "Hablemos de tu comercio" }),
+  ).toBeVisible();
+  await page.getByLabel("Nombre y apellido").fill("Persona Contacto");
+  await page.getByLabel("Comercio", { exact: true }).fill("Comercio Contacto");
+  await page.getByLabel("Email", { exact: false }).fill("contacto@example.test");
+  await page.getByLabel("Teléfono", { exact: true }).fill("099123456");
+  await page.getByLabel("Localidad", { exact: true }).fill("Montevideo");
+  await page
+    .getByLabel("Consulta", { exact: false })
+    .fill("Quiero conocer las líneas disponibles para mi comercio.");
+  await page.getByRole("button", { name: "Enviar consulta" }).click();
+  await expect(page.locator(".contact-success")).toContainText(
+    "Recibimos tu consulta",
+  );
+  await expect(page.locator(".contact-store-card")).toHaveCount(6);
+  await page
+    .locator(".contact-filters select")
+    .first()
+    .selectOption("Biofresh");
+  await expect(page.locator(".contact-store-card")).toHaveCount(2);
+  await page.getByRole("button", { name: "Limpiar filtros" }).click();
+  await expect(page.locator(".contact-store-card")).toHaveCount(6);
+
+  await login(page, "Administración");
+  await page.goto("/admin/consultas");
+  await expect(page.locator(".admin-cards")).toContainText("Comercio Contacto");
+  await page.getByRole("button", { name: "Gestionar" }).click();
+  const inquiryDialog = page.getByRole("dialog");
+  await inquiryDialog.locator('select[name="status"]').selectOption("IN_PROGRESS");
+  await inquiryDialog
+    .locator('textarea[name="internalNote"]')
+    .fill("Contactar durante la tarde");
+  await inquiryDialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".admin-cards")).toContainText("En seguimiento");
+  await expect(page.locator(".admin-cards")).toContainText(
+    "Contactar durante la tarde",
+  );
+});
+test("empresa presenta historia, operación y acceso comercial", async ({
+  page,
+}) => {
+  await page.goto("/empresa");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Una empresa uruguaya con más de 30 años de ruta",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Nadie es más importante que todos nosotros juntos.",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Infraestructura para llegar más lejos." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Ninguna empresa puede ser mejor que las personas que trabajan en ella.",
+    }),
+  ).toBeVisible();
+  for (const benefit of ["Gimnasio", "Comedor", "Lavandería"])
+    await expect(
+      page.getByRole("heading", { name: benefit, exact: true }),
+    ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Enviar mi CV" })).toHaveAttribute(
+    "href",
+    /mailto:contacto@districo\.com\.uy/,
+  );
+  await expect(page.getByText(/productos disponibles en nuestro catálogo activo/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Solicitar cuenta mayorista" }),
+  ).toHaveAttribute("href", "/solicitar-cuenta");
+  await expect(
+    page.getByRole("link", { name: "Contactar al equipo" }),
+  ).toHaveAttribute("href", "/contacto");
+});
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {
@@ -241,6 +323,7 @@ for (const width of [360, 390, 768, 1024, 1440])
       "/catalogo",
       "/ingresar",
       "/contacto",
+      "/empresa",
       "/solicitar-cuenta",
     ]) {
       await page.goto(path);

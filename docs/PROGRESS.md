@@ -2,6 +2,12 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Corrección: sedes de /contacto dentro del diseño global (27/09)
+
+- `src/app/globals.css`: `.contact-branches` deja de ser una franja `var(--ink)` a ancho completo (solo header y footer lo son). La sección queda sobre `var(--paper)` y las tarjetas usan el petróleo de `.contact-direct-card` (`var(--ink)`, textos `--on-ink`/`--on-ink-muted`, icono ink sobre lima) y se eliminó el override de color `--on-ink` del encabezado.
+- Mapa del localizador más bajo: `.contact-map`/`.contact-map-wrap` y `max-height` de `.contact-store-list` pasan de 650px a 460px en escritorio; en móvil el mapa pasa de 380px a 280px.
+- Pruebas: `tsc --noEmit` y ESLint sin errores. `/contacto` responde 200 en dev. Prettier marca un problema previo en `.contact-*` (`transition` de ~l.1960), ajeno a este cambio. Falta la revisión visual a 390px y 1280px.
+
 ## Mejora: filtro de categorías con búsqueda y selección múltiple (27/09)
 
 - `apps/api/src/catalog/products/dto/product-filter.dto.ts` y `products.repository.ts`: `categoryId` acepta varios ids separados por comas (mismo `@Transform` que `attributeValueIds`). Devuelve la unión con las subcategorías de cada id. Un solo id funciona igual que antes. **Es código del socio: avisarle.**

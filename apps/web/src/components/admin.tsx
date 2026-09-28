@@ -17,6 +17,7 @@ import {
 } from "@/lib/commerce";
 import type {
   Application,
+  ContactInquiry,
   Customer,
   Entity,
   Expiration,
@@ -28,6 +29,7 @@ import type {
 } from "@/lib/types";
 const sections = [
   ["", "Resumen"],
+  ["consultas", "Consultas"],
   ["solicitudes", "Solicitudes"],
   ["clientes", "Clientes"],
   ["pedidos", "Pedidos"],
@@ -84,6 +86,7 @@ function Dashboard() {
           ["pendingApplications", "Solicitudes pendientes"],
           ["pendingReviewOrders", "Pedidos en revisión"],
           ["activePromotions", "Promociones activas"],
+          ["newContactInquiries", "Consultas nuevas"],
         ].map(([key, title]) => (
           <div className="card stat" key={key}>
             <span>{title}</span>
@@ -104,8 +107,127 @@ function Dashboard() {
           <Link className="button secondary" href="/admin/pedidos">
             Gestionar pedidos
           </Link>
+          <Link className="button secondary" href="/admin/consultas">
+            Ver consultas
+          </Link>
         </div>
       </div>
+    </>
+  );
+}
+function ContactInquiries({ edit }: { edit: OpenEditor }) {
+  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (search.trim()) params.set("search", search.trim());
+  const path = `admin/contact-inquiries${params.size ? `?${params}` : ""}`;
+  const q = useApi<ContactInquiry[]>(path);
+  if (q.isPending) return <Loading />;
+  if (q.error)
+    return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
+  const newCount = q.data.filter((item) => item.status === "NEW").length;
+  return (
+    <>
+      <div className="admin-toolbar contact-admin-toolbar">
+        <div>
+          <h2>Consultas comerciales</h2>
+          <span className="muted small-copy">
+            {newCount} {newCount === 1 ? "nueva" : "nuevas"} · {q.data.length}{" "}
+            en esta vista
+          </span>
+        </div>
+        <div className="contact-admin-filters">
+          <input
+            className="form-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar nombre, comercio o mensaje"
+            aria-label="Buscar consultas"
+          />
+          <select
+            className="form-input"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            aria-label="Filtrar consultas por estado"
+          >
+            <option value="">Todos los estados</option>
+            <option value="NEW">Nueva</option>
+            <option value="IN_PROGRESS">En seguimiento</option>
+            <option value="RESOLVED">Resuelta</option>
+          </select>
+        </div>
+      </div>
+      {!q.data.length ? (
+        <Empty title="No hay consultas con estos filtros" />
+      ) : (
+        <div className="admin-cards contact-admin-list">
+          {q.data.map((inquiry) => (
+            <article className="card" key={inquiry.id}>
+              <div className="row between">
+                <div>
+                  <h3>{inquiry.businessName || inquiry.name}</h3>
+                  {inquiry.businessName && <p>{inquiry.name}</p>}
+                </div>
+                <span className="status-pill">{label(inquiry.status)}</span>
+              </div>
+              <p>
+                <a className="text-link" href={`mailto:${inquiry.email}`}>
+                  {inquiry.email}
+                </a>
+                {inquiry.phone ? ` · ${inquiry.phone}` : ""}
+              </p>
+              {inquiry.locality && <p>{inquiry.locality}</p>}
+              <p className="contact-admin-message">{inquiry.message}</p>
+              <p className="muted small-copy">
+                {new Intl.DateTimeFormat("es-UY", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(inquiry.createdAt))}
+                {inquiry.handledBy?.email
+                  ? ` · Gestionada por ${inquiry.handledBy.email}`
+                  : ""}
+              </p>
+              {inquiry.internalNote && (
+                <p className="contact-admin-note">
+                  <strong>Nota interna:</strong> {inquiry.internalNote}
+                </p>
+              )}
+              <div className="actions">
+                <button
+                  className="button small"
+                  onClick={() =>
+                    edit({
+                      title: `Gestionar consulta de ${inquiry.name}`,
+                      path: `admin/contact-inquiries/${inquiry.id}`,
+                      method: "PATCH",
+                      fields: [
+                        select("status", "Estado", [
+                          { value: "NEW", label: "Nueva" },
+                          { value: "IN_PROGRESS", label: "En seguimiento" },
+                          { value: "RESOLVED", label: "Resuelta" },
+                        ]),
+                        {
+                          key: "internalNote",
+                          label: "Nota interna",
+                          type: "textarea",
+                          required: false,
+                        },
+                      ],
+                      initial: {
+                        status: inquiry.status,
+                        internalNote: inquiry.internalNote ?? "",
+                      },
+                    })
+                  }
+                >
+                  Gestionar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -1295,6 +1417,8 @@ export function Admin({ section = "" }: { section?: string }) {
         </nav>
         {section === "" ? (
           <Dashboard />
+        ) : section === "consultas" ? (
+          <ContactInquiries edit={setEditor} />
         ) : section === "solicitudes" ? (
           <Applications edit={setEditor} />
         ) : section === "clientes" ? (
