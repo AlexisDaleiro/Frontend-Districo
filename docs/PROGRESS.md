@@ -2,6 +2,15 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Auditoría previa a la reunión con el cliente (28/09, sin cambios de código)
+
+- Automatizada con Playwright + axe-core contra `next dev` en modo real (API local en 3001). Cubre 13 rutas públicas o sin sesión a 390px y 1440px. No incluye las pantallas con sesión iniciada ni una inspección visual humana de las capturas.
+- Resultado: sin desbordamiento horizontal, sin imágenes rotas y sin violaciones serias o críticas de axe. En consola aparecen un 401 esperado en `auth/me`/`auth/refresh` sin sesión y un 404 del favicon.
+- Datos reales: 570 productos, 1 sin imagen, todos con marca y descripción. Las imágenes se enlazan directo (hotlink) desde `districo.com.uy` y `raicor.com.uy`. El modo demo tiene 20 productos con descripción genérica.
+- Faltan: repetir pedido (ni front ni API), aviso de pedido por correo o WhatsApp (la API no tiene envío de correo), metadatos Open Graph y favicon, título propio en la ficha de producto (usa el genérico). La ficha inexistente ofrece «Intentar nuevamente» en lugar de un 404. No se usa `next/image`: la portada transfiere unos 2,3 MB, con PNG de hasta 481 KB.
+- El resumen de administración existe (`Dashboard` en `src/components/admin.tsx`, `admin/dashboard`). No se verificó con sesión.
+- Números de rendimiento: pendientes con build de producción y Lighthouse. Las cifras de `next dev` no sirven para presentar.
+
 ## Corrección: sedes de /contacto dentro del diseño global (27/09)
 
 - `src/app/globals.css`: `.contact-branches` deja de ser una franja `var(--ink)` a ancho completo (solo header y footer lo son). La sección queda sobre `var(--paper)` y las tarjetas usan el petróleo de `.contact-direct-card` (`var(--ink)`, textos `--on-ink`/`--on-ink-muted`, icono ink sobre lima) y se eliminó el override de color `--on-ink` del encabezado.
