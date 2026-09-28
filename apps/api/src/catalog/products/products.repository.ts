@@ -37,7 +37,7 @@ export class ProductsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(filters: ProductFilterDto) {
-    const categoryIds = filters.categoryId ? await this.categoryAndDescendantIds(filters.categoryId) : undefined;
+    const categoryIds = filters.categoryId?.length ? await this.categoryAndDescendantIds(filters.categoryId) : undefined;
     const where: Prisma.ProductWhereInput = {
       deletedAt: null,
       active: true,
@@ -125,12 +125,12 @@ export class ProductsRepository {
     return this.prisma.productMedia.delete({ where: { id } });
   }
 
-  private async categoryAndDescendantIds(categoryId: string) {
+  private async categoryAndDescendantIds(categoryIds: string[]) {
     const categories = await this.prisma.category.findMany({
       where: { deletedAt: null, active: true },
       select: { id: true, parentId: true },
     });
-    const ids = new Set([categoryId]);
+    const ids = new Set(categoryIds);
     let previousSize: number;
     do {
       previousSize = ids.size;

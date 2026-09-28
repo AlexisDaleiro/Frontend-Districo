@@ -2,6 +2,16 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: filtro de categorías con búsqueda y selección múltiple (27/09)
+
+- `apps/api/src/catalog/products/dto/product-filter.dto.ts` y `products.repository.ts`: `categoryId` acepta varios ids separados por comas (mismo `@Transform` que `attributeValueIds`). Devuelve la unión con las subcategorías de cada id. Un solo id funciona igual que antes. **Es código del socio: avisarle.**
+- `src/lib/demo.ts`: el modo demo filtra igual (varios ids, unión).
+- `src/components/catalog.tsx`: el componente `CategoryPicker` reemplaza los radios. Usa `<details open>`: el panel arranca abierto al cargar la página y el usuario puede plegarlo. El resumen muestra «Todas», el nombre o «N categorías». Buscador sin tildes, casillas con sangría (sin sangría al buscar), lista con scroll y «Limpiar selección». Escape cierra el panel. En los filtros activos hay un chip por categoría que quita solo esa.
+- `src/app/globals.css`: estilos `.picker-*`.
+- `tests/demo.test.ts`: caso nuevo para dos categorías (unión).
+
+Verificación: en web `lint`, `typecheck` y `test` (33/33) en verde. En api `lint` (tsc) y `test` (3/3) en verde. `/catalogo?categoryId=a,b` responde 200 en local. Falta la revisión visual en el navegador (desktop y drawer «Filtros» mobile, teclado): la extensión de Chrome no carga en la sesión. Falta el e2e con varias categorías.
+
 ## Mejora: paleta institucional y navbar petróleo (27/09)
 
 `src/app/globals.css`: tokens nuevos en `:root` (ver `docs/MASTER.md`) y unos 30 hex sueltos (pasteles, bordes, grises, lima oscura) reemplazados por tokens. `.topbar` en `--ink-deep`; `.header` y `footer` en `--ink` con texto blanco o `--on-ink-muted`. El link activo del navbar va en lima con subrayado, el buscador en blanco y el foco y los hover en lima dentro de las zonas petróleo. El menú mobile (modal blanca) no cambia. Solo CSS, sin cambios de layout.
@@ -25,6 +35,7 @@ Verificación: navegador en `/catalogo` (local, Supabase): 12 tarjetas en 4 fila
 Falla solo del frontend: la API no interviene en qué enlaces se muestran (`POST applications` es público por diseño). Con sesión de cliente ya no se ofrece solicitar cuenta.
 
 - `src/components/shell.tsx`: el enlace de la barra y del menú móvil se muestra solo sin sesión («Quiero ser cliente») o para administración («Administración»).
+- `src/components/shell.tsx` (`Footer`): «Solicitar acceso mayorista» del pie se oculta con sesión iniciada. Verificado con `tsc`, ESLint y Prettier; sin prueba en navegador.
 - `src/components/home.tsx`: la franja final «El próximo paso lo damos juntos» se oculta con sesión.
 - `src/components/auth.tsx` (`Apply`): con sesión, `/solicitar-cuenta` muestra «Ya tenés una cuenta» y enlaza a `/cuenta` o `/admin`, igual que `/ingresar`.
 

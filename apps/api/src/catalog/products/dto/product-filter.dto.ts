@@ -9,8 +9,10 @@ export class ProductFilterDto extends PaginationQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  categoryId?: string;
+  @Transform(({ value }) => typeof value === 'string' ? value.split(',').filter(Boolean) : value)
+  @IsArray()
+  @IsString({ each: true })
+  categoryId?: string[];
 
   @IsOptional()
   @IsString()

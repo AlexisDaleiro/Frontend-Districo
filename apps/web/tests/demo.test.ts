@@ -260,6 +260,15 @@ describe("Demo B2B: recorrido comercial", () => {
     expect(
       (await api<ProductList>(`products?categoryId=${child.id}`)).items,
     ).toHaveLength(1);
+    const arenas = await api<ProductList>(
+      "products?categoryId=arenas&limit=100",
+    );
+    const both = await api<ProductList>(
+      `products?categoryId=arenas,${child.id}&limit=100`,
+    );
+    expect(both.items.map((p) => p.id).sort()).toEqual(
+      [...arenas.items.map((p) => p.id), "demo-product-4"].sort(),
+    );
     const all = await api<ProductList>("products?limit=5&page=2");
     const names = (await api<ProductList>("products?limit=100")).items.map(
       (p) => p.name,

@@ -315,11 +315,15 @@ export async function demoRequest<T>(
     for (const [key, test] of [
       [
         "categoryId",
-        // Igual que la API: incluye las subcategorías.
+        // Igual que la API: lista separada por comas, incluye subcategorías.
         (p: Product, v: string) =>
-          p.categories.some((c) =>
-            descendants(s.categories, v).has(c.categoryId),
-          ),
+          v
+            .split(",")
+            .some((id) =>
+              p.categories.some((c) =>
+                descendants(s.categories, id).has(c.categoryId),
+              ),
+            ),
       ],
       ["brandId", (p: Product, v: string) => p.brand?.id === v],
       ["laboratoryId", (p: Product, v: string) => p.laboratory?.id === v],
