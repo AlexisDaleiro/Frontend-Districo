@@ -4,6 +4,10 @@ Esta guía describe el entorno local actual: Next.js y NestJS corren en la
 computadora, mientras PostgreSQL permanece en el proyecto compartido de
 Supabase `DISTRICODEMO`.
 
+Para conocer todo lo que todavía falta antes de usar Contacto y Nuestra empresa
+con datos y servicios reales, consultar
+[CONTACTO-PENDIENTES.md](CONTACTO-PENDIENTES.md).
+
 ```text
 http://localhost:3000
   -> proxy de Next.js: /api/backend/*

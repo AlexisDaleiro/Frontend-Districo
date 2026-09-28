@@ -21,6 +21,9 @@ Errores y pendientes conocidos del backend, con ubicación y arreglo sugerido: [
 Guía paso a paso para levantar el proyecto en modo demo o conectado al backend
 local con Supabase: [docs/INICIO.md](docs/INICIO.md).
 
+Pendientes para pasar Contacto y Nuestra empresa de demo a producción:
+[docs/CONTACTO-PENDIENTES.md](docs/CONTACTO-PENDIENTES.md).
+
 ## Comandos desde la raíz
 
 ```bash
