@@ -202,6 +202,7 @@ export function Header() {
   );
 }
 export function Footer() {
+  const { user } = useSession();
   return (
     <footer>
       <div className="container footer-grid">
@@ -243,9 +244,11 @@ export function Footer() {
             <br />
             cada necesidad de tu negocio.
           </p>
-          <Link className="text-link" href="/solicitar-cuenta">
-            Solicitar acceso mayorista <ArrowUpRight size={16} />
-          </Link>
+          {!user && (
+            <Link className="text-link" href="/solicitar-cuenta">
+              Solicitar acceso mayorista <ArrowUpRight size={16} />
+            </Link>
+          )}
         </div>
       </div>
       <div className="container footer-bottom">

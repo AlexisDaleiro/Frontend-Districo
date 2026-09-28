@@ -11,6 +11,7 @@ import {
   Minus,
   Plus,
   Check,
+  ChevronDown,
   ChevronRight,
   ShoppingBag,
 } from "lucide-react";
@@ -124,6 +125,92 @@ function categoryTree(list: Entity[]) {
       .flatMap((c) => [{ c, depth }, ...walk(c.id, depth + 1)]);
   return walk(null, 0);
 }
+const normalize = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+function CategoryPicker({
+  categories,
+  selected,
+  onChange,
+}: {
+  categories: Entity[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const term = normalize(query.trim());
+  const items = categoryTree(categories).filter(
+    ({ c }) => !term || normalize(c.name).includes(term),
+  );
+  const names = categories
+    .filter((c) => selected.includes(c.id))
+    .map((c) => c.name);
+  return (
+    <details
+      className="picker"
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || !e.currentTarget.open) return;
+        e.currentTarget.open = false;
+        e.currentTarget.querySelector("summary")?.focus();
+      }}
+    >
+      <summary className="form-input picker-summary">
+        <span>
+          {names.length === 0
+            ? "Todas"
+            : names.length === 1
+              ? names[0]
+              : `${names.length} categorías`}
+        </span>
+        <ChevronDown size={16} aria-hidden />
+      </summary>
+      <div className="picker-panel">
+        <input
+          type="search"
+          className="form-input"
+          placeholder="Buscar categoría…"
+          aria-label="Buscar categoría"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div className="picker-list" role="group" aria-label="Categorías">
+          {items.map(({ c, depth }) => (
+            <label
+              className="filter-option"
+              key={c.id}
+              style={depth && !term ? { paddingLeft: depth * 16 } : undefined}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(c.id)}
+                onChange={(e) =>
+                  onChange(
+                    e.target.checked
+                      ? [...selected, c.id]
+                      : selected.filter((id) => id !== c.id),
+                  )
+                }
+              />
+              {c.name}
+            </label>
+          ))}
+          {!items.length && <p className="picker-empty">Sin resultados</p>}
+        </div>
+        {!!selected.length && (
+          <button
+            type="button"
+            className="text-link"
+            onClick={() => onChange([])}
+          >
+            Limpiar selección <X size={14} />
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
 export function Catalog() {
   const params = useSearchParams(),
     router = useRouter();
@@ -156,36 +243,20 @@ export function Catalog() {
     if (key !== "page") next.delete("page");
     router.push(`/catalogo?${next}`, { scroll: false });
   }
+  const categoryIds = (params.get("categoryId") ?? "")
+    .split(",")
+    .filter(Boolean);
   const filterContent = (
     <>
       <div className="filter-section">
         <h3>Categorías</h3>
         {!!categories.data?.length && (
-          <label className="filter-option">
-            <input
-              type="radio"
-              name="categoryId"
-              checked={!params.get("categoryId")}
-              onChange={() => set("categoryId", "")}
-            />
-            Todas
-          </label>
+          <CategoryPicker
+            categories={categories.data}
+            selected={categoryIds}
+            onChange={(ids) => set("categoryId", ids.join(","))}
+          />
         )}
-        {categoryTree(categories.data ?? []).map(({ c, depth }) => (
-          <label
-            className="filter-option"
-            key={c.id}
-            style={depth ? { paddingLeft: depth * 16 } : undefined}
-          >
-            <input
-              type="radio"
-              name="categoryId"
-              checked={params.get("categoryId") === c.id}
-              onChange={() => set("categoryId", c.id)}
-            />
-            {c.name}
-          </label>
-        ))}
       </div>
       {[
         ["brandId", "Marcas", brands.data],
@@ -293,9 +364,23 @@ export function Catalog() {
             </form>
           </div>
           <div className="active-filters">
+            {categoryIds.map((id) => (
+              <button
+                className="chip"
+                key={id}
+                onClick={() =>
+                  set(
+                    "categoryId",
+                    categoryIds.filter((other) => other !== id).join(","),
+                  )
+                }
+              >
+                {categories.data?.find((c) => c.id === id)?.name ?? "Categoría"}
+                <X size={12} />
+              </button>
+            ))}
             {[
               "search",
-              "categoryId",
               "brandId",
               "laboratoryId",
               "productType",
