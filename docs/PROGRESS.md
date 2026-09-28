@@ -2,6 +2,15 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: imágenes optimizadas con next/image (28/09)
+
+- `src/components/ui.tsx`: `Picture` sigue devolviendo `<img>`, así el CSS y el layout no cambian, pero toma `src`/`srcSet`/`sizes` de `getImageProps` (`next/image`). Se optimizan las imágenes de `/images/` (salvo SVG) y las de los hosts de `src/lib/image-hosts.ts`. Cualquier otra URL, por ejemplo una cargada a mano en administración, se muestra sin optimizar. Si una imagen falla, `onError` vacía `srcset` y muestra el placeholder.
+- `next.config.ts`: `images.remotePatterns` se arma desde `image-hosts.ts` (`www.districo.com.uy`, `raicor.com.uy`, `magnis.com.uy`).
+- `sizes` por uso: tarjeta de producto `(max-width: 767px) 50vw, 300px`, miniaturas `96px`, círculos de necesidades `120px`, líneas `(max-width: 767px) 100vw, 33vw`, administración `42px`/`240px`. En los logos se deriva de `width`. Prettier también reformateó dos bloques previos de `catalog.tsx` y `home.tsx`, sin cambios de lógica.
+- Medido con `next build` + `next start -p 3100` y Playwright: las imágenes de la portada pasaron de más de 1 MB (PNG de 481 KB, hero de 345 KB) a 94 KB. Una foto remota bajó de 132 KB a 7,5 KB en WebP. Un host no listado responde 400. No hubo imágenes rotas en portada, ficha ni empresa.
+- Tests 38/38, lint y Prettier correctos. No se corrieron los tests e2e.
+- **Entorno:** en `next dev` el optimizador devuelve 500 con imágenes remotas porque el proceso no tiene salida a internet (`connect EACCES` en `.next/dev-stderr.log`). En producción funciona. Además, la API local en 3001 está desactualizada: no tiene `GET products/cards` (commit c7b212e6), así que `/catalogo` no muestra productos hasta reiniciar la API.
+
 ## Mejora: vista previa al compartir, favicon y título de ficha (28/09)
 
 - `src/app/layout.tsx`: Open Graph (`website`, `es_UY`, `siteName`) y `twitter.card = summary_large_image`.

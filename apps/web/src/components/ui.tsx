@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { getImageProps } from "next/image";
+import { imageHosts } from "@/lib/image-hosts";
 import {
   useEffect,
   useId,
@@ -8,18 +10,49 @@ import {
   type ImgHTMLAttributes,
 } from "react";
 import { X, ArrowRight, PackageOpen } from "lucide-react";
-export function Picture(props: ImgHTMLAttributes<HTMLImageElement>) {
+export function Picture({
+  sizes,
+  ...props
+}: ImgHTMLAttributes<HTMLImageElement>) {
+  // Con next/image solo se toman src/srcSet: el tamaño visible sigue en el CSS.
+  const optimized = optimizable(props.src)
+    ? getImageProps({
+        src: props.src as string,
+        alt: "",
+        fill: true,
+        sizes:
+          sizes ??
+          (typeof props.width === "number"
+            ? `${props.width}px`
+            : "(max-width: 767px) 100vw, 50vw"),
+      }).props
+    : undefined;
   return (
     <img
       {...props}
+      src={optimized?.src ?? props.src}
+      srcSet={optimized?.srcSet}
+      sizes={optimized?.sizes ?? sizes}
       alt={props.alt ?? ""}
       onError={(e) => {
         const img = e.currentTarget;
-        if (!img.src.endsWith("placeholder.svg"))
+        if (!img.src.endsWith("placeholder.svg")) {
+          img.srcset = "";
           img.src = "/images/placeholder.svg";
+        }
       }}
     />
   );
+}
+function optimizable(src: unknown): src is string {
+  if (typeof src !== "string" || src.endsWith(".svg")) return false;
+  if (src.startsWith("/images/")) return true;
+  try {
+    const url = new URL(src);
+    return url.protocol === "https:" && imageHosts.includes(url.host);
+  } catch {
+    return false;
+  }
 }
 export function Loading() {
   return (

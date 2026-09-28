@@ -58,7 +58,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     });
   };
   return (
-    <article className="product-card" onMouseEnter={prefetchDetail} onFocus={prefetchDetail}>
+    <article
+      className="product-card"
+      onMouseEnter={prefetchDetail}
+      onFocus={prefetchDetail}
+    >
       <Link
         href={`/producto/${product.slug}`}
         className="product-image"
@@ -78,6 +82,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           }
           alt={product.name}
           loading="lazy"
+          sizes="(max-width: 767px) 50vw, 300px"
         />
       </Link>
       <p className="product-meta">
@@ -154,9 +159,12 @@ function CategoryPicker({
 }) {
   const [query, setQuery] = useState("");
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (previewTimer.current) clearTimeout(previewTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    },
+    [],
+  );
   const preview = (id: string) => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
     previewTimer.current = setTimeout(() => onPreview(id), 120);
@@ -710,7 +718,7 @@ function ProductDetailContent({ product }: { product: Product }) {
                 aria-pressed={m.id === image?.id}
                 onClick={() => setImageId(m.id)}
               >
-                <Picture src={m.url} alt="" />
+                <Picture src={m.url} alt="" sizes="96px" />
               </button>
             ))}
           </div>

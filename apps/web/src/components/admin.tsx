@@ -740,6 +740,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                         "/images/placeholder.svg"
                       }
                       alt=""
+                      sizes="42px"
                       style={{ width: 42, height: 42, objectFit: "contain" }}
                     />
                     <strong>{p.name}</strong>
@@ -977,6 +978,7 @@ function VariantManagement({
             <Picture
               src={m.url}
               alt={m.alt ?? product.name}
+              sizes="240px"
               style={{ height: 110, width: "100%", objectFit: "contain" }}
             />
             <div className="actions">

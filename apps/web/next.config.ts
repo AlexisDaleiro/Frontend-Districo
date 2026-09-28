@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
+import { imageHosts } from "./src/lib/image-hosts";
 const config: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: imageHosts.map((hostname) => ({
+      protocol: "https" as const,
+      hostname,
+    })),
+  },
   async headers() {
     return [
       {

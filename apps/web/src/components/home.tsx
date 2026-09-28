@@ -7,7 +7,13 @@ import {
   Handshake,
   ShieldCheck,
 } from "lucide-react";
-import { apiQueryKey, request, useApi, usePublicApi, useSession } from "./providers";
+import {
+  apiQueryKey,
+  request,
+  useApi,
+  usePublicApi,
+  useSession,
+} from "./providers";
 import type { Entity, ProductCardList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductGrid } from "./catalog";
@@ -124,7 +130,7 @@ export function Home() {
                   onFocus={() => prefetchCategory(n.id)}
                 >
                   <span className="need-circle">
-                    <Picture src={n.image} alt="" />
+                    <Picture src={n.image} alt="" sizes="120px" />
                   </span>
                   {n.name}
                 </Link>
@@ -206,7 +212,12 @@ export function Home() {
                   onMouseEnter={() => prefetchCategory(n.id)}
                   onFocus={() => prefetchCategory(n.id)}
                 >
-                  <Picture src={n.image} alt="" loading="lazy" />
+                  <Picture
+                    src={n.image}
+                    alt=""
+                    loading="lazy"
+                    sizes="(max-width: 767px) 100vw, 33vw"
+                  />
                   <p className="eyebrow">0{i + 1} / Nuestras líneas</p>
                   <h3>
                     {n.name === "Alimentación"
