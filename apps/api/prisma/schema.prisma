@@ -89,6 +89,12 @@ enum CustomerDocumentStatus {
   REJECTED
 }
 
+enum ContactInquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
 enum OrderStatus {
   DRAFT
   SUBMITTED
@@ -161,6 +167,7 @@ model User {
   priceChanges      PriceHistory[]   @relation("PriceChangedBy")
   orders            Order[]
   reviewedApplications CustomerApplication[] @relation("ApplicationReviewedBy")
+  handledContactInquiries ContactInquiry[]     @relation("ContactInquiryHandledBy")
   auditLogs         AuditLog[]
   createdPromotions Promotion[]       @relation("PromotionCreatedBy")
   createdCampaigns Campaign[]         @relation("CampaignCreatedBy")
@@ -423,6 +430,26 @@ model CustomerDocument {
   status            CustomerDocumentStatus @default(PENDING)
   expirationDate    DateTime?
   uploadedAt        DateTime               @default(now())
+}
+
+model ContactInquiry {
+  id            String               @id @default(cuid())
+  name          String
+  businessName  String?
+  email         String
+  phone         String?
+  locality      String?
+  message       String
+  status        ContactInquiryStatus @default(NEW)
+  internalNote  String?
+  handledById   String?
+  handledBy     User?                @relation("ContactInquiryHandledBy", fields: [handledById], references: [id])
+  resolvedAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
 }
 
 model Order {

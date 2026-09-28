@@ -16,13 +16,14 @@ export class AdminService {
   ) {}
 
   async dashboard() {
-    const [products, pendingApplications, pendingReviewOrders, activePromotions] = await Promise.all([
+    const [products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries] = await Promise.all([
       this.prisma.product.count({ where: { deletedAt: null } }),
       this.prisma.customerApplication.count({ where: { status: 'PENDING' } }),
       this.prisma.order.count({ where: { status: 'PENDING_REVIEW' } }),
       this.prisma.promotion.count({ where: { active: true, deletedAt: null } }),
+      this.prisma.contactInquiry.count({ where: { status: 'NEW' } }),
     ]);
-    return { products, pendingApplications, pendingReviewOrders, activePromotions };
+    return { products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries };
   }
 
   customers() {

@@ -2,6 +2,7 @@ import { seedProducts, seedUsers, categories } from "./demo-seed";
 import type {
   Application,
   Cart,
+  ContactInquiry,
   Customer,
   Entity,
   Expiration,
@@ -19,6 +20,7 @@ type State = {
   users: User[];
   carts: Record<string, { id: string; variantId: string; quantity: number }[]>;
   applications: Application[];
+  contactInquiries: ContactInquiry[];
   orders: Order[];
   rules: Rule[];
   promotions: Rule[];
@@ -35,6 +37,7 @@ export const blankState = (): State => ({
   users: seedUsers(),
   carts: {},
   applications: [],
+  contactInquiries: [],
   orders: [],
   rules: [],
   promotions: [],
@@ -66,6 +69,7 @@ function read() {
       !Array.isArray(data.users)
     )
       throw Error();
+    data.contactInquiries ??= [];
     return data;
   } catch {
     throw new ApiError(
@@ -300,6 +304,26 @@ export async function demoRequest<T>(
     } as Application;
     s.applications.push(application);
     result = application;
+  } else if (route === "contact-inquiries" && method === "POST") {
+    if (String(b.website ?? "").trim()) {
+      result = { received: true };
+    } else {
+      const now = new Date().toISOString();
+      const inquiry: ContactInquiry = {
+        id: id(),
+        name: String(b.name ?? "").trim(),
+        businessName: String(b.businessName ?? "").trim() || undefined,
+        email: String(b.email ?? "").trim().toLowerCase(),
+        phone: String(b.phone ?? "").trim() || undefined,
+        locality: String(b.locality ?? "").trim() || undefined,
+        message: String(b.message ?? "").trim(),
+        status: "NEW",
+        createdAt: now,
+        updatedAt: now,
+      };
+      s.contactInquiries.unshift(inquiry);
+      result = { received: true, id: inquiry.id, createdAt: now };
+    }
   } else if ((route === "products" || route === "products/cards") && method === "GET") {
     let items = s.products.filter((p) => p.active !== false);
     const term = (query.get("search") ?? "").toLowerCase();
@@ -515,7 +539,44 @@ export async function demoRequest<T>(
           (o) => o.status === "PENDING_REVIEW",
         ).length,
         activePromotions: s.promotions.length,
+        newContactInquiries: s.contactInquiries.filter(
+          (inquiry) => inquiry.status === "NEW",
+        ).length,
       };
+    else if (route === "admin/contact-inquiries") {
+      const status = query.get("status");
+      const term = (query.get("search") ?? "").trim().toLowerCase();
+      result = s.contactInquiries.filter(
+        (inquiry) =>
+          (!status || inquiry.status === status) &&
+          (!term ||
+            [
+              inquiry.name,
+              inquiry.businessName,
+              inquiry.email,
+              inquiry.locality,
+              inquiry.message,
+            ].some((value) => value?.toLowerCase().includes(term))),
+      );
+    } else if (
+      route.startsWith("admin/contact-inquiries/") &&
+      method === "PATCH"
+    ) {
+      const inquiry = s.contactInquiries.find((item) => item.id === parts[2]);
+      if (!inquiry) throw new ApiError("Consulta no encontrada.", 404);
+      if (["NEW", "IN_PROGRESS", "RESOLVED"].includes(String(b.status)))
+        inquiry.status = b.status as ContactInquiry["status"];
+      if (b.internalNote !== undefined)
+        inquiry.internalNote = String(b.internalNote).trim() || null;
+      inquiry.handledById = user!.id;
+      inquiry.handledBy = { id: user!.id, email: user!.email };
+      inquiry.resolvedAt =
+        inquiry.status === "RESOLVED"
+          ? inquiry.resolvedAt ?? new Date().toISOString()
+          : null;
+      inquiry.updatedAt = new Date().toISOString();
+      result = inquiry;
+    }
     else if (route === "admin/applications") result = s.applications;
     else if (route.startsWith("admin/applications/")) {
       const a = s.applications.find((a) => a.id === parts[2]);

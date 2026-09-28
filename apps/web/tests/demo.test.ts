@@ -3,6 +3,7 @@ import { demoRequest as api, resetDemo } from "../src/lib/demo";
 import type {
   Application,
   Cart,
+  ContactInquiry,
   Order,
   ProductCardList,
   ProductList,
@@ -76,6 +77,36 @@ describe("Demo B2B: permisos y aislamiento", () => {
   });
 });
 describe("Demo B2B: recorrido comercial", () => {
+  it("registra y gestiona una consulta comercial", async () => {
+    const created = await api<{ id: string; received: true }>(
+      "contact-inquiries",
+      "POST",
+      {
+        name: "Persona Consulta",
+        businessName: "Comercio Consulta",
+        email: "CONSULTA@example.test",
+        locality: "Montevideo",
+        message: "Necesito información sobre las líneas disponibles.",
+      },
+    );
+    expect(created.received).toBe(true);
+    await login("admin@districo.com");
+    const list = await api<ContactInquiry[]>("admin/contact-inquiries");
+    expect(list[0]).toMatchObject({
+      id: created.id,
+      email: "consulta@example.test",
+      status: "NEW",
+    });
+    const updated = await api<ContactInquiry>(
+      `admin/contact-inquiries/${created.id}`,
+      "PATCH",
+      { status: "IN_PROGRESS", internalNote: "Llamar por la tarde" },
+    );
+    expect(updated).toMatchObject({
+      status: "IN_PROGRESS",
+      internalNote: "Llamar por la tarde",
+    });
+  });
   it("solicitud, aprobación, login y pedido", async () => {
     const a = await api<Application>("applications", "POST", {
       email: "comercio@example.test",

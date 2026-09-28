@@ -4,6 +4,10 @@ Esta guía describe el entorno local actual: Next.js y NestJS corren en la
 computadora, mientras PostgreSQL permanece en el proyecto compartido de
 Supabase `DISTRICODEMO`.
 
+Para conocer todo lo que todavía falta antes de usar Contacto y Nuestra empresa
+con datos y servicios reales, consultar
+[CONTACTO-PENDIENTES.md](CONTACTO-PENDIENTES.md).
+
 ```text
 http://localhost:3000
   -> proxy de Next.js: /api/backend/*
@@ -68,7 +72,8 @@ npm.cmd exec --workspace apps/api -- prisma migrate status
 ```
 
 La primera orden debe confirmar la conexión y la tabla `Product`; la segunda,
-que las tres migraciones están aplicadas. Si hay diferencias, detenete y
+que las migraciones están aplicadas, incluida `202609270004_contact_inquiries`.
+Si hay diferencias, detenete y
 consultá al responsable del backend.
 
 La base compartida ya contiene el catálogo y las cuentas ficticias. Para un
@@ -95,7 +100,9 @@ Comprobaciones:
 - Swagger: http://127.0.0.1:3001/api/docs
 
 El endpoint de productos debe responder JSON con `items` y `meta`. Un visitante
-no recibe precios privados.
+no recibe precios privados. La API también expone `POST /api/contact-inquiries`
+para guardar consultas públicas y la documentación completa está en
+http://127.0.0.1:3001/api/docs.
 
 ## 5. Conectar e iniciar el frontend
 
@@ -104,6 +111,8 @@ Crear o editar `apps/web/.env.local` sin borrar variables ajenas:
 ```dotenv
 NEXT_PUBLIC_DATA_MODE=real
 BACKEND_API_URL=http://127.0.0.1:3001/api
+# Opcional: por defecto usa OpenStreetMap
+# NEXT_PUBLIC_MAP_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
 ```
 
 En una segunda terminal abierta en la raíz:
@@ -124,13 +133,18 @@ operaciones POST coincidan con la protección de origen del proxy.
 
 1. Abrí http://localhost:3000/api/backend/products?limit=1. Debe responder el
    JSON de la API, no el mensaje de modo demo.
-2. Abrí el catálogo. El escenario inicial contiene 156 productos.
+2. Abrí el catálogo. Comprobá el total que informa el entorno compartido (en la
+   verificación actual responde 570 productos).
 3. Sin sesión, confirmá que no aparecen precios privados.
 4. Ingresá con una cuenta `.test` y la contraseña compartida en privado.
 5. Recargá la página y confirmá que la sesión se conserva.
 6. Probá un producto permitido en el carrito y retiralo al terminar.
 7. Con la cuenta administradora, abrí clientes y catálogo.
 8. Cerrá sesión y confirmá que desaparece la información privada.
+9. Abrí `/contacto`, enviá una consulta de prueba y comprobá la confirmación.
+10. Con la cuenta administradora, abrí **Administración → Consultas** y
+    verificá que la consulta aparezca, se pueda filtrar y pasar a
+    `En seguimiento` o `Resuelta` con una nota interna.
 
 | Cuenta de prueba | Uso |
 | --- | --- |
@@ -144,6 +158,12 @@ No escribas la contraseña en documentación, commits, capturas o logs. Cambiar
 
 No confirmes pedidos durante una prueba de arranque: la base es compartida y
 las operaciones reales del backend persisten.
+
+Las consultas de contacto no se envían por correo desde esta entrega: quedan
+guardadas en la bandeja administrativa. El localizador muestra seis puntos
+ficticios rotulados como **Demo**; el mapa usa Leaflet y OpenStreetMap, y la
+geolocalización solo se solicita al pulsar **Usar mi ubicación**. Las
+coordenadas no se guardan ni se envían al backend.
 
 ## 7. Detener y volver a iniciar
 

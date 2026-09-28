@@ -146,6 +146,30 @@ export type Application = {
   rejectionReason?: string;
   documents?: { type: string; fileUrl: string; originalName: string }[];
 };
+export type ContactInquiryStatus = "NEW" | "IN_PROGRESS" | "RESOLVED";
+export type CreateContactInquiryInput = {
+  name: string;
+  businessName?: string;
+  email: string;
+  phone?: string;
+  locality?: string;
+  message: string;
+  website?: string;
+};
+export type UpdateContactInquiryInput = {
+  status?: ContactInquiryStatus;
+  internalNote?: string;
+};
+export type ContactInquiry = CreateContactInquiryInput & {
+  id: string;
+  status: ContactInquiryStatus;
+  internalNote?: string | null;
+  handledById?: string | null;
+  handledBy?: { id: string; email: string } | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 export type Rule = {
   id: string;
   name: string;
