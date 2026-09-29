@@ -2,6 +2,13 @@
 
 Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
 
+## Mejora: carrito guarda la cantidad sin botón y refresca rápido (29/09)
+
+- `src/components/orders.tsx` (`CartLine`): se quitó el botón «Actualizar». Un `useEffect` envía `PATCH cart/items/:id` 400 ms después del último cambio de cantidad válido. Si la cantidad es inválida o el guardado anterior falló, no envía hasta el próximo cambio.
+- Lentitud: antes `onSettled` hacía `invalidateQueries()` sin filtro y releía todas las consultas activas. Ahora la respuesta del PATCH/DELETE (el carrito completo con totales de la API) se escribe con `setQueryData` en la key `cart`. Solo se revalida `cart/recommendations` en segundo plano. Si hay error, se relee solo `cart`. El frontend no calcula precios.
+- `key={item.id}` (antes `id-quantity`) para no volver a montar la línea mientras el usuario sigue cambiando la cantidad. El subtotal baja la opacidad con `aria-busy` mientras guarda.
+- Pruebas: `tsc --noEmit`, ESLint, Prettier y 44/44 tests, todo correcto. **No se verificó en navegador:** el dev en 3000 está en modo real y `cliente@gmail.com`/`Demo1234!` da 401 en la base local. Falta probar a mano en `/carrito`: tocar «+» varias veces tiene que dar un solo PATCH y actualizar el subtotal y el resumen.
+
 ## Mejora: imágenes optimizadas con next/image (28/09)
 
 - `src/components/ui.tsx`: `Picture` sigue devolviendo `<img>`, así el CSS y el layout no cambian, pero toma `src`/`srcSet`/`sizes` de `getImageProps` (`next/image`). Se optimizan las imágenes de `/images/` (salvo SVG) y las de los hosts de `src/lib/image-hosts.ts`. Cualquier otra URL, por ejemplo una cargada a mano en administración, se muestra sin optimizar. Si una imagen falla, `onError` vacía `srcset` y muestra el placeholder.

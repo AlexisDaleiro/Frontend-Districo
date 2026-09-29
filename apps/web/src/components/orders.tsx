@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, ArrowUpRight, CheckCircle } from "lucide-react";
-import { request, useApi, useSession, DEMO } from "./providers";
+import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { AccessGate } from "./auth";
 import { Quantity } from "./catalog";
 import { ActionLink, Empty, ErrorBox, Loading, PageHeading } from "./ui";
@@ -20,18 +20,38 @@ import { ApiError } from "@/lib/http";
 function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
   const [quantity, setQuantity] = useState(item.quantity);
   const client = useQueryClient();
+  const { user } = useSession();
   const error = quantityError(item.variant, quantity);
   const mutation = useMutation({
     mutationFn: (remove: boolean) =>
-      request(
+      request<Cart>(
         `cart/items/${item.id}`,
         remove ? "DELETE" : "PATCH",
         remove ? undefined : { quantity },
       ),
-    // Tras un error también se relee el carrito: muestra lo que quedó guardado
+    // La API devuelve el carrito con los totales ya calculados: se usa directo
+    // en lugar de releer todas las consultas.
+    onSuccess: (cart) => {
+      client.setQueryData(apiQueryKey("cart", user?.id), cart);
+      void client.invalidateQueries({
+        queryKey: apiQueryKey("cart/recommendations", user?.id),
+      });
+    },
+    // Tras un error se relee el carrito: muestra lo que quedó guardado
     // (otra pestaña pudo cambiarlo) y la cantidad absoluta se puede reintentar.
-    onSettled: () => void client.invalidateQueries(),
+    onError: () =>
+      void client.invalidateQueries({
+        queryKey: apiQueryKey("cart", user?.id),
+      }),
   });
+  const { isPending, isError, mutate } = mutation;
+  // Guarda la cantidad sola, un momento después del último cambio.
+  useEffect(() => {
+    if (busy || isPending || isError || error || quantity === item.quantity)
+      return;
+    const timer = setTimeout(() => mutate(false), 400);
+    return () => clearTimeout(timer);
+  }, [busy, isPending, isError, error, quantity, item.quantity, mutate]);
   return (
     <div className="cart-item">
       <div>
@@ -48,21 +68,12 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
         <div className="row">
           <Quantity
             value={quantity}
-            onChange={setQuantity}
+            onChange={(value) => {
+              mutation.reset();
+              setQuantity(value);
+            }}
             variant={item.variant}
           />
-          <button
-            className="button secondary small"
-            disabled={
-              busy ||
-              mutation.isPending ||
-              !!error ||
-              quantity === item.quantity
-            }
-            onClick={() => mutation.mutate(false)}
-          >
-            Actualizar
-          </button>
           <button
             className="icon-button"
             aria-label={`Quitar ${item.product.name}`}
@@ -80,7 +91,10 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
         )}
         {mutation.error && <ErrorBox error={mutation.error} />}
       </div>
-      <strong>
+      <strong
+        aria-busy={isPending}
+        style={{ opacity: isPending ? 0.55 : 1, transition: "opacity .2s" }}
+      >
         {item.unitPrice ? money(item.subtotal, item.currency) : "Sin precio"}
       </strong>
     </div>
@@ -155,11 +169,7 @@ function CartContent() {
     <div className="cart-layout">
       <div>
         {q.data.items.map((item) => (
-          <CartLine
-            key={`${item.id}-${item.quantity}`}
-            item={item}
-            busy={checkout.isPending}
-          />
+          <CartLine key={item.id} item={item} busy={checkout.isPending} />
         ))}
         <div className="actions">
           <ActionLink href="/catalogo" secondary>
