@@ -483,7 +483,10 @@ export function Catalog() {
             </Empty>
           ) : (
             <>
-              <ProductGrid products={products.data.items} />
+              <ProductGrid
+                key={params.toString()}
+                products={products.data.items}
+              />
               <div className="pagination">
                 <button
                   className="button secondary small"
@@ -705,6 +708,7 @@ function ProductDetailContent({ product }: { product: Product }) {
           }}
         >
           <Picture
+            key={image?.id ?? "placeholder"}
             src={image?.url ?? "/images/placeholder.svg"}
             alt={image?.alt || product.name}
           />

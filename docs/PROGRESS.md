@@ -1,6 +1,13 @@
 # Registro de avance
 
-Última actualización: 27 de septiembre de 2026. Rama de trabajo: `claude/epic-thompson-471tv4`, reiniciada desde `main` tras mergear el PR #9 (sin commit).
+Última actualización: 29 de septiembre de 2026. Rama de trabajo: `main`.
+
+## Animaciones del sitio completo (29/09)
+
+- `src/components/motion-system.tsx` y `src/app/motion.css`: entradas de sección y tarjetas al aparecer una vez, parallax suave en las fotografías de portada, acentos ambientales, hover, filtros, pestañas, diálogos y confirmaciones. El controlador usa un solo `IntersectionObserver`, detecta contenido asíncrono y limita el parallax con `requestAnimationFrame`. Los elementos son visibles sin JavaScript; la pestaña oculta pausa las animaciones y `prefers-reduced-motion` desactiva el movimiento.
+- `src/app/layout.tsx` instala el controlador. `src/components/catalog.tsx` remonta la grilla al cambiar filtros y la imagen principal al elegir otra. `src/components/orders.tsx` señala visualmente una cantidad guardada. No cambian contratos ni cálculos comerciales.
+- `scripts/check-motion.mjs` revisó 13 rutas en 360, 390, 768, 1024 y 1440 px, con movimiento normal y reducido: sin desbordamientos ni errores de página. Verificó parallax, teclado en menú/filtros/pestañas y señal de guardado con respuestas controladas, sin enviar pedidos. Capturas locales en `.local-support/motion-shots/`.
+- Typecheck, ESLint, Prettier y 44/44 pruebas unitarias correctos. El navegador usó el servidor existente en modo real y sustituyó respuestas de la API para inspeccionar áreas privadas; falta una pasada manual con datos reales de una cuenta habilitada. Siguiente comando de revisión: `node scripts/check-motion.mjs` con el servidor web activo en `127.0.0.1:3000`.
 
 ## Mejora: carrito guarda la cantidad sin botón y refresca rápido (29/09)
 

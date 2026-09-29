@@ -93,6 +93,7 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
       </div>
       <strong
         aria-busy={isPending}
+        data-saved={mutation.isSuccess && quantity === item.quantity}
         style={{ opacity: isPending ? 0.55 : 1, transition: "opacity .2s" }}
       >
         {item.unitPrice ? money(item.subtotal, item.currency) : "Sin precio"}
