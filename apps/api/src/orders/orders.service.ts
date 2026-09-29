@@ -167,7 +167,13 @@ export class OrdersService {
   findAdminOrders() {
     return this.prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { items: true, user: { select: { email: true } }, customerAccount: true },
+      include: {
+        items: true,
+        user: { select: { email: true } },
+        customerAccount: true,
+        payments: { orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, createdAt: true } },
+        invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true } },
+      },
     });
   }
 
@@ -177,6 +183,9 @@ export class OrdersService {
       include: { reservations: true, user: true },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
+    if ((status === OrderStatus.REJECTED || status === OrderStatus.CANCELLED) && order.paidTotal.gt(0)) {
+      throw new BadRequestException('El pedido tiene pagos registrados. Gestioná la devolución antes de anularlo.');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       if (status === OrderStatus.APPROVED || status === OrderStatus.PROCESSING) {
@@ -185,7 +194,15 @@ export class OrdersService {
       if (status === OrderStatus.REJECTED || status === OrderStatus.CANCELLED) {
         await this.releaseReservations(order.id, tx, StockReservationStatus.RELEASED);
       }
-      await tx.order.update({ where: { id }, data: { status, reviewReason } });
+      if (status === OrderStatus.REJECTED || status === OrderStatus.CANCELLED) {
+        const updated = await tx.order.updateMany({
+          where: { id, paidTotal: 0 },
+          data: { status, reviewReason },
+        });
+        if (!updated.count) throw new BadRequestException('El pedido tiene pagos registrados. Gestioná la devolución antes de anularlo.');
+      } else {
+        await tx.order.update({ where: { id }, data: { status, reviewReason } });
+      }
     });
 
     await this.audit.log(`ORDER_${status}`, 'Order', id, userId, { reviewReason });

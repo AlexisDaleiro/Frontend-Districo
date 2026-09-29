@@ -7,6 +7,22 @@ Se mantienen el login JWT, usuarios y permisos del backend. No se implementa
 Supabase Auth ni acceso a tablas desde el navegador. No se necesitan claves
 anon/publishable/service_role de Supabase para esta conexion.
 
+## Facturas privadas de pedidos
+
+La carga de facturas en `/admin/pedidos` usa **Supabase Storage**, ademas de
+PostgreSQL. En el panel de Supabase, crear un bucket llamado `order-invoices`
+con acceso **Private** y limite de 5 MB; admitir PDF, PNG y JPEG. No hacerlo
+publico. En `apps/api/.env` configurar `SUPABASE_URL` con la URL HTTPS del
+proyecto y `SUPABASE_SECRET_KEY` con una clave **secret** del servidor obtenida
+en Settings > API Keys. No copiar esa clave al frontend ni compartirla por chat.
+`SUPABASE_INVOICE_BUCKET` permite cambiar el nombre del bucket. El backend
+comprueba que sea privado antes de cada operacion y valida la firma del archivo.
+La migracion de pedidos guarda el historial de abonos y solo referencias a
+facturas; los archivos no se incluyen en PostgreSQL. Aplicar la migracion con
+`npm run db:deploy -w apps/api` antes de usar la ficha de pagos. Sin bucket o
+clave configurados, los pagos siguen disponibles, pero la carga y descarga de
+facturas responderan con un error de configuracion.
+
 ## 1. Crear el proyecto
 
 Crear un proyecto dedicado, por ejemplo `districo-dev`, desde el dashboard de

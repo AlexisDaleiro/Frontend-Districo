@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CategoryIdentity, groupEquivalentCategories } from './category-groups';
 
-type CategoryLink = { id: string; parentId: string | null };
+type CategoryLink = CategoryIdentity;
 
 @Injectable()
 export class CategoryHierarchyService {
@@ -18,7 +19,7 @@ export class CategoryHierarchyService {
 
   remember(links: CategoryLink[], version: number) {
     if (version !== this.revision) return;
-    this.links = links.map(({ id, parentId }) => ({ id, parentId }));
+    this.links = links.map(({ id, name, parentId }) => ({ id, name, parentId }));
     this.expiresAt = Date.now() + 60_000;
   }
 
@@ -31,10 +32,18 @@ export class CategoryHierarchyService {
 
   async descendantIds(categoryIds: string[]) {
     const links = await this.getLinks();
+    const aliases = new Map<string, string[]>();
+    for (const group of groupEquivalentCategories(links).values()) {
+      const ids = group.map((category) => category.id);
+      for (const id of ids) aliases.set(id, ids);
+    }
     const ids = new Set(categoryIds);
     let previousSize: number;
     do {
       previousSize = ids.size;
+      for (const id of [...ids]) {
+        for (const alias of aliases.get(id) ?? []) ids.add(alias);
+      }
       for (const category of links) {
         if (category.parentId && ids.has(category.parentId)) ids.add(category.id);
       }
@@ -48,7 +57,7 @@ export class CategoryHierarchyService {
     const version = this.revision;
     const pending = this.prisma.category.findMany({
       where: { deletedAt: null, active: true },
-      select: { id: true, parentId: true },
+      select: { id: true, name: true, parentId: true },
     }).then((links) => {
       if (version !== this.revision) return this.getLinks();
       this.remember(links, version);

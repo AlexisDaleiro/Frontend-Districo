@@ -17,6 +17,7 @@ import {
 import type { Entity, ProductCardList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductGrid } from "./catalog";
+import { BrandLogo } from "./brand-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { catalogCardsPath } from "@/lib/catalog-query";
 const normalize = (text: string) =>
@@ -83,7 +84,7 @@ export function Home() {
       staleTime: 20_000,
     });
   };
-  const categories = usePublicApi<Entity[]>("categories"),
+  const categories = usePublicApi<Entity[]>("categories/catalog"),
     featured = useApi<ProductCardList>("products/cards?featured=true&limit=4"),
     brands = usePublicApi<Entity[]>("brands");
   // Solo se muestran necesidades que coinciden con una categoría existente.
@@ -258,7 +259,7 @@ export function Home() {
                   key={b.id}
                   href={`/catalogo?brandId=${encodeURIComponent(b.id)}`}
                 >
-                  {b.name}
+                  <BrandLogo brand={b} />
                 </Link>
               ))}
               <Link className="text-link" href="/marcas">

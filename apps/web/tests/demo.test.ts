@@ -22,6 +22,9 @@ beforeEach(() => {
 const login = (email = "cliente@gmail.com") =>
   api("auth/login", "POST", { email, password: "Demo1234!" });
 describe("Demo B2B: permisos y aislamiento", () => {
+  it("expone las categorías del catálogo en modo demo", async () => {
+    expect(await api("categories/catalog")).toEqual(await api("categories"));
+  });
   it("mantiene el listado de tarjetas disponible en modo demo", async () => {
     const cards = await api<ProductCardList>("products/cards?limit=4");
     const products = await api<ProductList>("products?limit=4");

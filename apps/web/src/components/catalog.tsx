@@ -16,7 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
-import { catalogCardsPath } from "@/lib/catalog-query";
+import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import {
   ActionLink,
   Empty,
@@ -253,7 +253,7 @@ export function Catalog() {
   const client = useQueryClient();
   const { user, loading } = useSession();
   const products = useApi<ProductCardList>(catalogCardsPath(params)),
-    categories = useApi<Entity[]>("categories"),
+    categories = useApi<Entity[]>("categories/catalog"),
     brands = useApi<Entity[]>("brands"),
     labs = useApi<Entity[]>("laboratories"),
     attributes = useApi<Attribute[]>("attributes");
@@ -274,9 +274,10 @@ export function Catalog() {
     if (key === "categoryId") prefetchCategory(next);
     router.push(`/catalogo?${next}`, { scroll: false });
   }
-  const categoryIds = (params.get("categoryId") ?? "")
-    .split(",")
-    .filter(Boolean);
+  const categoryIds = canonicalCategoryIds(
+    categories.data ?? [],
+    (params.get("categoryId") ?? "").split(",").filter(Boolean),
+  );
   const filterContent = (
     <>
       <div className="filter-section">

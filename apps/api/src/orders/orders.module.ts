@@ -7,11 +7,13 @@ import { PromotionsModule } from '../promotions/promotions.module';
 import { CheckoutController } from './checkout.controller';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { OrderBillingService } from './order-billing.service';
+import { InvoiceStorageService } from './invoice-storage.service';
 
 @Module({
   imports: [PrismaModule, InventoryModule, PromotionsModule, AuditModule, NotificationsModule],
   controllers: [OrdersController, CheckoutController],
-  providers: [OrdersService],
-  exports: [OrdersService],
+  providers: [OrdersService, OrderBillingService, InvoiceStorageService],
+  exports: [OrdersService, OrderBillingService],
 })
 export class OrdersModule {}

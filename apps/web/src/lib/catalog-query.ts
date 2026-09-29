@@ -19,3 +19,14 @@ export function catalogCardsPath(params: Pick<URLSearchParams, "get">) {
   filtered.set("limit", "12");
   return `products/cards?${filtered}`;
 }
+
+export function canonicalCategoryIds(
+  categories: { id: string; aliasIds?: string[] }[],
+  ids: string[],
+) {
+  const canonical = new Map<string, string>();
+  for (const category of categories) {
+    for (const id of category.aliasIds ?? [category.id]) canonical.set(id, category.id);
+  }
+  return [...new Set(ids.map((id) => canonical.get(id) ?? id))];
+}

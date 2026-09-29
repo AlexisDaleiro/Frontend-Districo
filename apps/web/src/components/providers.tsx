@@ -32,7 +32,7 @@ export async function request<T>(
   const result = await (DEMO
     ? demoRequest<T>(path, method, body)
     : http<T>(path, method, body));
-  if (path === "categories" && method === "GET") {
+  if ((path === "categories" || path === "categories/catalog") && method === "GET") {
     type Node = { children?: Node[] };
     const flatten = (nodes: Node[]): Node[] =>
       nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);

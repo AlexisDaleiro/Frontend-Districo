@@ -5,6 +5,9 @@ import { ProductsRepository } from '../../src/catalog/products/products.reposito
 import { ProductsService } from '../../src/catalog/products/products.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { CategoryHierarchyService } from '../../src/catalog/categories/category-hierarchy.service';
+import { CategoriesService } from '../../src/catalog/categories/categories.service';
+import { CategoriesRepository } from '../../src/catalog/categories/categories.repository';
+import { groupEquivalentCategories } from '../../src/catalog/categories/category-groups';
 
 const hierarchy = { descendantIds: async (ids: string[]) => ids } as CategoryHierarchyService;
 
@@ -121,23 +124,54 @@ test('category hierarchy reuses a public read and reloads after invalidation', a
       findMany: async () => {
         reads += 1;
         return [
-          { id: 'root', parentId: null },
-          { id: 'child', parentId: 'root' },
-          { id: 'grandchild', parentId: 'child' },
+          { id: 'root', name: 'Root', parentId: null },
+          { id: 'child', name: 'Child', parentId: 'root' },
+          { id: 'grandchild', name: 'Grandchild', parentId: 'child' },
         ];
       },
     },
   } as unknown as PrismaService;
   const cache = new CategoryHierarchyService(prisma);
   const oldVersion = cache.version;
-  cache.remember([{ id: 'root', parentId: null }, { id: 'child', parentId: 'root' }], oldVersion);
+  cache.remember([
+    { id: 'root', name: 'Root', parentId: null },
+    { id: 'child', name: 'Child', parentId: 'root' },
+  ], oldVersion);
   assert.deepEqual(await cache.descendantIds(['root']), ['root', 'child']);
   assert.equal(reads, 0);
 
   cache.invalidate();
-  cache.remember([{ id: 'stale', parentId: null }], oldVersion);
+  cache.remember([{ id: 'stale', name: 'Stale', parentId: null }], oldVersion);
   assert.deepEqual(await cache.descendantIds(['root']), ['root', 'child', 'grandchild']);
   assert.equal(reads, 1);
   await cache.descendantIds(['root']);
   assert.equal(reads, 1);
+});
+
+test('catalog groups equivalent names without mixing different parent paths', async () => {
+  const categories = [
+    { id: 'pet-r', name: 'Animales de compañía', slug: 'raicor-pet', parentId: null },
+    { id: 'pet-m', name: 'Animales de compania', slug: 'magnis-pet', parentId: null },
+    { id: 'bio-r', name: 'Biológicos', slug: 'raicor-bio', parentId: 'pet-r' },
+    { id: 'bio-m', name: 'BIOLOGICOS', slug: 'magnis-bio', parentId: 'pet-m' },
+    { id: 'cattle', name: 'Ganadería', slug: 'raicor-cattle', parentId: null },
+    { id: 'bio-c', name: 'Biológicos', slug: 'raicor-cattle-bio', parentId: 'cattle' },
+  ];
+  assert.equal(groupEquivalentCategories(categories).size, 4);
+  const prisma = {} as PrismaService;
+  const cache = new CategoryHierarchyService(prisma);
+  const repository = { findAll: async () => categories } as unknown as CategoriesRepository;
+  const service = new CategoriesService(repository, cache);
+  const tree = await service.findCatalogTree();
+  assert.equal(tree.length, 2);
+  const pets = tree.find((category) => category.name.startsWith('Animales'))!;
+  const cattle = tree.find((category) => category.name === 'Ganadería')!;
+  assert.equal(pets.children.length, 1);
+  assert.equal(cattle.children.length, 1);
+  assert.equal(pets.children[0].parentId, pets.id);
+  assert.deepEqual(new Set(pets.aliasIds), new Set(['pet-r', 'pet-m']));
+  assert.deepEqual(new Set(await cache.descendantIds(['pet-r'])),
+    new Set(['pet-r', 'pet-m', 'bio-r', 'bio-m']));
+  assert.deepEqual(new Set(await cache.descendantIds(['bio-m'])),
+    new Set(['bio-r', 'bio-m']));
 });

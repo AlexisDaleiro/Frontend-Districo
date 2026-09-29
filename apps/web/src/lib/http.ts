@@ -12,11 +12,12 @@ export async function http<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
+  const multipart = body instanceof FormData;
   const send = () =>
     fetch(`/api/backend/${path}`, {
       method,
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: multipart ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(25000),
     });
@@ -63,4 +64,16 @@ export async function http<T>(
     );
   }
   return result as T;
+}
+
+export async function downloadPrivateFile(path: string, filename: string) {
+  await http("auth/me");
+  const response = await fetch(`/api/backend/${path}`, { cache: "no-store" });
+  if (!response.ok) throw new ApiError("No se pudo descargar la factura.", response.status);
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }

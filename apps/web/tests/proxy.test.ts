@@ -14,6 +14,11 @@ describe("Frontera entre frontend y API", () => {
     expect(allowedPath("../auth/login", "POST")).toBe(false);
     expect(allowedPath("https://elsewhere.test", "GET")).toBe(false);
     expect(allowedPath("products/id/variants", "POST")).toBe(true);
+    expect(allowedPath("categories/catalog", "GET")).toBe(true);
+    expect(allowedPath("admin/orders/order-1/payments", "POST")).toBe(true);
+    expect(allowedPath("admin/orders/order-1/invoices", "POST")).toBe(true);
+    expect(allowedPath("admin/orders/order-1/invoices/invoice-1", "GET")).toBe(true);
+    expect(allowedPath("admin/orders/order-1/invoices/invoice-1", "POST")).toBe(false);
     expect(
       sanitize({
         passwordHash: "secret",
@@ -62,6 +67,21 @@ describe("Frontera entre frontend y API", () => {
       params("checkout"),
     );
     expect(result.status).toBe(403);
+  });
+  it("envía el multipart de facturas sin convertirlo a JSON", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const upstream = vi.fn().mockResolvedValue(Response.json({ id: "invoice-1" }));
+    vi.stubGlobal("fetch", upstream);
+    const form = new FormData();
+    form.set("requestId", "00000000-0000-4000-8000-000000000001");
+    form.set("file", new Blob(["%PDF-1.7"], { type: "application/pdf" }), "factura.pdf");
+    const result = await POST(new NextRequest("http://localhost:3000/api/backend/admin/orders/order-1/invoices", {
+      method: "POST", headers: { origin: "http://localhost:3000" }, body: form,
+    }), params("admin/orders/order-1/invoices"));
+    expect(result.status).toBe(200);
+    expect(upstream.mock.calls[0][1].headers["Content-Type"]).toMatch(/^multipart\/form-data;/);
+    expect(upstream.mock.calls[0][1].body).toBeInstanceOf(ArrayBuffer);
   });
   it("convierte los tokens en cookies HttpOnly y no los devuelve al navegador", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");

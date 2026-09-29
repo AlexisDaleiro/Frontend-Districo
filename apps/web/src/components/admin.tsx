@@ -8,6 +8,8 @@ import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { OrderItems } from "./orders";
+import { OrderBilling } from "./order-billing";
+import { orderBalance } from "@/lib/order-billing";
 import {
   label,
   money,
@@ -503,6 +505,7 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
                 <th>CLIENTE</th>
                 <th>ESTADO</th>
                 <th>TOTAL</th>
+                <th>ABONADO</th>
                 <th>ACCIONES</th>
               </tr>
             </thead>
@@ -524,6 +527,7 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
                     <span className="status-pill">{label(o.status)}</span>
                   </td>
                   <td>{money(o.total, o.currency)}</td>
+                  <td>{money(orderBalance(o).paid, o.currency)}</td>
                   <td>
                     {orderTransitions[o.status] ? (
                       <button
@@ -599,6 +603,7 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               )}
             </dl>
             <OrderItems order={detail} />
+            <OrderBilling key={detail.id} order={detail} onUpdated={async () => { await q.refetch(); }} />
             <p className="muted small-copy" style={{ marginTop: 12 }}>
               Importes registrados al confirmar el pedido; no cambian con
               precios posteriores.

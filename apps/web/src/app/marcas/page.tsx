@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useApi } from "@/components/providers";
 import { PageHeading, Loading, ErrorBox } from "@/components/ui";
+import { BrandLogo } from "@/components/brand-logo";
 import type { Entity } from "@/lib/types";
 export default function Page() {
   const brands = useApi<Entity[]>("brands"),
@@ -39,7 +40,9 @@ export default function Page() {
                     href={`/catalogo?${key}=${encodeURIComponent(item.id)}`}
                     key={item.id}
                   >
-                    <h3>{item.name}</h3>
+                    <h3 className={key === "brandId" ? "brand-card-heading" : undefined}>
+                      {key === "brandId" ? <BrandLogo brand={item} /> : item.name}
+                    </h3>
                     <span className="text-link">
                       Ver productos <ArrowUpRight size={16} />
                     </span>

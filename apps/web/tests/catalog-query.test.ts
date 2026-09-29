@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalogCardsPath } from "../src/lib/catalog-query";
+import { canonicalCategoryIds, catalogCardsPath } from "../src/lib/catalog-query";
 
 describe("ruta del listado", () => {
   it("usa el mismo orden y filtros para navegar y precargar", () => {
@@ -18,5 +18,12 @@ describe("ruta del listado", () => {
     expect(catalogCardsPath(new URLSearchParams({ page: "0" }))).toBe(
       "products/cards?limit=12",
     );
+  });
+
+  it("mantiene seleccionados los enlaces antiguos de categorías equivalentes", () => {
+    expect(canonicalCategoryIds(
+      [{ id: "new", aliasIds: ["new", "old"] }, { id: "other" }],
+      ["old", "new", "other"],
+    )).toEqual(["new", "other"]);
   });
 });

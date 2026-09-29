@@ -626,13 +626,30 @@ svg {
   align-items: center;
 }
 .brand-word {
-  font-size: 25px;
-  font-weight: 800;
-  letter-spacing: -0.05em;
+  display: flex;
+  flex: 0 1 140px;
+  justify-content: center;
+  min-width: 0;
   color: var(--text);
 }
 .brand-word:hover {
   color: var(--ink);
+}
+.brand-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 180px);
+  height: 70px;
+}
+.brand-mark img {
+  object-fit: contain;
+}
+.brand-mark--text {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
 }
 .product-grid {
   display: grid;
@@ -2094,6 +2111,89 @@ td .button {
   flex-direction: column;
   justify-content: space-between;
 }
+.order-billing {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.order-billing h3 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.order-billing h4 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.order-billing-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+.order-billing-summary > div {
+  display: grid;
+  gap: 3px;
+}
+.order-billing-summary > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.order-billing-summary > div strong {
+  font-size: 17px;
+}
+.order-billing-history,
+.order-billing-form {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.order-billing-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.order-billing-history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 13px;
+}
+.order-billing-history li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.order-billing-form {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+.order-billing-form .field {
+  width: min(100%, 320px);
+}
+.order-billing-modes {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.order-billing-modes button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.order-billing-modes button[aria-pressed="true"] {
+  background: var(--ink);
+  color: white;
+}
+.brand-card-heading {
+  display: flex;
+  align-items: center;
+  min-height: 70px;
+}
 .directory-grid small {
   color: var(--muted);
 }
@@ -2381,7 +2481,7 @@ td .button {
     justify-content: center;
   }
   .brand-word {
-    font-size: 22px;
+    flex-basis: 140px;
   }
   .product-grid,
   .catalog-layout .product-grid {

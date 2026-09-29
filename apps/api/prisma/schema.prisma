@@ -466,8 +466,11 @@ model Order {
   subtotal             Decimal            @db.Decimal(12, 2)
   discountTotal        Decimal            @db.Decimal(12, 2)
   total                Decimal            @db.Decimal(12, 2)
+  paidTotal            Decimal            @default(0) @db.Decimal(12, 2)
   currency             String             @default("UYU")
   items                OrderItem[]
+  payments             OrderPayment[]
+  invoices             OrderInvoice[]
   reservations         StockReservation[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -490,6 +493,33 @@ model OrderItem {
   discount    Decimal  @db.Decimal(12, 2)
   subtotal    Decimal  @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
+}
+
+model OrderPayment {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount       Decimal  @db.Decimal(12, 2)
+  requestId    String   @unique
+  recordedById String
+  createdAt    DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model OrderInvoice {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  storagePath  String   @unique
+  requestId    String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 model Promotion {

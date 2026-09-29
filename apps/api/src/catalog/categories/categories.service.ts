@@ -3,10 +3,12 @@ import { Category } from '@prisma/client';
 import { slugify } from '../../common/utils/slugify';
 import { CategoriesRepository } from './categories.repository';
 import { CategoryHierarchyService } from './category-hierarchy.service';
+import { groupEquivalentCategories } from './category-groups';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 type CategoryNode = Category & { children: CategoryNode[] };
+type CatalogCategoryNode = Category & { aliasIds: string[]; children: CatalogCategoryNode[] };
 
 @Injectable()
 export class CategoriesService {
@@ -31,6 +33,45 @@ export class CategoriesService {
       }
     }
 
+    return roots;
+  }
+
+  async findCatalogTree() {
+    const version = this.hierarchy.version;
+    const categories = await this.categoriesRepository.findAll();
+    this.hierarchy.remember(categories, version);
+    const groups = groupEquivalentCategories(categories);
+    const canonicalId = new Map<string, string>();
+    const aliasIds = new Map<string, string[]>();
+    const representatives: Category[] = [];
+    for (const group of groups.values()) {
+      const representative = [...group].sort((a, b) =>
+        a.slug.localeCompare(b.slug) || a.id.localeCompare(b.id))[0];
+      representatives.push(representative);
+      aliasIds.set(representative.id, group.map((category) => category.id));
+      for (const category of group) canonicalId.set(category.id, representative.id);
+    }
+
+    const nodes = new Map(representatives.map((category) => {
+      const parentId = category.parentId ? canonicalId.get(category.parentId) ?? null : null;
+      return [category.id, {
+        ...category,
+        parentId,
+        aliasIds: aliasIds.get(category.id) ?? [category.id],
+        children: [] as CatalogCategoryNode[],
+      }] as const;
+    }));
+    const roots: CatalogCategoryNode[] = [];
+    for (const node of nodes.values()) {
+      const parent = node.parentId ? nodes.get(node.parentId) : undefined;
+      if (parent) parent.children.push(node);
+      else roots.push(node);
+    }
+    const sort = (items: CatalogCategoryNode[]) => {
+      items.sort((a, b) => a.name.localeCompare(b.name, 'es') || a.id.localeCompare(b.id));
+      for (const item of items) sort(item.children);
+    };
+    sort(roots);
     return roots;
   }
 

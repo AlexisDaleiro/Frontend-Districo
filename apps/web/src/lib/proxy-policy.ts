@@ -8,6 +8,7 @@ export function allowedPath(path: string, method: string) {
       "brands",
       "laboratories",
       "categories",
+      "categories/catalog",
       "attributes",
       "cart",
       "cart/recommendations",
@@ -18,6 +19,7 @@ export function allowedPath(path: string, method: string) {
       "recommendations",
       `inventory/variants/${id}/stock`,
       "admin/(dashboard|customers|applications|orders|promotions|recommendations|audit-logs)",
+      `admin/orders/${id}/invoices/${id}`,
     ],
     POST: [
       // forgot-password se admite solo para responder 501 en el proxy; el flujo de
@@ -36,6 +38,7 @@ export function allowedPath(path: string, method: string) {
       "recommendations",
       `admin/applications/${id}/(approve|reject)`,
       `admin/orders/${id}/(approve|reject)`,
+      `admin/orders/${id}/(payments|invoices)`,
       "admin/(promotions|recommendations)",
     ],
     PATCH: [

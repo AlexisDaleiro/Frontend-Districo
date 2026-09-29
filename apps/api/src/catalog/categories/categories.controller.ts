@@ -18,6 +18,11 @@ export class CategoriesController {
     return this.categoriesService.findTree();
   }
 
+  @Get('catalog')
+  findCatalogTree() {
+    return this.categoriesService.findCatalogTree();
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -39,20 +39,31 @@ async function handle(
   }
   const base = process.env.BACKEND_API_URL;
   if (!base) return reply({ message: "La API aún no está configurada." }, 503);
-  let body: Record<string, unknown> | undefined;
-  if (request.method !== "GET" && request.method !== "DELETE") {
+  const invoiceUpload = request.method === "POST" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices$/.test(path);
+  const invoiceDownload = request.method === "GET" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices\/[a-zA-Z0-9_-]+$/.test(path);
+  let body: BodyInit | undefined;
+  if (invoiceUpload) {
+    if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))
+      return reply({ message: "Adjuntá una factura válida." }, 415);
+    if (Number(request.headers.get("content-length") ?? 0) > 5_500_000)
+      return reply({ message: "La factura supera el tamaño permitido." }, 413);
+    const bytes = await request.arrayBuffer();
+    if (bytes.byteLength > 5_500_000)
+      return reply({ message: "La factura supera el tamaño permitido." }, 413);
+    body = bytes;
+  } else if (request.method !== "GET" && request.method !== "DELETE") {
     if (Number(request.headers.get("content-length") ?? 0) > 150000)
       return reply({ message: "Solicitud demasiado grande." }, 413);
     try {
-      body = await request.json();
+      body = JSON.stringify(await request.json());
     } catch {
       return reply({ message: "Solicitud inválida." }, 400);
     }
   }
   if (path === "auth/refresh" || path === "auth/logout")
-    body = {
+    body = JSON.stringify({
       refreshToken: request.cookies.get("districo-refresh")?.value ?? "",
-    };
+    });
   // Backend currently returns a password-reset token to any caller. Do not expose it publicly.
   if (path === "auth/forgot-password")
     return reply(
@@ -69,15 +80,26 @@ async function handle(
       {
         method: request.method,
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": invoiceUpload ? request.headers.get("content-type")! : "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: body ? JSON.stringify(body) : undefined,
+        body,
         cache: "no-store",
         redirect: "error",
         signal: AbortSignal.timeout(20000),
       },
     );
+    if (invoiceDownload && upstream.ok) {
+      return new NextResponse(upstream.body, {
+        status: upstream.status,
+        headers: {
+          "Content-Type": upstream.headers.get("content-type") ?? "application/octet-stream",
+          "Content-Disposition": upstream.headers.get("content-disposition") ?? "attachment",
+          "Cache-Control": "no-store, private",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
     const data = await upstream.json().catch(() => ({}));
     const response = reply(
       upstream.ok

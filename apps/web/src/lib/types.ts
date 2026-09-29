@@ -5,6 +5,7 @@ export type Entity = {
   name: string;
   slug?: string;
   parentId?: string | null;
+  aliasIds?: string[];
 };
 export type Customer = {
   id: string;
@@ -110,6 +111,7 @@ export type Order = {
   status: string;
   createdAt: string;
   total: number;
+  paidTotal?: number | string;
   subtotal: number;
   discountTotal: number;
   currency: string;
@@ -118,6 +120,8 @@ export type Order = {
   reviewReason?: string | null;
   customerAccount?: Customer;
   user?: { email: string };
+  payments?: { id: string; amount: number | string; createdAt: string }[];
+  invoices?: { id: string; originalName: string; mimeType: string; size: number; createdAt: string }[];
   items: {
     id?: string;
     variantId: string;

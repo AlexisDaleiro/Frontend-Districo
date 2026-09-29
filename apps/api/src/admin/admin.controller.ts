@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { OrderStatus, Role } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
@@ -10,6 +12,9 @@ import { JwtUser } from '../common/types/jwt-user.type';
 import { ReviewApplicationDto } from '../applications/dto/review-application.dto';
 import { UpdateOrderStatusDto } from '../orders/dto/update-order-status.dto';
 import { OrdersService } from '../orders/orders.service';
+import { OrderBillingService, MAX_INVOICE_BYTES } from '../orders/order-billing.service';
+import { RecordOrderPaymentDto } from '../orders/dto/record-order-payment.dto';
+import { AttachOrderInvoiceDto } from '../orders/dto/attach-order-invoice.dto';
 import { CreatePromotionDto } from '../promotions/dto/create-promotion.dto';
 import { PromotionsService } from '../promotions/promotions.service';
 import { CreateRecommendationRuleDto } from '../recommendations/dto/create-recommendation-rule.dto';
@@ -27,6 +32,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly applications: ApplicationsService,
     private readonly orders: OrdersService,
+    private readonly billing: OrderBillingService,
     private readonly promotions: PromotionsService,
     private readonly recommendations: RecommendationsService,
   ) {}
@@ -64,6 +70,30 @@ export class AdminController {
   @Get('orders')
   ordersList() {
     return this.admin.ordersAdmin();
+  }
+
+  @Post('orders/:id/payments')
+  recordPayment(@Param('id') id: string, @Body() dto: RecordOrderPaymentDto, @CurrentUser() user: JwtUser) {
+    return this.billing.recordPayment(id, dto, user.sub);
+  }
+
+  @Post('orders/:id/invoices')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_INVOICE_BYTES, files: 1 } }))
+  attachInvoice(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string }, @Body() dto: AttachOrderInvoiceDto, @CurrentUser() user: JwtUser) {
+    return this.billing.attachInvoice(id, file, dto, user.sub);
+  }
+
+  @Get('orders/:id/invoices/:invoiceId')
+  async downloadInvoice(@Param('id') id: string, @Param('invoiceId') invoiceId: string, @Res({ passthrough: true }) response: Response) {
+    const invoice = await this.billing.invoice(id, invoiceId);
+    response.set({
+      'Content-Type': invoice.mimeType,
+      'Content-Disposition': `attachment; filename="factura"; filename*=UTF-8''${encodeURIComponent(invoice.name)}`,
+      'Content-Length': String(invoice.bytes.length),
+      'Cache-Control': 'no-store, private',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(invoice.bytes);
   }
 
   @Patch('orders/:id/status')

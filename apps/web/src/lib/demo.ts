@@ -374,13 +374,13 @@ export async function demoRequest<T>(
       meta: { total: items.length, page, limit },
     };
   } else if (
-    ["categories", "brands", "laboratories", "attributes"].includes(route) &&
+    ["categories", "categories/catalog", "brands", "laboratories", "attributes"].includes(route) &&
     method === "GET"
   )
     result =
       route === "attributes"
         ? []
-        : s[route as "categories" | "brands" | "laboratories"];
+        : s[route === "categories/catalog" ? "categories" : route as "categories" | "brands" | "laboratories"];
   else if (route.startsWith("products/") && method === "GET") {
     const p = s.products.find(
       (p) => p.slug === route.split("/")[1] && p.active !== false,
