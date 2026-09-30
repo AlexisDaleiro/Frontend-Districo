@@ -490,6 +490,14 @@ svg {
 .need:nth-child(3n) .need-circle {
   background: var(--paper);
 }
+.need-skeleton {
+  display: block;
+  width: 64px;
+  height: 1lh;
+  margin: 0 auto;
+  border-radius: 4px;
+  background: var(--paper);
+}
 .need-circle img {
   height: 72px;
   width: 68px;
@@ -2995,6 +3003,10 @@ td .button {
   .need-circle {
     width: 70px;
     height: 70px;
+  }
+  /* En móvil los nombres largos ocupan dos líneas. */
+  .need-skeleton {
+    height: 2lh;
   }
   .need-circle img {
     height: 57px;

@@ -2,6 +2,12 @@
 
 Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
 
+## Corrección: el banner de /tienda se desplazaba al cargar (30/09)
+
+- Causa: la fila «¿Qué estás buscando?» (encima del carrusel) mostraba `<Loading />` mientras cargaba `categories/catalog`. Al llegar la lista de círculos, más alta, empujaba el banner unos 18 px en escritorio y 14 px en móvil.
+- `src/components/home.tsx`: mientras carga se muestra un esqueleto con la misma forma (`.need-list` con círculos vacíos). `globals.css`: `.need-skeleton` de 1 línea, 2 en móvil porque ahí los nombres largos ocupan dos líneas.
+- Medido con `PerformanceObserver` (`layout-shift`) en `next dev` modo real: el CLS de la portada pasó de 0,0073 a 0,0002 (1280px), de 0,0069 a 0,0002 (390px) y a 0 (360px). `tsc` y ESLint correctos.
+
 ## Mejora: sistema de animaciones completo (30/09)
 
 - `src/app/motion.css` concentra todo lo animado: tokens (`--ease-*`, `--dur-*`, `--reveal-distance`), entradas, transiciones de página y de sección, carrusel, diálogos, estados y un único bloque `prefers-reduced-motion`. Ese bloque deja fundidos cortos y quita desplazamientos, escalas, parallax, bucles y autoplay. `globals.css` perdió los bloques de movimiento reducido dispersos (el último apagaba todo), la transición global duplicada, `home-carousel-enter` y el subrayado fijo del menú.

@@ -116,7 +116,16 @@ export function Home() {
               retry={() => void categories.refetch()}
             />
           ) : categories.isPending ? (
-            <Loading />
+            // Misma forma que la lista real: evita que el banner se desplace
+            // cuando llegan las categorías.
+            <div className="need-list" aria-busy="true" aria-label="Cargando">
+              {needs.map((n) => (
+                <span className="need" key={n.name} aria-hidden="true">
+                  <span className="need-circle" />
+                  <span className="need-skeleton" />
+                </span>
+              ))}
+            </div>
           ) : !mapped.length ? (
             <Link className="text-link" href={storeRoutes.products}>
               Explorá el catálogo completo <ArrowUpRight size={16} />
