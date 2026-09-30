@@ -4,6 +4,7 @@
   "private": true,
   "description": "Backend demo B2B para el e-commerce mayorista de DISTRICO S.A.",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",

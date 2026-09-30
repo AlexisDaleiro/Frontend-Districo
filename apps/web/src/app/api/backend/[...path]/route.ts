@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allowedPath, sanitize } from "@/lib/proxy-policy";
+import { backendApiUrl } from "@/lib/backend-url";
 export const dynamic = "force-dynamic";
 const cookieOptions = {
   httpOnly: true,
@@ -37,8 +38,9 @@ async function handle(
     if (!originHost || !hosts.includes(originHost))
       return reply({ message: "Origen no autorizado." }, 403);
   }
-  const base = process.env.BACKEND_API_URL;
-  if (!base) return reply({ message: "La API aún no está configurada." }, 503);
+  const upstreamUrl = backendApiUrl(path);
+  if (!upstreamUrl) return reply({ message: "La API aún no está configurada." }, 503);
+  upstreamUrl.search = request.nextUrl.search;
   const invoiceUpload = request.method === "POST" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices$/.test(path);
   const invoiceDownload = request.method === "GET" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices\/[a-zA-Z0-9_-]+$/.test(path);
   let body: BodyInit | undefined;
@@ -76,7 +78,7 @@ async function handle(
   try {
     const token = request.cookies.get("districo-access")?.value;
     const upstream = await fetch(
-      `${base.replace(/\/$/, "")}/${path}${request.nextUrl.search}`,
+      upstreamUrl,
       {
         method: request.method,
         headers: {

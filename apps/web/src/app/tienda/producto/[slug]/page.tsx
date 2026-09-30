@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ProductDetail } from "@/components/catalog";
 import { seedProducts } from "@/lib/demo-seed";
 import type { Product } from "@/lib/types";
+import { backendApiUrl } from "@/lib/backend-url";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -9,11 +10,11 @@ type Props = { params: Promise<{ slug: string }> };
 async function findProduct(slug: string): Promise<Product | undefined> {
   if (process.env.NEXT_PUBLIC_DATA_MODE !== "real")
     return seedProducts().find((p) => p.slug === slug);
-  const base = process.env.BACKEND_API_URL;
-  if (!base) return undefined;
+  const url = backendApiUrl(`products/${encodeURIComponent(slug)}`);
+  if (!url) return undefined;
   try {
     const res = await fetch(
-      `${base.replace(/\/$/, "")}/products/${encodeURIComponent(slug)}`,
+      url,
       { next: { revalidate: 300 } },
     );
     return res.ok ? ((await res.json()) as Product) : undefined;
