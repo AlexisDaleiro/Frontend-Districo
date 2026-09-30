@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ReactNode,
   type ImgHTMLAttributes,
 } from "react";
@@ -132,32 +133,75 @@ export function Modal({
   open,
   onClose,
   title,
+  sheet = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Panel lateral que entra desde la derecha (filtros en móvil). */
+  sheet?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  // Mientras corre la animación de cierre se muestra el último contenido y
+  // título: varios diálogos quitan su contenido en el mismo cambio que los
+  // cierra.
+  const [shown, setShown] = useState(open);
+  const [kept, setKept] = useState({ title, children });
+  if (open && !shown) setShown(true);
+  if (open && (kept.title !== title || kept.children !== children))
+    setKept({ title, children });
+  const content = open ? { title, children } : kept;
   useEffect(() => {
     const dialog = ref.current;
-    if (open && !dialog?.open) dialog?.showModal();
-    else if (!open && dialog?.open) dialog.close();
+    if (!dialog) return;
+    if (open) {
+      dialog.removeAttribute("data-closing");
+      dialog.removeAttribute("aria-hidden");
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    if (!dialog.open) return;
+    // Se cierra al terminar la animación de salida de motion.css; el tiempo
+    // de respaldo cubre navegadores que no disparan animationend. Mientras
+    // sale queda oculto a la accesibilidad: puede convivir con el diálogo que
+    // se abre en su lugar.
+    dialog.setAttribute("data-closing", "");
+    dialog.setAttribute("aria-hidden", "true");
+    const finish = () => {
+      dialog.removeAttribute("data-closing");
+      dialog.removeAttribute("aria-hidden");
+      dialog.close();
+      setShown(false);
+    };
+    const onEnd = (event: AnimationEvent) => {
+      if (event.target === dialog && !event.pseudoElement) finish();
+    };
+    dialog.addEventListener("animationend", onEnd);
+    const fallback = setTimeout(finish, 400);
+    return () => {
+      dialog.removeEventListener("animationend", onEnd);
+      clearTimeout(fallback);
+    };
   }, [open]);
   return (
     <dialog
       ref={ref}
-      className="modal"
+      className={sheet ? "modal modal-sheet" : "modal"}
       aria-labelledby={titleId}
-      onCancel={onClose}
+      onCancel={(e) => {
+        // Escape también pasa por la animación de cierre.
+        e.preventDefault();
+        onClose();
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="modal-head">
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId}>{content.title}</h2>
         <button
           type="button"
           className="icon-button"
@@ -167,7 +211,7 @@ export function Modal({
           <X />
         </button>
       </div>
-      {open && children}
+      {(open || shown) && content.children}
     </dialog>
   );
 }

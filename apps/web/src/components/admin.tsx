@@ -1,6 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  ViewTransition,
+} from "react";
 import {
   ArrowUpRight,
   BadgePercent,
@@ -22,6 +28,7 @@ import { AccessGate } from "./auth";
 import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
+import { CountUp } from "./count-up";
 import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
 import { orderBalance } from "@/lib/order-billing";
@@ -129,7 +136,9 @@ function Dashboard() {
             <span className="stat-icon" aria-hidden="true">
               <Icon size={18} />
             </span>
-            <strong>{q.data[key] ?? 0}</strong>
+            <strong>
+              <CountUp value={q.data[key] ?? 0} duration={900} />
+            </strong>
             <span>{title}</span>
           </Link>
         ))}
@@ -1447,6 +1456,7 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
   // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
   const counts = useApi<Record<string, number>>("admin/dashboard");
   const nav = useRef<HTMLElement>(null);
+  const indicator = useRef<HTMLSpanElement>(null);
   // En móvil la navegación es una franja con scroll: centra la sección activa
   // moviendo solo la franja, no la página.
   useEffect(() => {
@@ -1456,6 +1466,32 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
     strip.scrollLeft =
       active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
   }, [section]);
+  // El fondo lima de la sección activa es un solo indicador que se desliza
+  // (motion.css). La primera ubicación no anima; las siguientes sí.
+  useLayoutEffect(() => {
+    const strip = nav.current;
+    const mark = indicator.current;
+    if (!strip || !mark) return;
+    const place = () => {
+      const active = strip.querySelector<HTMLElement>("a.active");
+      mark.hidden = !active;
+      if (!active) return;
+      mark.style.setProperty("--indicator-x", `${active.offsetLeft}px`);
+      mark.style.setProperty("--indicator-y", `${active.offsetTop}px`);
+      mark.style.setProperty("--indicator-width", `${active.offsetWidth}px`);
+      mark.style.setProperty("--indicator-height", `${active.offsetHeight}px`);
+    };
+    place();
+    const ready = requestAnimationFrame(() => {
+      mark.dataset.ready = "true";
+    });
+    const resize = new ResizeObserver(place);
+    resize.observe(strip);
+    return () => {
+      cancelAnimationFrame(ready);
+      resize.disconnect();
+    };
+  }, [section, counts.data]);
   return (
     <aside className="admin-sidebar">
       <div className="admin-sidebar-head">
@@ -1463,6 +1499,7 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
         {email && <span>{email}</span>}
       </div>
       <nav className="admin-nav" aria-label="Administración" ref={nav}>
+        <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
         {groups.map((group) => (
           <div className="admin-nav-group" key={group}>
             <p>{group}</p>
@@ -1496,6 +1533,29 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
     </aside>
   );
 }
+function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) {
+  return section === "" ? (
+    <Dashboard />
+  ) : section === "consultas" ? (
+    <ContactInquiries edit={edit} />
+  ) : section === "solicitudes" ? (
+    <Applications edit={edit} />
+  ) : section === "clientes" ? (
+    <Customers edit={edit} />
+  ) : section === "pedidos" ? (
+    <AdminOrders edit={edit} />
+  ) : section === "catalogo" ? (
+    <ProductManagement edit={edit} />
+  ) : section === "organizacion" ? (
+    <Organization edit={edit} />
+  ) : section === "promociones" ? (
+    <Marketing edit={edit} />
+  ) : section === "recomendaciones" ? (
+    <Marketing edit={edit} recommendations />
+  ) : (
+    <Empty title="Sección no disponible" />
+  );
+}
 export function Admin({ section = "" }: { section?: string }) {
   const { user } = useSession();
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -1506,35 +1566,26 @@ export function Admin({ section = "" }: { section?: string }) {
         <div className="admin-shell">
           <AdminNav section={section} email={user?.email} />
           <div className="admin-main">
-            <PageHeading
-              eyebrow="DISTRICO · Administración"
-              title={
-                section && current
-                  ? current[2]
-                  : "Tu operación, en un solo lugar."
-              }
-            />
-            {section === "" ? (
-              <Dashboard />
-            ) : section === "consultas" ? (
-              <ContactInquiries edit={setEditor} />
-            ) : section === "solicitudes" ? (
-              <Applications edit={setEditor} />
-            ) : section === "clientes" ? (
-              <Customers edit={setEditor} />
-            ) : section === "pedidos" ? (
-              <AdminOrders edit={setEditor} />
-            ) : section === "catalogo" ? (
-              <ProductManagement edit={setEditor} />
-            ) : section === "organizacion" ? (
-              <Organization edit={setEditor} />
-            ) : section === "promociones" ? (
-              <Marketing edit={setEditor} />
-            ) : section === "recomendaciones" ? (
-              <Marketing edit={setEditor} recommendations />
-            ) : (
-              <Empty title="Sección no disponible" />
-            )}
+            {/* Cada sección entra con su propia transición (motion.css); la
+                barra lateral queda fija. */}
+            <ViewTransition
+              key={section}
+              enter="section-enter"
+              exit="section-exit"
+              default="none"
+            >
+              <div className="admin-section">
+                <PageHeading
+                  eyebrow="DISTRICO · Administración"
+                  title={
+                    section && current
+                      ? current[2]
+                      : "Tu operación, en un solo lugar."
+                  }
+                />
+                <AdminSection section={section} edit={setEditor} />
+              </div>
+            </ViewTransition>
           </div>
         </div>
         <Modal

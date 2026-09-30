@@ -118,6 +118,29 @@ function CartLine({
     </div>
   );
 }
+// El subtotal hace un "tick" (motion.css) cada vez que cambia su valor.
+function SubtotalRow({
+  value,
+  children,
+}: {
+  value: number | string;
+  children: React.ReactNode;
+}) {
+  const [seen, setSeen] = useState(value);
+  const [ticks, setTicks] = useState(0);
+  if (value !== seen) {
+    setSeen(value);
+    setTicks((count) => count + 1);
+  }
+  return (
+    <div
+      className={ticks ? "row between total is-tick" : "row between total"}
+      key={ticks}
+    >
+      {children}
+    </div>
+  );
+}
 function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   const { user } = useSession();
   const q = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
@@ -193,7 +216,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
     );
   return (
     <div className="cart-layout">
-      <div>
+      <div className="cart-items">
         {q.data.items.map((item) => (
           <CartLine
             key={item.id}
@@ -233,10 +256,10 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
           </span>
           <span>{money(q.data.total, q.data.items[0]?.currency)}</span>
         </div>
-        <div className="row between total">
+        <SubtotalRow value={q.data.total}>
           <strong>Subtotal</strong>
           <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
-        </div>
+        </SubtotalRow>
         <p className="info-note">
           Los descuentos aplicables se confirman al enviar el pedido. No se
           realizará ningún cobro en línea. La entrega se coordina con DISTRICO.

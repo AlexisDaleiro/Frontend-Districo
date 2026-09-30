@@ -1,17 +1,93 @@
-/* Elementos visibles por defecto: el controlador solo oculta los que todavía
-   no entraron en pantalla y los revela con una animación al aparecer. */
-[data-motion-state="pending"] {
-  opacity: 0;
-  translate: 0 22px;
+/* Sistema de movimiento de DISTRICO. Todo lo animado de la tienda vive acá;
+   globals.css solo define la forma de los componentes. El controlador de
+   entradas está en src/components/motion-system.tsx. */
+
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 180ms;
+  --dur-base: 320ms;
+  --dur-slow: 620ms;
+  /* Debe coincidir con la distancia de las animaciones de motion-system.tsx. */
+  --reveal-distance: 28px;
 }
 
+/* ---------------------------------------------------------------------------
+   Entradas al aparecer. Los elementos son visibles por defecto: el controlador
+   solo oculta los que todavía no entraron en pantalla.
+   ------------------------------------------------------------------------- */
+[data-motion-state="pending"] {
+  opacity: 0;
+  translate: 0 var(--reveal-distance);
+}
+
+.need[data-motion-state="pending"],
+.brand-word[data-motion-state="pending"],
+.stats > [data-motion-state="pending"] {
+  translate: none;
+  scale: 0.82;
+}
+
+/* ---------------------------------------------------------------------------
+   Transición entre páginas (tienda/template.tsx) y entre secciones de admin.
+   ------------------------------------------------------------------------- */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-old(.page-exit) {
+  animation: motion-page-out 180ms var(--ease-in) both;
+}
+
+::view-transition-new(.page-enter) {
+  animation: motion-page-in 460ms var(--ease-out) 110ms both;
+}
+
+::view-transition-old(.section-exit) {
+  animation: motion-section-out 140ms var(--ease-in) both;
+}
+
+::view-transition-new(.section-enter) {
+  animation: motion-section-in 360ms var(--ease-out) 80ms both;
+}
+
+@keyframes motion-page-out {
+  to {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+}
+
+@keyframes motion-page-in {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+@keyframes motion-section-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-section-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Fotografías con parallax y capas de marca que respiran.
+   ------------------------------------------------------------------------- */
 .hero:not(.home-carousel-slide) .hero-visual img,
 .company-hero-visual img {
   transform: translate3d(0, var(--motion-parallax, 0px), 0) scale(1.07);
   will-change: transform;
 }
 
-/* Una capa de marca que respira sin mover texto ni controles. */
 .page-heading,
 .hero-copy,
 .company-hero-copy,
@@ -63,6 +139,115 @@
   }
 }
 
+/* Brillo que cruza la banda de llamada una vez, al entrar en pantalla. */
+.cta-band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.13) 48%,
+    transparent 66%
+  );
+  translate: -100% 0;
+}
+
+.cta-band[data-motion-state="in"]::after {
+  animation: motion-shine 1.4s var(--ease-out) 350ms both;
+}
+
+@keyframes motion-shine {
+  to {
+    translate: 100% 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Interacción: botones, foco, navegación y tarjetas.
+   ------------------------------------------------------------------------- */
+/* El anillo de foco se cierra sobre el control: parte de un margen mayor y
+   la transición lo lleva al que define cada :focus-visible. */
+a,
+button {
+  outline-offset: 10px;
+  transition:
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease,
+    transform var(--dur-fast) ease,
+    translate var(--dur-fast) ease,
+    scale var(--dur-fast) ease,
+    outline-offset var(--dur-base) var(--ease-out);
+}
+
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled),
+.home-carousel-arrow:active,
+.home-carousel-toggle:active,
+.chip:active {
+  scale: 0.96;
+}
+
+/* Subrayado del menú principal: se dibuja desde la izquierda. */
+.navline nav a:not(.be-client) {
+  position: relative;
+}
+
+.navline nav a:not(.be-client)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--lime);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.navline nav a:not(.be-client):hover::after {
+  transform: scaleX(0.45);
+}
+
+.navline nav a.active::after {
+  transform: scaleX(1);
+}
+
+/* Indicador activo de la barra de administración: se desliza entre ítems. */
+.admin-nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: var(--indicator-width, 0);
+  height: var(--indicator-height, 0);
+  translate: var(--indicator-x, 0) var(--indicator-y, 0);
+  border-radius: 9px;
+  background: var(--lime);
+  pointer-events: none;
+}
+
+.admin-nav-indicator[data-ready="true"] {
+  transition:
+    translate 420ms var(--ease-spring),
+    width 420ms var(--ease-spring),
+    height 420ms var(--ease-spring);
+}
+
+.admin-nav:has(.admin-nav-indicator[data-ready="true"]) a.active {
+  background: transparent;
+}
+
+.admin-nav a {
+  position: relative;
+  z-index: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .line-card,
   .product-card,
@@ -70,16 +255,15 @@
   .company-card,
   .company-value,
   .company-operation-card,
+  .company-benefit,
   .contact-branch-card,
   .account-panels > .card,
   .orders-list > .card,
   .admin-cards > .card {
     transition:
-      opacity 620ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--motion-delay, 0ms),
-      transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--motion-delay, 0ms),
-      translate 220ms ease,
-      box-shadow 220ms ease,
-      background-color 220ms ease;
+      translate var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out),
+      background-color var(--dur-base) ease;
   }
 
   .line-card:hover,
@@ -88,102 +272,345 @@
   .company-card:hover,
   .company-value:hover,
   .company-operation-card:hover,
+  .company-benefit:hover,
   .contact-branch-card:hover,
   .account-panels > .card:hover,
   .orders-list > .card:hover,
   .admin-cards > .card:hover {
-    translate: 0 -4px;
-    box-shadow: 0 12px 32px rgb(22 61 74 / 0.12);
+    translate: 0 -5px;
+    box-shadow: 0 14px 34px rgb(22 61 74 / 0.13);
+  }
+
+  .line-card img,
+  .brand-mark img,
+  .need-circle img {
+    transition: scale var(--dur-slow) var(--ease-out);
+  }
+
+  .line-card:hover img,
+  .brand-word:hover .brand-mark img,
+  .directory-grid > .card:hover .brand-mark img,
+  .need:hover .need-circle img {
+    scale: 1.08;
+  }
+
+  .product-image img {
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .product-card:hover .product-image img {
+    transform: scale(1.06);
   }
 
   .button svg,
   .text-link svg,
-  .round-arrow svg,
   .be-client svg {
-    transition: transform 200ms ease;
+    transition: transform var(--dur-fast) ease;
   }
 
   .button:hover svg,
   .text-link:hover svg,
-  .line-card:hover .round-arrow svg,
   .be-client:hover svg {
     transform: translate3d(3px, -2px, 0);
   }
+
+  .line-card .round-arrow {
+    transition:
+      background-color var(--dur-base) ease,
+      rotate var(--dur-base) var(--ease-spring);
+  }
+
+  .line-card:hover .round-arrow {
+    background: var(--lime);
+    rotate: 45deg;
+  }
+
+  .need-circle {
+    transition:
+      transform var(--dur-base) var(--ease-spring),
+      border-color var(--dur-base) ease;
+  }
+
+  .stat {
+    transition:
+      border-color var(--dur-fast) ease,
+      transform var(--dur-base) var(--ease-spring);
+  }
 }
 
-.active-filters .chip {
-  animation: motion-chip-enter 280ms ease-out both;
+/* ---------------------------------------------------------------------------
+   Carrusel de la portada.
+   ------------------------------------------------------------------------- */
+.home-carousel {
+  --carousel-interval: 6s;
+  --slide-distance: 48px;
 }
 
-@keyframes motion-chip-enter {
+/* En móvil el escenario no recorta: el desplazamiento no debe pasar el margen
+   del contenedor (16px) para no generar scroll horizontal. */
+@media (max-width: 767px) {
+  .home-carousel {
+    --slide-distance: 14px;
+  }
+}
+
+.home-carousel-slide {
+  animation: motion-slide-forward 560ms var(--ease-out) both;
+}
+
+.home-carousel-slide.is-back {
+  animation-name: motion-slide-back;
+}
+
+.home-carousel-slide.is-first {
+  animation-name: motion-fade;
+}
+
+.home-carousel-slide .hero-visual img {
+  animation: motion-ken-burns 7s ease-out both;
+}
+
+.home-carousel-slide .hero-copy > * {
+  animation: motion-rise 520ms var(--ease-out) both;
+}
+
+.home-carousel-slide .hero-copy > :nth-child(1) {
+  animation-delay: 120ms;
+}
+
+.home-carousel-slide .hero-copy > :nth-child(2) {
+  animation-delay: 190ms;
+}
+
+.home-carousel-slide .hero-copy > :nth-child(3) {
+  animation-delay: 260ms;
+}
+
+.home-carousel-slide .hero-copy > :nth-child(4) {
+  animation-delay: 330ms;
+}
+
+/* Barra de progreso del punto activo: su fin avanza al siguiente slide. */
+.home-carousel-dot {
+  position: relative;
+}
+
+.home-carousel-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 5px;
+  margin: -2.5px 0 0 -13px;
+  border-radius: 6px;
+  background: var(--lime);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+
+.home-carousel[data-autoplay="true"] .home-carousel-dot.is-active::after {
+  animation: motion-progress var(--carousel-interval) linear both;
+}
+
+/* Pausa con el puntero encima, con foco de teclado o con el botón. Un clic
+   no pausa: el foco de mouse no es :focus-visible. */
+.home-carousel[data-autoplay="true"]:is(
+    :hover,
+    :has(:focus-visible),
+    [data-paused="true"]
+  )
+  .home-carousel-dot.is-active::after {
+  animation-play-state: paused;
+}
+
+.home-carousel-dot.is-active::before {
+  transition: background-color var(--dur-base) ease;
+}
+
+@keyframes motion-slide-forward {
   from {
     opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+    translate: var(--slide-distance) 0;
   }
 }
 
-.detail-image img {
-  animation: motion-image-enter 320ms ease-out both;
-}
-
-@keyframes motion-image-enter {
+@keyframes motion-slide-back {
   from {
-    opacity: 0.5;
-  }
-  to {
-    opacity: 1;
+    opacity: 0;
+    translate: calc(var(--slide-distance) * -1) 0;
   }
 }
 
-.admin-nav a.active {
-  animation: motion-tab-enter 220ms ease-out both;
-}
-
-@keyframes motion-tab-enter {
+@keyframes motion-ken-burns {
   from {
-    opacity: 0.7;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    scale: 1.06;
   }
 }
 
+@keyframes motion-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Diálogos: entrada, salida y paneles laterales.
+   ------------------------------------------------------------------------- */
 .modal[open] {
-  animation: motion-dialog-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: motion-dialog-in 300ms var(--ease-out) both;
 }
 
 .modal[open]::backdrop {
-  animation: motion-backdrop-enter 260ms ease-out both;
+  animation: motion-fade 300ms ease-out both;
 }
 
-@keyframes motion-dialog-enter {
+.modal[data-closing] {
+  animation: motion-dialog-out 200ms var(--ease-in) both;
+}
+
+.modal[data-closing]::backdrop {
+  animation: motion-fade-out 200ms ease-in both;
+}
+
+.modal.modal-sheet {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 14px 0 0 14px;
+}
+
+.modal.modal-sheet[open] {
+  animation: motion-sheet-in 380ms var(--ease-out) both;
+}
+
+.modal.modal-sheet[data-closing] {
+  animation: motion-sheet-out 240ms var(--ease-in) both;
+}
+
+.modal[open] .mobile-nav > * {
+  animation: motion-rise 380ms var(--ease-out) both;
+}
+
+.modal[open] .mobile-nav > :nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.modal[open] .mobile-nav > :nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.modal[open] .mobile-nav > :nth-child(4) {
+  animation-delay: 135ms;
+}
+
+.modal[open] .mobile-nav > :nth-child(5) {
+  animation-delay: 180ms;
+}
+
+.modal[open] .mobile-nav > :nth-child(n + 6) {
+  animation-delay: 225ms;
+}
+
+@keyframes motion-dialog-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(16px) scale(0.97);
   }
 }
 
-@keyframes motion-backdrop-enter {
-  from {
+@keyframes motion-dialog-out {
+  to {
     opacity: 0;
-  }
-  to {
-    opacity: 1;
+    transform: translateY(10px) scale(0.98);
   }
 }
 
+@keyframes motion-sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes motion-sheet-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Estados: carga, avisos, errores, confirmaciones y datos que cambian.
+   ------------------------------------------------------------------------- */
+.loading {
+  animation: motion-fade 320ms ease-out 150ms both;
+}
+
+.toast {
+  transition:
+    opacity var(--dur-base) ease,
+    transform 460ms var(--ease-spring);
+}
+
+.error-box {
+  animation: motion-shake 460ms var(--ease-out) both;
+}
+
+.contact-success,
+[role="status"].success,
+.success-box {
+  animation: motion-rise 360ms var(--ease-out) both;
+}
+
+.contact-success svg,
+.success-box svg,
+.buy-success svg {
+  animation: motion-pop 520ms var(--ease-spring) 120ms both;
+}
+
+.buy-success {
+  animation: motion-rise 360ms var(--ease-out) both;
+}
+
+.active-filters .chip {
+  animation: motion-pop 360ms var(--ease-spring) both;
+}
+
+.detail-image img {
+  animation: motion-image-in 460ms var(--ease-out) both;
+}
+
+.thumbs button,
+.detail-variants button {
+  transition:
+    border-color var(--dur-base) ease,
+    background-color var(--dur-base) ease,
+    box-shadow var(--dur-base) ease,
+    scale var(--dur-fast) ease;
+}
+
+.thumbs button:active,
+.detail-variants button:active {
+  scale: 0.96;
+}
+
+/* Pestañas de la ficha: el panel nuevo entra subiendo. */
+.detail-tab-panel {
+  animation: motion-rise 360ms var(--ease-out) both;
+}
+
+.thumbs button[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--lime-soft);
+}
+
+.cart-count.is-bump {
+  animation: motion-bump 520ms var(--ease-spring);
+}
+
+.summary .total.is-tick,
 .cart-item strong[data-saved="true"] {
-  animation: motion-saved 600ms ease-out;
+  animation: motion-tick 520ms var(--ease-out);
 }
 
 .cart-item strong[data-saved="true"]::after {
@@ -191,41 +618,145 @@
   color: var(--lime-text);
 }
 
-@keyframes motion-saved {
-  40% {
-    color: var(--lime-text);
-  }
-  to {
-    color: var(--ink);
-  }
+.status-pill.pending {
+  animation: motion-pulse 2.4s ease-in-out infinite;
 }
 
-.contact-success,
-[role="status"].success {
-  animation: motion-confirm 320ms ease-out both;
+/* El mapa de puntos de venta aparece con fundido cuando Leaflet lo arma. */
+.contact-map .leaflet-pane {
+  animation: motion-fade 700ms ease-out both;
 }
 
-@keyframes motion-confirm {
+/* Ícono de los estados vacíos y del 404: flota suave. */
+.empty > svg {
+  animation: motion-float 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes motion-fade {
   from {
     opacity: 0;
-    transform: translateY(7px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
+@keyframes motion-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
+@keyframes motion-image-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+@keyframes motion-shake {
+  0% {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  35% {
+    opacity: 1;
+    translate: -6px 0;
+  }
+  55% {
+    translate: 5px 0;
+  }
+  75% {
+    translate: -3px 0;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes motion-bump {
+  40% {
+    scale: 1.45;
+  }
+}
+
+@keyframes motion-tick {
+  35% {
+    color: var(--lime-text);
+    scale: 1.05;
+  }
+}
+
+@keyframes motion-pulse {
+  50% {
+    box-shadow: 0 0 0 5px rgb(130 96 19 / 0.12);
+  }
+}
+
+@keyframes motion-float {
+  to {
+    translate: 0 -10px;
+  }
+}
+
+/* Pestaña oculta: todo en pausa. */
 .motion-tab-hidden *,
 .motion-tab-hidden *::before,
 .motion-tab-hidden *::after {
   animation-play-state: paused !important;
 }
 
+/* ---------------------------------------------------------------------------
+   Respaldo para quien pidió reducir movimiento en su sistema: se mantienen
+   los fundidos cortos y se quitan desplazamientos, escalas, parallax y bucles.
+   ------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .modal[open],
+  .modal[open]::backdrop,
+  .loading,
+  .contact-success,
+  .success-box,
+  .buy-success,
+  [role="status"].success {
+    animation: motion-fade 200ms ease-out both !important;
+  }
+
+  .modal[data-closing],
+  .modal[data-closing]::backdrop {
+    animation: motion-fade-out 160ms ease-in both !important;
+  }
+
+  /* Un indicador de carga que gira no desplaza contenido: se mantiene. */
+  .spinner {
+    animation: spin 1s linear infinite !important;
+  }
+
   [data-motion-state="pending"] {
     opacity: 1 !important;
     translate: none !important;
+    scale: none !important;
   }
 
   .hero-visual img,
@@ -234,28 +765,29 @@
     will-change: auto;
   }
 
-  .button:hover,
-  .need:hover .need-circle,
-  .product-card:hover .product-image img,
-  .detail-image:hover img {
-    transform: none !important;
-  }
-
   .page-heading::before,
   .hero-copy::before,
   .company-hero-copy::before,
   .auth-aside::before,
   .summary::before,
   .cta-band::before,
-  .active-filters .chip,
-  .detail-image img,
-  .admin-nav a.active,
-  .modal[open],
-  .modal[open]::backdrop,
-  .cart-item strong[data-saved="true"],
-  .contact-success,
-  [role="status"].success {
+  .cta-band::after,
+  .status-pill.pending,
+  .empty > svg,
+  .home-carousel-slide,
+  .home-carousel-slide .hero-copy > *,
+  .home-carousel-slide .hero-visual img,
+  .home-carousel-dot::after {
     animation: none !important;
+  }
+
+  .button:hover,
+  .whatsapp-fab:hover,
+  .stat:hover,
+  .need:hover .need-circle,
+  .product-card:hover .product-image img,
+  .detail-image:hover img {
+    transform: none !important;
   }
 
   .line-card,
@@ -264,10 +796,18 @@
   .company-card,
   .company-value,
   .company-operation-card,
+  .company-benefit,
   .contact-branch-card,
   .account-panels > .card,
   .orders-list > .card,
   .admin-cards > .card {
     translate: none !important;
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
   }
 }

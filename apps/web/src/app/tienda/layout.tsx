@@ -6,6 +6,7 @@ import "../motion.css";
 import { Providers } from "@/components/providers";
 import { Header, Footer } from "@/components/shell";
 import { MotionSystem } from "@/components/motion-system";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +29,9 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     <Providers>
       <MotionSystem />
       <Header />
-      <main id="contenido">{children}</main>
+      <main id="contenido">
+        <PageTransition>{children}</PageTransition>
+      </main>
       <Footer />
     </Providers>
   );

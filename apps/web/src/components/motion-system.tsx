@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 const revealSelector = [
   ".needs-intro",
@@ -17,6 +18,7 @@ const revealSelector = [
   ".directory-grid > *",
   ".detail-grid > *",
   ".company-page section",
+  ".company-facts dl > div",
   ".company-card",
   ".company-value",
   ".company-operation-card",
@@ -24,7 +26,9 @@ const revealSelector = [
   ".contact-page section",
   ".contact-branch-card",
   ".contact-store-results",
+  ".contact-store-card",
   ".auth-layout > *",
+  ".auth-layout form > *",
   ".account-panels > *",
   ".cart-item",
   ".cart-layout > .summary",
@@ -32,52 +36,83 @@ const revealSelector = [
   ".admin-sidebar",
   ".admin-toolbar",
   ".admin-cards > *",
+  ".admin-main tbody > tr",
   ".stats > *",
   ".panel",
+  ".empty",
+  ".error-page > *",
 ].join(", ");
 
+// Entran con un pequeño rebote de escala en vez de subir.
+const popSelector = ".need, .brand-word, .stats > *";
 const parallaxSelector =
   ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img";
 const staggerSelector =
-  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-card-grid, .contact-branch-grid, .account-panels, .orders-list, .admin-cards, .stats";
+  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page";
+
+// Mientras corre la transición de página, lo que ya está en pantalla entra con
+// ella; solo las grillas escalonan por su cuenta.
+const pageTransitionWindow = 450;
+
+const rise: Keyframe[] = [
+  { opacity: 0, translate: "0 28px" },
+  { opacity: 1, translate: "0 0" },
+];
+const pop: Keyframe[] = [
+  { opacity: 0, scale: "0.82" },
+  { opacity: 1, scale: "1" },
+];
 
 export function MotionSystem() {
+  const pathname = usePathname();
+  const navigatedAt = useRef(-Infinity);
+  const firstPath = useRef(true);
+
+  // useLayoutEffect: queda registrado antes de que el MutationObserver vea el
+  // contenido de la página nueva.
+  useLayoutEffect(() => {
+    if (firstPath.current) {
+      firstPath.current = false;
+      return;
+    }
+    navigatedAt.current = performance.now();
+  }, [pathname]);
+
   useEffect(() => {
     const root = document.getElementById("contenido");
     if (!root) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // Sin View Transitions la navegación no anima: cada bloque hace su entrada.
+    const viewTransitions = typeof document.startViewTransition === "function";
     const seen = new WeakSet<Element>();
     const delays = new WeakMap<Element, number>();
     const parallax = new Set<HTMLElement>();
     let frame = 0;
     let observer: IntersectionObserver | null = null;
 
-    const reveal = (element: Element) => {
+    const reveal = (element: Element, animate = true) => {
       observer?.unobserve(element);
-      element.removeAttribute("data-motion-state");
-      if (!reduced.matches && element instanceof HTMLElement) {
-        // "backwards" mantiene el primer cuadro durante el retraso escalonado:
-        // sin él la tarjeta se ve, desaparece y recién ahí entra.
-        element.animate(
-          [
-            { opacity: 0, translate: "0 22px" },
-            { opacity: 1, translate: "0 0" },
-          ],
-          {
-            duration: 620,
-            delay: delays.get(element) ?? 0,
-            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-            fill: "backwards",
-          },
-        );
-      }
+      element.setAttribute("data-motion-state", "in");
+      if (!animate || reduced.matches || !(element instanceof HTMLElement))
+        return;
+      // "backwards" mantiene el primer cuadro durante el retraso escalonado:
+      // sin él la tarjeta se ve, desaparece y recién ahí entra.
+      const popping = element.matches(popSelector);
+      element.animate(popping ? pop : rise, {
+        duration: popping ? 700 : 680,
+        delay: delays.get(element) ?? 0,
+        easing: popping
+          ? "cubic-bezier(0.34, 1.4, 0.64, 1)"
+          : "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        fill: "backwards",
+      });
     };
 
     const revealAll = () => {
       root
         .querySelectorAll('[data-motion-state="pending"]')
-        .forEach((element) => element.removeAttribute("data-motion-state"));
+        .forEach((element) => element.setAttribute("data-motion-state", "in"));
     };
 
     if ("IntersectionObserver" in window) {
@@ -100,8 +135,9 @@ export function MotionSystem() {
           }
         },
         // El margen superior amplio revela lo que quedó por encima al
-        // desplazarse rápido, para que nada quede oculto.
-        { rootMargin: "100000px 0px -24px 0px", threshold: 0.04 },
+        // desplazarse rápido, para que nada quede oculto. Umbral 0: dentro de
+        // listas con scroll propio basta con que asome.
+        { rootMargin: "100000px 0px -24px 0px", threshold: 0 },
       );
     }
 
@@ -122,7 +158,7 @@ export function MotionSystem() {
         );
         element.style.setProperty(
           "--motion-parallax",
-          `${(-progress * 20).toFixed(2)}px`,
+          `${(-progress * 24).toFixed(2)}px`,
         );
       }
     };
@@ -136,21 +172,30 @@ export function MotionSystem() {
       if (seen.has(element)) return;
       seen.add(element);
       const parent = element.parentElement;
-      if (parent?.matches(staggerSelector)) {
+      const staggered = !!parent?.matches(staggerSelector);
+      if (staggered) {
         const index = Array.prototype.indexOf.call(
-          parent.children,
+          parent!.children,
           element,
         ) as number;
         delays.set(element, Math.min(index, 5) * 65);
       }
       if (reduced.matches || !observer) {
-        reveal(element);
+        reveal(element, false);
         return;
       }
-      // Solo se oculta de antemano lo que está por debajo de la pantalla; lo
-      // visible al cargar anima directamente.
-      if (element.getBoundingClientRect().top >= innerHeight)
-        element.setAttribute("data-motion-state", "pending");
+      const top = element.getBoundingClientRect().top;
+      if (top < innerHeight) {
+        const navigating =
+          viewTransitions &&
+          performance.now() - navigatedAt.current < pageTransitionWindow;
+        // Lo visible al cargar anima directamente; al navegar, lo mueve la
+        // transición de página salvo las grillas escalonadas.
+        reveal(element, !navigating || staggered);
+        return;
+      }
+      // Solo se oculta de antemano lo que está por debajo de la pantalla.
+      element.setAttribute("data-motion-state", "pending");
       observer.observe(element);
     };
 
@@ -180,17 +225,14 @@ export function MotionSystem() {
       if (reduced.matches) {
         observer?.disconnect();
         revealAll();
-        root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+        root
+          .getAnimations({ subtree: true })
+          .forEach((animation) => animation.cancel());
         for (const element of parallax)
           element.style.removeProperty("--motion-parallax");
         if (frame) cancelAnimationFrame(frame);
         frame = 0;
-      } else {
-        root.querySelectorAll(revealSelector).forEach((element) => {
-          if (seen.has(element)) observer?.observe(element);
-        });
-        scheduleParallax();
-      }
+      } else scheduleParallax();
     };
     const onVisibilityChange = () => {
       document.documentElement.classList.toggle(
@@ -217,7 +259,6 @@ export function MotionSystem() {
       document.documentElement.classList.remove("motion-tab-hidden");
       if (frame) cancelAnimationFrame(frame);
       revealAll();
-      root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
       for (const element of parallax)
         element.style.removeProperty("--motion-parallax");
     };

@@ -222,6 +222,9 @@ const browser = await chromium.launch({
   ...(process.env.MOTION_BROWSER_CHANNEL
     ? { channel: process.env.MOTION_BROWSER_CHANNEL }
     : {}),
+  ...(process.env.MOTION_BROWSER_PATH
+    ? { executablePath: process.env.MOTION_BROWSER_PATH }
+    : {}),
 });
 try {
   const publicPage = await browser.newPage({

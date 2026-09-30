@@ -6,7 +6,7 @@ export default function ErrorPage({
   reset: () => void;
 }) {
   return (
-    <div className="container section">
+    <div className="container section error-page">
       <h1>No pudimos cargar esta página</h1>
       <p>Intentá nuevamente. Tus pedidos confirmados no se modificaron.</p>
       <button className="button" onClick={reset}>
