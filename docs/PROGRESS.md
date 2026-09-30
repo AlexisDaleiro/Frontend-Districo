@@ -1,6 +1,14 @@
 # Registro de avance
 
-Última actualización: 29 de septiembre de 2026. Rama de trabajo: `main`.
+Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
+
+## Corrección: entrada de secciones al hacer scroll (30/09)
+
+- Tras el merge con la integración de rutas `/tienda`, el controlador pasó a animar con `element.animate()` sin ocultar antes. Resultado: cada sección y tarjeta se veía, desaparecía de golpe al entrar en pantalla y recién ahí aparecía; las tarjetas con retraso escalonado se veían completas durante el retraso.
+- `src/components/motion-system.tsx`: vuelve a marcar `data-motion-state="pending"` solo en lo que está por debajo de la pantalla; la animación usa `fill: "backwards"` para respetar el escalonado; al entrar un hijo de una lista escalonada se revelan los hermanos de la misma fila (evita que las necesidades con scroll horizontal en móvil queden invisibles, falla que tenía la versión original); el margen superior amplio del observador revela lo que se saltea con un scroll rápido. Movimiento reducido y desmontaje quitan el estado pendiente.
+- `src/app/motion.css`: `pending` usa `opacity`/`translate` (no pisa los `transform` de hover); se quitó la regla `visible`, que ya no usa nadie.
+- Pruebas: `tsc`, ESLint, 46/46 unit y 23/23 e2e (incluye `motion.spec.ts`) contra build de producción en modo demo. Medición cuadro a cuadro con Playwright a 1280 y 390 px en `/tienda`, `/tienda/empresa`, `/tienda/productos` y `/tienda/contacto`: `main` parpadea en casi todas las secciones; con el cambio, 0 parpadeos y 0 elementos invisibles tras scroll lento o salto al final.
+- Pendiente previo, ajeno a este cambio: `scripts/check-motion.mjs` se corta en la parte de admin/cliente (espera `.page-heading` con API simulada) también sobre `main`.
 
 ## Mejora: administración con navegación lateral (30/09)
 
