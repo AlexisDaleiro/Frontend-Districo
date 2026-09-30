@@ -91,13 +91,6 @@ h3 {
 p + p {
   margin-top: 14px;
 }
-a,
-button {
-  transition:
-    background 0.18s,
-    color 0.18s,
-    transform 0.18s;
-}
 a:hover {
   color: var(--lime-text);
 }
@@ -283,11 +276,6 @@ svg {
   outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .whatsapp-fab {
-    transition: none;
-  }
-}
 @media (min-width: 768px) {
   .whatsapp-fab {
     right: 28px;
@@ -422,7 +410,6 @@ svg {
 }
 .navline .active {
   color: var(--lime);
-  box-shadow: inset 0 -3px var(--lime);
 }
 .mobile-nav .active {
   color: var(--lime-text);
@@ -581,7 +568,6 @@ svg {
   min-height: 0;
 }
 .home-carousel-slide {
-  animation: home-carousel-enter 0.35s ease-out both;
   display: block;
   position: relative;
   background: #f4f1ec;
@@ -700,6 +686,26 @@ svg {
   font-size: 11px;
   font-weight: 650;
 }
+.home-carousel-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.home-carousel-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: white;
+  color: var(--ink);
+}
+.home-carousel-toggle:hover {
+  background: var(--lime);
+  border-color: var(--lime);
+}
 .home-carousel-dots {
   display: flex;
   align-items: center;
@@ -725,16 +731,6 @@ svg {
 .home-carousel-dot:hover::before,
 .home-carousel-dot.is-active::before {
   background: var(--ink);
-}
-@keyframes home-carousel-enter {
-  from {
-    opacity: 0.78;
-    transform: scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 .benefits {
   display: grid;
@@ -888,10 +884,6 @@ svg {
   height: 100%;
   object-fit: contain;
   mix-blend-mode: multiply;
-  transition: transform 0.25s;
-}
-.product-card:hover .product-image img {
-  transform: scale(1.035);
 }
 .product-card .tag {
   position: absolute;
@@ -1100,11 +1092,6 @@ footer :focus-visible {
   font-size: 12px;
   color: var(--muted);
 }
-@media (prefers-reduced-motion: reduce) {
-  .picker-summary svg {
-    transition: none;
-  }
-}
 .catalog-layout .product-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
@@ -1288,11 +1275,6 @@ footer :focus-visible {
 }
 .detail-related {
   margin-top: 64px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .detail-variants button {
-    transition: none;
-  }
 }
 .detail-image {
   background: var(--paper);
@@ -1858,15 +1840,6 @@ td .button {
 .stat > span:last-child {
   font-size: 12px;
   color: var(--muted);
-}
-@media (prefers-reduced-motion: reduce) {
-  .stat,
-  .admin-nav a {
-    transition: none;
-  }
-  .stat:hover {
-    transform: none;
-  }
 }
 .admin-cards {
   display: grid;
@@ -3523,16 +3496,6 @@ td .button {
     flex-direction: column;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
 .hero-visual > img {
   object-position: 68% center;
 }

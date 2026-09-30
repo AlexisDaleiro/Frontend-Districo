@@ -33,6 +33,15 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const cart = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
+  // El contador rebota cuando cambia la cantidad de productos, no al cargar.
+  const cartCount = cart.data?.items.length;
+  const [seenCount, setSeenCount] = useState(cartCount);
+  const [bumps, setBumps] = useState(0);
+  if (cartCount !== seenCount) {
+    setSeenCount(cartCount);
+    if (seenCount !== undefined && cartCount !== undefined)
+      setBumps((value) => value + 1);
+  }
   const nav = (
     <>
       {links.map(([href, text]) => {
@@ -143,10 +152,15 @@ export function Header() {
             <Link
               className="cart-link icon-button"
               href={storeRoutes.cart}
-              aria-label={`Carrito, ${cart.data?.items.length ?? 0} productos`}
+              aria-label={`Carrito, ${cartCount ?? 0} productos`}
             >
               <ShoppingBag />
-              <span className="cart-count">{cart.data?.items.length ?? 0}</span>
+              <span
+                className={bumps ? "cart-count is-bump" : "cart-count"}
+                key={bumps}
+              >
+                {cartCount ?? 0}
+              </span>
             </Link>
           </div>
         </div>

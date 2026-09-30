@@ -530,6 +530,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         title="Filtrar productos"
+        sheet
       >
         {filterContent}
         <button
@@ -673,7 +674,7 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
       )}
       {mutation.error && <ErrorBox error={mutation.error} />}{" "}
       {mutation.isSuccess && (
-        <Link className="text-link" href={storeRoutes.cart}>
+        <Link className="text-link buy-success" href={storeRoutes.cart}>
           <Check size={16} />
           Ver mi carrito
         </Link>
@@ -800,6 +801,8 @@ function ProductTabs({
         id={`panel-${tab}`}
         aria-labelledby={`tab-${tab}`}
         className="detail-tab-panel"
+        // Se vuelve a montar al cambiar de pestaña para animar su entrada.
+        key={tab}
       >
         {tab === "descripcion" ? (
           <>

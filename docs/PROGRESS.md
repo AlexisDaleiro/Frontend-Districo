@@ -2,6 +2,50 @@
 
 Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
 
+## Mejora: sistema de animaciones completo (30/09)
+
+- `src/app/motion.css` concentra todo lo animado: tokens (`--ease-*`, `--dur-*`, `--reveal-distance`), entradas, transiciones de página y de sección, carrusel, diálogos, estados y un único bloque `prefers-reduced-motion`. Ese bloque deja fundidos cortos y quita desplazamientos, escalas, parallax, bucles y autoplay. `globals.css` perdió los bloques de movimiento reducido dispersos (el último apagaba todo), la transición global duplicada, `home-carousel-enter` y el subrayado fijo del menú.
+- Entre páginas: `src/components/page-transition.tsx` (en `tienda/layout.tsx`) envuelve cada ruta en `<ViewTransition>` de React con `key` por ruta. La vieja se desvanece y la nueva sube. Se usa `key` en lugar de `template.tsx` porque el template no se vuelve a montar entre producto y producto ni entre cuenta y pedidos. Admin usa una sola clave y cada sección tiene su propio `<ViewTransition key={section}>` en `admin.tsx`. Sin soporte del navegador, la navegación funciona igual sin animar.
+- `motion-system.tsx`:
+  - Durante los 450 ms posteriores a una navegación, lo que ya está en pantalla entra con la transición de página y no hace su propia entrada. Las grillas sí escalonan.
+  - `.need`, `.brand-word` y las stats entran con rebote de escala.
+  - Los revelados quedan con `data-motion-state="in"`, que dispara el brillo de `.cta-band`.
+  - Se escalonan también las cifras de empresa, las filas de tablas de admin, los campos de ingreso y solicitud, los ítems del carrito (`.cart-items`), las tarjetas de puntos de venta y la página de error.
+  - Umbral 0: dentro de listas con scroll propio basta con que el elemento asome.
+- Carrusel (`home-carousel.tsx`):
+  - Desliza según la dirección (48 px en escritorio, 14 px en móvil para no generar scroll horizontal).
+  - El texto entra escalonado y la imagen tiene un zoom lento (`scale`, así `transform` sigue en `none`).
+  - Autoplay de 6 s: la barra de progreso del punto activo es una animación CSS y su `animationend` avanza el slide. Se pausa con hover, con foco de teclado, con el botón «Pausar/Reanudar carrusel» y con la pestaña oculta.
+  - Con movimiento reducido no hay autoplay ni botón.
+  - `aria-live` se apaga mientras rota.
+- Componentes:
+  - `Modal` (`ui.tsx`) anima el cierre, también con Escape. Mientras sale conserva el último contenido y título y queda con `aria-hidden`, porque puede convivir con el diálogo que se abre en su lugar (admin: detalle de pedido → cambiar estado). Tiene una variante `sheet` para los filtros en móvil.
+  - El contador del carrito rebota al cambiar la cantidad.
+  - El subtotal hace un «tick» al cambiar.
+  - Nuevo `CountUp` (`count-up.tsx`): cuenta desde abajo al entrar en pantalla, el valor final es el del servidor y hay un `sr-only` para lectores de pantalla. Se usa en las cifras de empresa, en la métrica del catálogo y en las stats de admin.
+  - Indicador lima que se desliza en la barra de admin.
+  - Subrayado del menú que se dibuja.
+  - Anillo de foco que se cierra.
+  - `:active` con escala.
+  - Error con «shake», confirmaciones con check.
+  - Pulso en «en revisión».
+  - Fundido del mapa.
+  - Ícono flotante en los estados vacíos y el 404.
+  - Panel de pestañas de la ficha de producto que entra al cambiar.
+- `scripts/check-motion.mjs`: acepta `MOTION_BROWSER_PATH`. Hay que correrlo contra un build en **modo real**, porque simula la API con `page.route`. En modo demo se corta en la parte de admin y cliente, que era el pendiente anterior.
+- Pruebas:
+  - `tsc` y ESLint sin errores; 46/46 unitarias.
+  - e2e 29/29 contra build demo, incluido `motion.spec.ts` ampliado:
+    - sondeo cuadro a cuadro sin parpadeos ni bloques invisibles a 390 y 1280 px en portada, catálogo, marcas, empresa y contacto;
+    - View Transition al navegar;
+    - autoplay, pausa y movimiento reducido del carrusel;
+    - salida de diálogos y foco devuelto;
+    - indicador de admin;
+    - cero `pageerror` en rutas públicas y en navegación.
+  - `check-motion.mjs` completo contra build en modo real.
+- Comando del chequeo: `NEXT_PUBLIC_DATA_MODE=real npm run build -w apps/web`, levantar con `NEXT_PUBLIC_DATA_MODE=real npx next start --port 3300` en `apps/web` y correr `MOTION_BASE_URL=http://127.0.0.1:3300 node scripts/check-motion.mjs`.
+- Pendiente menor: a 360 px el texto «01 / 03 · Biofresh» del carrusel pasa a dos líneas por el botón de pausa. A 390 px entra en una.
+
 ## Mejora: ficha de producto «comercial B2B» (30/09)
 
 - `src/components/catalog.tsx` (`ProductDetailContent`, nuevos `ProductTabs` y `RelatedProducts`): la galería queda sticky desde 900px. El eyebrow enlaza a la marca y a la categoría. Hay píldoras Disponible/Sin stock, Nuevo (`newProduct`), Destacado (`featured`) y Uso profesional.

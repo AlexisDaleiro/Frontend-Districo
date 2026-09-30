@@ -1,4 +1,5 @@
 import { CompanyCatalogMetric } from "@/components/company-catalog-metric";
+import { CountUp } from "@/components/count-up";
 import { ActionLink, PageHeading, Picture } from "@/components/ui";
 import { storeRoutes } from "@/lib/store-routes";
 import { Dumbbell, Mail, UtensilsCrossed, WashingMachine } from "lucide-react";
@@ -91,15 +92,21 @@ export default function Page() {
         <dl>
           <div>
             <dt>Desde</dt>
-            <dd>1995</dd>
+            <dd>
+              <CountUp value={1995} from={1960} grouping={false} />
+            </dd>
           </div>
           <div>
             <dt>Presencia propia</dt>
-            <dd>2 sedes</dd>
+            <dd>
+              <CountUp value={2} suffix=" sedes" duration={700} />
+            </dd>
           </div>
           <div>
             <dt>Casa Matriz</dt>
-            <dd>10.000 m²</dd>
+            <dd>
+              <CountUp value={10000} suffix=" m²" />
+            </dd>
           </div>
           <div>
             <dt>Gestión certificada</dt>
