@@ -29,14 +29,15 @@ const revealSelector = [
   ".cart-item",
   ".cart-layout > .summary",
   ".orders-list > *",
-  ".admin-tabs",
+  ".admin-sidebar",
   ".admin-toolbar",
   ".admin-cards > *",
   ".stats > *",
   ".panel",
 ].join(", ");
 
-const parallaxSelector = ".hero-visual img, .company-hero-visual img";
+const parallaxSelector =
+  ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img";
 const staggerSelector =
   ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-card-grid, .contact-branch-grid, .account-panels, .orders-list, .admin-cards, .stats";
 

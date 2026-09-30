@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import {
-  ArrowRight,
   ArrowUpRight,
   PackageCheck,
   Handshake,
@@ -18,6 +17,7 @@ import type { Entity, ProductCardList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductGrid } from "./catalog";
 import { BrandLogo } from "./brand-logo";
+import { HomeCarousel } from "./home-carousel";
 import { useQueryClient } from "@tanstack/react-query";
 import { catalogCardsPath } from "@/lib/catalog-query";
 const normalize = (text: string) =>
@@ -103,7 +103,7 @@ export function Home() {
   );
   return (
     <>
-      <div className="container">
+      <div className="container home-container">
         <section className="needs" aria-label="Comprar por necesidad">
           <div className="needs-intro">
             <strong>¿Qué estás buscando?</strong>
@@ -139,40 +139,7 @@ export function Home() {
             </div>
           )}
         </section>
-        <section className="hero">
-          <div className="hero-copy">
-            <p className="eyebrow">Cerca de tu negocio. Todos los días.</p>
-            <h1>
-              Lo que necesitan.
-              <br />
-              <em>
-                El respaldo
-                <br />
-                que buscás.
-              </em>
-            </h1>
-            <p>
-              Marcas de confianza y soluciones que acompañan el crecimiento de
-              tu negocio.
-            </p>
-            <div className="actions">
-              <Link className="button" href="/catalogo">
-                Explorar catálogo <ArrowRight size={17} />
-              </Link>
-            </div>
-          </div>
-          <div className="hero-visual">
-            <Picture
-              src="/images/hero-raicor.jpg"
-              alt="Cuidado y bienestar animal, selección de Raicor"
-              fetchPriority="high"
-            />
-            <div className="hero-caption">
-              <span>Una selección con propósito</span>
-              <strong>Calidad que se nota.</strong>
-            </div>
-          </div>
-        </section>
+        <HomeCarousel brands={brands.data} />
         <div className="benefits">
           <div>
             <PackageCheck size={24} />

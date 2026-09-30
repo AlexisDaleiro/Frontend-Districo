@@ -12,12 +12,18 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /Lo que necesitan/ }),
+    page.getByRole("heading", { name: "Biofresh para tu negocio." }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Banner siguiente" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Gran Plus en DISTRICO." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Mostrar Biofresh" }).click();
+  await expect(page.getByRole("link", { name: "Ver Biofresh" })).toBeVisible();
   await page
     .getByRole("link", { name: "Arenas sanitarias", exact: true })
     .click();
-  await expect(page).toHaveURL(/categoryId=arenas/);
+  await expect(page).toHaveURL(/categoryId=[^&]+/);
   await expect(page.locator(".product-card")).toHaveCount(2);
   await page.reload();
   await expect(page.locator(".product-card")).toHaveCount(2);

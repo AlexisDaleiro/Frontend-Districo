@@ -2,6 +2,21 @@
 
 Última actualización: 29 de septiembre de 2026. Rama de trabajo: `main`.
 
+## Mejora: administración con navegación lateral (30/09)
+
+- `src/components/admin.tsx`: las pestañas horizontales pasan a una barra lateral `AdminNav` (petróleo, 240px, sticky desde 960px). Tiene grupos Operación / Catálogo / Marketing, iconos lucide, activo en lima con `aria-current` y contadores de consultas nuevas, solicitudes pendientes y pedidos en revisión. Los contadores salen de la misma consulta `admin/dashboard` del Resumen, así que no agregan pedidos a la API.
+- En móvil la barra es una franja horizontal con scroll que centra la sección activa. El `h1` muestra el nombre de la sección (el Resumen mantiene «Tu operación, en un solo lugar.»). Las stats del Resumen son links con icono. Desde 960px el panel usa todo el ancho (`.container.admin-page`: margen 24px y `max-width: none`, porque Tailwind limita `.container` a 1536px): la barra queda a 24px del borde izquierdo.
+- `globals.css`: se reemplazó `.admin-tabs` por `.admin-shell`/`.admin-sidebar`/`.admin-nav*` y se retocaron `.stat`/`.admin-toolbar`. `motion.css` y `motion-system.tsx` apuntan a los selectores nuevos.
+- Pruebas: `tsc`, ESLint y 44/44 tests. Con una copia en modo demo (`.local-support/webdemo`, puerto 3100) y Playwright a 1280 y 390 px: barra a la izquierda, activo correcto y sin scroll horizontal. e2e `flows.spec.ts` de administración 3/3 y `admin-complete.spec.ts` 2/3. Falla «imagen no disponible tiene sustituto»: espera `/images/placeholder.svg` y recibe `/_next/image?...`. Viene del cambio a `next/image`, no de este trabajo; queda pendiente.
+
+## Mejora: redes y WhatsApp fijo; sección de destacados de la portada (30/09)
+
+- Portada: se probó «Lo que más pedís» (historial de `orders/me`) y se descartó a pedido del usuario. «Para tener en cuenta» queda igual para todos, con los destacados (`products/cards?featured=true`). No hay ofertas públicas en la API: `promotions` es solo para admin y los productos no traen descuento, así que mostrar ofertas requiere un endpoint del backend. En la base local hay 0 destacados y se ve el texto de relleno. Hay que marcarlos en Admin > Catálogo («Mostrar entre destacados»).
+- Header: Facebook (`facebook.com/districosa`) y LinkedIn (`uy.linkedin.com/company/districouy`) a la izquierda del teléfono, los mismos del sitio oficial. No hay Instagram publicado.
+- `Footer`: botón fijo de WhatsApp abajo a la derecha (lima con logo en petróleo, SVG de simple-icons CC0). La URL quedó en `src/lib/contact.ts`, compartida con `/contacto`. El hover fija el color para que `footer a:hover` no oculte el logo.
+- Pruebas: `tsc`, ESLint y 44/44 tests.
+- Hay cambios ajenos sin commit (carrusel de portada: `home-carousel.tsx`, `globals.css`, `flows.spec.ts`, `asset-sources.json`). Se preservaron.
+
 ## Animaciones del sitio completo (29/09)
 
 - `src/components/motion-system.tsx` y `src/app/motion.css`: entradas de sección y tarjetas al aparecer una vez, parallax suave en las fotografías de portada, acentos ambientales, hover, filtros, pestañas, diálogos y confirmaciones. El controlador usa un solo `IntersectionObserver`, detecta contenido asíncrono y limita el parallax con `requestAnimationFrame`. Los elementos son visibles sin JavaScript; la pestaña oculta pausa las animaciones y `prefers-reduced-motion` desactiva el movimiento.

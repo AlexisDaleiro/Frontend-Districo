@@ -12,7 +12,7 @@
     transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--motion-delay, 0ms);
 }
 
-.hero-visual img,
+.hero:not(.home-carousel-slide) .hero-visual img,
 .company-hero-visual img {
   transform: translate3d(0, var(--motion-parallax, 0px), 0) scale(1.07);
   will-change: transform;
@@ -146,7 +146,7 @@
   }
 }
 
-.admin-tabs a.active {
+.admin-nav a.active {
   animation: motion-tab-enter 220ms ease-out both;
 }
 
@@ -258,7 +258,7 @@
   .cta-band::before,
   .active-filters .chip,
   .detail-image img,
-  .admin-tabs a.active,
+  .admin-nav a.active,
   .modal[open],
   .modal[open]::backdrop,
   .cart-item strong[data-saved="true"],

@@ -1,12 +1,11 @@
 import { ContactForm } from "@/components/contact-form";
 import { StoreLocator } from "@/components/store-locator";
 import { PageHeading } from "@/components/ui";
+import { whatsappUrl } from "@/lib/contact";
 import { ArrowUpRight, Building2, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 export const metadata = { title: "Contacto" };
 
-const whatsappUrl =
-  "https://wa.me/59895673109?text=Hola%2C%20quisiera%20hacer%20una%20consulta%20sobre%20sus%20productos";
 
 export default function Page() {
   return (

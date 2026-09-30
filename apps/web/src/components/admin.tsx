@@ -1,7 +1,22 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowUpRight, Plus, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowUpRight,
+  BadgePercent,
+  ClipboardList,
+  Inbox,
+  LayoutDashboard,
+  Package,
+  Pencil,
+  Plus,
+  Sparkles,
+  Tags,
+  Trash2,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
 import { DEMO, request, useApi, useSession } from "./providers";
@@ -29,17 +44,19 @@ import type {
   Rule,
   Variant,
 } from "@/lib/types";
-const sections = [
-  ["", "Resumen"],
-  ["consultas", "Consultas"],
-  ["solicitudes", "Solicitudes"],
-  ["clientes", "Clientes"],
-  ["pedidos", "Pedidos"],
-  ["catalogo", "Catálogo"],
-  ["organizacion", "Marcas y categorías"],
-  ["promociones", "Promociones"],
-  ["recomendaciones", "Recomendaciones"],
+// Grupo, ruta, título, icono y contador de admin/dashboard que se muestra al lado.
+const sections: [string, string, string, LucideIcon, string?][] = [
+  ["Operación", "", "Resumen", LayoutDashboard],
+  ["Operación", "consultas", "Consultas", Inbox, "newContactInquiries"],
+  ["Operación", "solicitudes", "Solicitudes", UserPlus, "pendingApplications"],
+  ["Operación", "clientes", "Clientes", Users],
+  ["Operación", "pedidos", "Pedidos", ClipboardList, "pendingReviewOrders"],
+  ["Catálogo", "catalogo", "Catálogo", Package],
+  ["Catálogo", "organizacion", "Marcas y categorías", Tags],
+  ["Marketing", "promociones", "Promociones", BadgePercent],
+  ["Marketing", "recomendaciones", "Recomendaciones", Sparkles],
 ];
+const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
   values.map((value) => ({ value, label: label(value) }));
 const entities = (values: Entity[] | undefined) =>
@@ -83,17 +100,37 @@ function Dashboard() {
   return (
     <>
       <div className="stats">
-        {[
-          ["products", "Productos"],
-          ["pendingApplications", "Solicitudes pendientes"],
-          ["pendingReviewOrders", "Pedidos en revisión"],
-          ["activePromotions", "Promociones activas"],
-          ["newContactInquiries", "Consultas nuevas"],
-        ].map(([key, title]) => (
-          <div className="card stat" key={key}>
-            <span>{title}</span>
+        {(
+          [
+            ["products", "Productos", "catalogo", Package],
+            [
+              "pendingApplications",
+              "Solicitudes pendientes",
+              "solicitudes",
+              UserPlus,
+            ],
+            [
+              "pendingReviewOrders",
+              "Pedidos en revisión",
+              "pedidos",
+              ClipboardList,
+            ],
+            [
+              "activePromotions",
+              "Promociones activas",
+              "promociones",
+              BadgePercent,
+            ],
+            ["newContactInquiries", "Consultas nuevas", "consultas", Inbox],
+          ] as const
+        ).map(([key, title, path, Icon]) => (
+          <Link className="card stat" href={`/admin/${path}`} key={key}>
+            <span className="stat-icon" aria-hidden="true">
+              <Icon size={18} />
+            </span>
             <strong>{q.data[key] ?? 0}</strong>
-          </div>
+            <span>{title}</span>
+          </Link>
         ))}
       </div>
       <div className="panel" style={{ marginTop: 30 }}>
@@ -603,7 +640,13 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               )}
             </dl>
             <OrderItems order={detail} />
-            <OrderBilling key={detail.id} order={detail} onUpdated={async () => { await q.refetch(); }} />
+            <OrderBilling
+              key={detail.id}
+              order={detail}
+              onUpdated={async () => {
+                await q.refetch();
+              }}
+            />
             <p className="muted small-copy" style={{ marginTop: 12 }}>
               Importes registrados al confirmar el pedido; no cambian con
               precios posteriores.
@@ -1399,50 +1442,100 @@ function Marketing({
     </>
   );
 }
+function AdminNav({ section, email }: { section: string; email?: string }) {
+  // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
+  const counts = useApi<Record<string, number>>("admin/dashboard");
+  const nav = useRef<HTMLElement>(null);
+  // En móvil la navegación es una franja con scroll: centra la sección activa
+  // moviendo solo la franja, no la página.
+  useEffect(() => {
+    const strip = nav.current;
+    const active = strip?.querySelector<HTMLElement>("a.active");
+    if (!strip || !active || strip.scrollWidth <= strip.clientWidth) return;
+    strip.scrollLeft =
+      active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
+  }, [section]);
+  return (
+    <aside className="admin-sidebar">
+      <div className="admin-sidebar-head">
+        <strong>Administración</strong>
+        {email && <span>{email}</span>}
+      </div>
+      <nav className="admin-nav" aria-label="Administración" ref={nav}>
+        {groups.map((group) => (
+          <div className="admin-nav-group" key={group}>
+            <p>{group}</p>
+            {sections
+              .filter(([g]) => g === group)
+              .map(([, path, title, Icon, countKey]) => {
+                const count = countKey ? (counts.data?.[countKey] ?? 0) : 0;
+                return (
+                  <Link
+                    className={section === path ? "active" : ""}
+                    aria-current={section === path ? "page" : undefined}
+                    href={`/admin${path ? `/${path}` : ""}`}
+                    key={path}
+                  >
+                    <Icon size={17} aria-hidden="true" />
+                    <span>{title}</span>
+                    {count > 0 && (
+                      <em
+                        className="admin-nav-count"
+                        aria-label={`${count} pendientes`}
+                      >
+                        {count}
+                      </em>
+                    )}
+                  </Link>
+                );
+              })}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
+}
 export function Admin({ section = "" }: { section?: string }) {
   const { user } = useSession();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const current = sections.find(([, path]) => path === section);
   return (
-    <div className="container section">
+    <div className="container admin-page section">
       <AccessGate admin>
-        <PageHeading
-          eyebrow="DISTRICO · Administración"
-          title="Tu operación, en un solo lugar."
-        >
-          {user?.email}
-        </PageHeading>
-        <nav className="admin-tabs" aria-label="Administración">
-          {sections.map(([path, title]) => (
-            <Link
-              className={section === path ? "active" : ""}
-              href={`/admin${path ? `/${path}` : ""}`}
-              key={path}
-            >
-              {title}
-            </Link>
-          ))}
-        </nav>
-        {section === "" ? (
-          <Dashboard />
-        ) : section === "consultas" ? (
-          <ContactInquiries edit={setEditor} />
-        ) : section === "solicitudes" ? (
-          <Applications edit={setEditor} />
-        ) : section === "clientes" ? (
-          <Customers edit={setEditor} />
-        ) : section === "pedidos" ? (
-          <AdminOrders edit={setEditor} />
-        ) : section === "catalogo" ? (
-          <ProductManagement edit={setEditor} />
-        ) : section === "organizacion" ? (
-          <Organization edit={setEditor} />
-        ) : section === "promociones" ? (
-          <Marketing edit={setEditor} />
-        ) : section === "recomendaciones" ? (
-          <Marketing edit={setEditor} recommendations />
-        ) : (
-          <Empty title="Sección no disponible" />
-        )}
+        <div className="admin-shell">
+          <AdminNav section={section} email={user?.email} />
+          <div className="admin-main">
+            <PageHeading
+              eyebrow="DISTRICO · Administración"
+              title={
+                section && current
+                  ? current[2]
+                  : "Tu operación, en un solo lugar."
+              }
+            />
+            {section === "" ? (
+              <Dashboard />
+            ) : section === "consultas" ? (
+              <ContactInquiries edit={setEditor} />
+            ) : section === "solicitudes" ? (
+              <Applications edit={setEditor} />
+            ) : section === "clientes" ? (
+              <Customers edit={setEditor} />
+            ) : section === "pedidos" ? (
+              <AdminOrders edit={setEditor} />
+            ) : section === "catalogo" ? (
+              <ProductManagement edit={setEditor} />
+            ) : section === "organizacion" ? (
+              <Organization edit={setEditor} />
+            ) : section === "promociones" ? (
+              <Marketing edit={setEditor} />
+            ) : section === "recomendaciones" ? (
+              <Marketing edit={setEditor} recommendations />
+            ) : (
+              <Empty title="Sección no disponible" />
+            )}
+          </div>
+        </div>
         <Modal
           open={!!editor}
           onClose={() => setEditor(null)}
