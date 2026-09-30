@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, ArrowUpRight, CheckCircle } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
@@ -18,7 +18,15 @@ import {
 } from "@/lib/commerce";
 import { ApiError } from "@/lib/http";
 import { storeRoutes } from "@/lib/store-routes";
-function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
+function CartLine({
+  item,
+  busy,
+  onPendingChange,
+}: {
+  item: CartItem;
+  busy: boolean;
+  onPendingChange: (id: string, pending: boolean) => void;
+}) {
   const [quantity, setQuantity] = useState(item.quantity);
   const client = useQueryClient();
   const { user } = useSession();
@@ -32,8 +40,9 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
       ),
     // La API devuelve el carrito con los totales ya calculados: se usa directo
     // en lugar de releer todas las consultas.
-    onSuccess: (cart) => {
+    onSuccess: (cart, remove) => {
       client.setQueryData(apiQueryKey("cart", user?.id), cart);
+      if (remove) onPendingChange(item.id, false);
       void client.invalidateQueries({
         queryKey: apiQueryKey("cart/recommendations", user?.id),
       });
@@ -46,6 +55,9 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
       }),
   });
   const { isPending, isError, mutate } = mutation;
+  useEffect(() => {
+    onPendingChange(item.id, isPending || quantity !== item.quantity);
+  }, [item.id, item.quantity, isPending, onPendingChange, quantity]);
   // Guarda la cantidad sola, un momento después del último cambio.
   useEffect(() => {
     if (busy || isPending || isError || error || quantity === item.quantity)
@@ -71,6 +83,7 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
             value={quantity}
             onChange={(value) => {
               mutation.reset();
+              onPendingChange(item.id, true);
               setQuantity(value);
             }}
             variant={item.variant}
@@ -79,7 +92,10 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
             className="icon-button"
             aria-label={`Quitar ${item.product.name}`}
             disabled={busy || mutation.isPending}
-            onClick={() => mutation.mutate(true)}
+            onClick={() => {
+              onPendingChange(item.id, true);
+              mutation.mutate(true);
+            }}
           >
             <Trash2 size={17} />
           </button>
@@ -111,6 +127,14 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   );
   const [accept, setAccept] = useState(false),
     [uncertain, setUncertain] = useState(false);
+  const [pendingLines, setPendingLines] = useState<string[]>([]);
+  const onPendingChange = useCallback((id: string, pending: boolean) => {
+    setPendingLines((current) => {
+      const present = current.includes(id);
+      if (present === pending) return current;
+      return pending ? [...current, id] : current.filter((line) => line !== id);
+    });
+  }, []);
   const router = useRouter();
   const client = useQueryClient();
   const manual = reviewRequired(user?.customerAccount?.creditStatus);
@@ -171,7 +195,12 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
     <div className="cart-layout">
       <div>
         {q.data.items.map((item) => (
-          <CartLine key={item.id} item={item} busy={checkout.isPending} />
+          <CartLine
+            key={item.id}
+            item={item}
+            busy={checkout.isPending}
+            onPendingChange={onPendingChange}
+          />
         ))}
         <div className="actions">
           <ActionLink href={checkoutMode ? storeRoutes.cart : storeRoutes.products} secondary>
@@ -231,7 +260,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
         {checkoutMode ? (
           <button
             className="button"
-            disabled={checkout.isPending || (manual && !accept) || q.isFetching || blocked}
+            disabled={checkout.isPending || (manual && !accept) || q.isFetching || blocked || pendingLines.length > 0}
             onClick={() => checkout.mutate()}
           >
             {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
@@ -240,7 +269,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
         ) : (
           <button
             className="button"
-            disabled={q.isFetching || blocked}
+            disabled={q.isFetching || blocked || pendingLines.length > 0}
             onClick={() => router.push(storeRoutes.checkout)}
           >
             Continuar al checkout <ArrowUpRight size={17} />

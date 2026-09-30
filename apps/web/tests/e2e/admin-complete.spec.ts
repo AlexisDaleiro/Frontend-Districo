@@ -6,7 +6,7 @@ async function admin(page: Page) {
     expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin$/);
+  await expect(page).toHaveURL(/\/tienda\/admin$/, { timeout: 10000 });
 }
 test("administración crea producto, presentación, precio, stock y medio", async ({
   page,

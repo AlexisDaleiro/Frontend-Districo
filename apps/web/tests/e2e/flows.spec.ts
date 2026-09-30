@@ -56,6 +56,21 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
   await page.goto("/tienda/cuenta/pedidos");
   await expect(page.locator(".orders-list .card")).toHaveCount(1);
 });
+test("el checkout espera el guardado de una cantidad modificada", async ({ page }) => {
+  await login(page);
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(page.getByRole("link", { name: "Ver mi carrito", exact: true })).toBeVisible();
+  await page.goto("/tienda/carrito");
+  const checkout = page.getByRole("button", { name: "Continuar al checkout" });
+  await page.getByRole("button", { name: "Aumentar cantidad" }).click();
+  await expect(checkout).toBeDisabled();
+  await expect(page.locator('.cart-item strong[data-saved="true"]')).toBeVisible();
+  await expect(checkout).toBeEnabled();
+  await checkout.click();
+  await expect(page).toHaveURL(/\/tienda\/checkout$/);
+  await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("2");
+});
 test("solicitud aprobada habilita nueva cuenta y administración", async ({
   page,
 }) => {
