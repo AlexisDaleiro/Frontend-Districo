@@ -33,6 +33,8 @@ No poner secretos en `NEXT_PUBLIC_*`, en Git ni en `.env.example`. Comprobar que
 
 El Session pooler de Supabase tiene un cupo bajo de conexiones persistentes. Cada instancia serverless de Prisma puede abrir su propio pool, lo que agotó el cupo durante el despliegue. El Transaction pooler y `connection_limit=1` son la configuración para solicitudes breves en Vercel; Prisma conecta al consultar y no ocupa una sesión durante peticiones que no usan la base. La URL directa sigue reservada para migraciones. [Supabase: solución de problemas con Prisma](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting), [Prisma: poolers de conexión](https://www.prisma.io/docs/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer).
 
+El rewrite de Services responde 404 a `/_next/image` aunque las imágenes originales respondan 200. Por eso `apps/web/next.config.ts` desactiva temporalmente la optimización de imágenes de Next: el navegador carga las URLs originales del catálogo. El cubo en `/images/placeholder.svg` queda reservado para registros sin imagen o URLs de origen que fallen. Esta decisión aumenta los bytes transferidos; revisar al corregir el enrutamiento de `/_next/image`. No se copian ni inventan imágenes del catálogo.
+
 ## Verificación
 
 1. En local, ejecutar `npm run db:check -w apps/api` (solo lectura), `npm run dev:api` y `npm run dev:web`; comprobar `http://127.0.0.1:3001/api/products?limit=1` y `http://127.0.0.1:3000/api/backend/products?limit=1`. Ambas respuestas deben ser JSON con `items` y `meta`, sin el mensaje de modo demo.
