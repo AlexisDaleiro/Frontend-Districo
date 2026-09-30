@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Entity } from "@/lib/types";
+import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { Picture } from "./ui";
 
 const slides = [
@@ -51,6 +52,13 @@ const slides = [
   },
 ] as const;
 
+const brandKey = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
 export function HomeCarousel({ brands }: { brands?: Entity[] }) {
   const [active, setActive] = useState(0);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -58,11 +66,20 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
   const layout = slide.imageWidth / slide.imageHeight >= 2 ? "art" : "photo";
   const brand =
     "brandSlug" in slide
-      ? brands?.find((item) => item.slug === slide.brandSlug)
+      ? brands?.find(
+          (item) =>
+            brandKey(item.slug ?? item.name) === brandKey(slide.brandSlug),
+        )
       : undefined;
-  const href = brand
-    ? `/catalogo?brandId=${encodeURIComponent(brand.id)}`
-    : "/catalogo";
+  const href =
+    "brandSlug" in slide
+      ? withSearch(
+          storeRoutes.products,
+          new URLSearchParams(
+            brand ? { brandId: brand.id } : { search: slide.name },
+          ),
+        )
+      : storeRoutes.products;
   const show = (index: number) =>
     setActive((index + slides.length) % slides.length);
 

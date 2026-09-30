@@ -27,10 +27,9 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
       "none",
     );
     const biofreshHeight = await carousel.evaluate((element) => ({
-      banner: element.querySelector(".home-carousel-stage")!.getBoundingClientRect()
-        .height,
-      image: element.querySelector(".hero-visual img")!.getBoundingClientRect()
-        .height,
+      banner: element.querySelector(".home-carousel-stage")!.clientHeight,
+      image: (element.querySelector(".hero-visual img") as HTMLImageElement)
+        .clientHeight,
     }));
     expect(Math.abs(biofreshHeight.banner - biofreshHeight.image)).toBeLessThan(
       2,
@@ -118,4 +117,22 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
       (element) => getComputedStyle(element).animationName,
     ),
   ).toBe("none");
+
+  const brandLink = page.getByRole("link", { name: "Ver Biofresh", exact: true });
+  await expect(brandLink).toHaveAttribute(
+    "href",
+    /\/tienda\/productos\?brandId=/,
+  );
+  await brandLink.click();
+  await expect(page).toHaveURL(/\/tienda\/productos\?brandId=/);
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Mostrar Gran Plus" }).click();
+  const granPlusLink = page.getByRole("link", { name: "Ver Gran Plus", exact: true });
+  await expect(granPlusLink).toHaveAttribute(
+    "href",
+    /\/tienda\/productos\?(?:brandId|search)=/,
+  );
+  await granPlusLink.click();
+  await expect(page).toHaveURL(/\/tienda\/productos\?(?:brandId|search)=/);
 });
