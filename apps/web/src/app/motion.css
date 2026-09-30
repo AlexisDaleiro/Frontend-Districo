@@ -1,15 +1,8 @@
-/* Elementos visibles por defecto: el controlador solo marca los que va a observar. */
+/* Elementos visibles por defecto: el controlador solo oculta los que todavía
+   no entraron en pantalla y los revela con una animación al aparecer. */
 [data-motion-state="pending"] {
   opacity: 0;
-  transform: translate3d(0, 22px, 0);
-}
-
-[data-motion-state="visible"] {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity 620ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--motion-delay, 0ms),
-    transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--motion-delay, 0ms);
+  translate: 0 22px;
 }
 
 .hero:not(.home-carousel-slide) .hero-visual img,
@@ -230,11 +223,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-motion-state="pending"],
-  [data-motion-state="visible"] {
+  [data-motion-state="pending"] {
     opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
+    translate: none !important;
   }
 
   .hero-visual img,

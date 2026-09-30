@@ -55,7 +55,10 @@ export function MotionSystem() {
 
     const reveal = (element: Element) => {
       observer?.unobserve(element);
+      element.removeAttribute("data-motion-state");
       if (!reduced.matches && element instanceof HTMLElement) {
+        // "backwards" mantiene el primer cuadro durante el retraso escalonado:
+        // sin él la tarjeta se ve, desaparece y recién ahí entra.
         element.animate(
           [
             { opacity: 0, translate: "0 22px" },
@@ -65,19 +68,40 @@ export function MotionSystem() {
             duration: 620,
             delay: delays.get(element) ?? 0,
             easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+            fill: "backwards",
           },
         );
       }
+    };
+
+    const revealAll = () => {
+      root
+        .querySelectorAll('[data-motion-state="pending"]')
+        .forEach((element) => element.removeAttribute("data-motion-state"));
     };
 
     if ("IntersectionObserver" in window) {
       observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
-            if (entry.isIntersecting) reveal(entry.target);
+            if (!entry.isIntersecting) continue;
+            reveal(entry.target);
+            // Las listas con scroll horizontal (necesidades en móvil) recortan
+            // sus hijos: se revelan juntos con los hermanos de la misma fila.
+            const parent = entry.target.parentElement;
+            if (!parent?.matches(staggerSelector)) continue;
+            for (const sibling of parent.children) {
+              if (
+                sibling.getAttribute("data-motion-state") === "pending" &&
+                sibling.getBoundingClientRect().top < innerHeight
+              )
+                reveal(sibling);
+            }
           }
         },
-        { rootMargin: "0px 0px -24px 0px", threshold: 0.04 },
+        // El margen superior amplio revela lo que quedó por encima al
+        // desplazarse rápido, para que nada quede oculto.
+        { rootMargin: "100000px 0px -24px 0px", threshold: 0.04 },
       );
     }
 
@@ -119,8 +143,15 @@ export function MotionSystem() {
         ) as number;
         delays.set(element, Math.min(index, 5) * 65);
       }
-      if (reduced.matches || !observer) reveal(element);
-      else observer.observe(element);
+      if (reduced.matches || !observer) {
+        reveal(element);
+        return;
+      }
+      // Solo se oculta de antemano lo que está por debajo de la pantalla; lo
+      // visible al cargar anima directamente.
+      if (element.getBoundingClientRect().top >= innerHeight)
+        element.setAttribute("data-motion-state", "pending");
+      observer.observe(element);
     };
 
     const scan = (node: ParentNode) => {
@@ -148,6 +179,7 @@ export function MotionSystem() {
     const onPreferenceChange = () => {
       if (reduced.matches) {
         observer?.disconnect();
+        revealAll();
         root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
         for (const element of parallax)
           element.style.removeProperty("--motion-parallax");
@@ -184,6 +216,7 @@ export function MotionSystem() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       document.documentElement.classList.remove("motion-tab-hidden");
       if (frame) cancelAnimationFrame(frame);
+      revealAll();
       root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
       for (const element of parallax)
         element.style.removeProperty("--motion-parallax");
