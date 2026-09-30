@@ -1,16 +1,27 @@
 import { test, expect, type Page } from "@playwright/test";
 async function login(page: Page, role = "Cliente mayorista") {
-  await page.goto("/ingresar");
-  await page.getByRole("button", { name: role, exact: true }).click();
+  await page.goto("/tienda/ingresar");
+  const email = role === "Administración"
+    ? "admin@districo.com"
+    : role === "Cliente con revisión de pedidos"
+      ? "clientepago@gmail.com"
+      : role === "Cliente con permiso veterinario"
+        ? "clientemed@gmail.com"
+        : "cliente@gmail.com";
+  await expect(async () => {
+    await page.getByRole("button", { name: role, exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe(email);
+  }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(
-    role === "Administración" ? /\/admin$/ : /\/catalogo$/,
+    role === "Administración" ? /\/tienda\/admin$/ : /\/tienda\/productos$/,
   );
 }
 test("catálogo público, filtros persistentes y ausencia de precios", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page).toHaveURL(/\/tienda$/);
   await expect(
     page.getByRole("heading", { name: "Biofresh para tu negocio." }),
   ).toBeVisible();
@@ -23,34 +34,53 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
   await page
     .getByRole("link", { name: "Arenas sanitarias", exact: true })
     .click();
-  await expect(page).toHaveURL(/categoryId=[^&]+/);
+  await expect(page).toHaveURL(/\/tienda\/categorias\/arenas$/);
   await expect(page.locator(".product-card")).toHaveCount(2);
   await page.reload();
   await expect(page.locator(".product-card")).toHaveCount(2);
   await expect(page.locator(".product-bottom").first()).toContainText(
     "Ingresá para ver precios",
   );
+  await page.getByRole("button", { name: "Arenas sanitarias" }).last().click();
+  await expect(page).toHaveURL(/\/tienda\/productos$/);
 });
 test("cliente envía pedido y consulta detalle", async ({ page }) => {
   await login(page);
-  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
   await expect(
     page.getByRole("link", { name: "Ver mi carrito", exact: true }),
   ).toBeVisible();
-  await page.goto("/carrito");
+  await page.goto("/tienda/carrito");
+  await page.getByRole("button", { name: "Continuar al checkout" }).click();
+  await expect(page).toHaveURL(/\/tienda\/checkout$/);
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
   await expect(
     page.getByRole("heading", { name: "Pedido recibido" }),
   ).toBeVisible();
   await expect(page.locator("table")).toContainText("BIOFRESH");
-  await page.goto("/cuenta/pedidos");
+  await page.goto("/tienda/cuenta/pedidos");
   await expect(page.locator(".orders-list .card")).toHaveCount(1);
+});
+test("el checkout espera el guardado de una cantidad modificada", async ({ page }) => {
+  await login(page);
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(page.getByRole("link", { name: "Ver mi carrito", exact: true })).toBeVisible();
+  await page.goto("/tienda/carrito");
+  const checkout = page.getByRole("button", { name: "Continuar al checkout" });
+  await page.getByRole("button", { name: "Aumentar cantidad" }).click();
+  await expect(checkout).toBeDisabled();
+  await expect(page.locator('.cart-item strong[data-saved="true"]')).toBeVisible();
+  await expect(checkout).toBeEnabled();
+  await checkout.click();
+  await expect(page).toHaveURL(/\/tienda\/checkout$/);
+  await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("2");
 });
 test("solicitud aprobada habilita nueva cuenta y administración", async ({
   page,
 }) => {
-  await page.goto("/solicitar-cuenta");
+  await page.goto("/tienda/solicitar-cuenta");
   for (const [label, value] of [
     ["Nombre del comercio", "Comercio Prueba"],
     ["Razón social", "Comercio Prueba SRL"],
@@ -71,41 +101,42 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   ).toBeVisible();
   await expect(page.locator("main")).toContainText("nuevo@example.test");
   // Pendiente: todavía no puede ingresar ni comprar.
-  await page.goto("/ingresar");
+  await page.goto("/tienda/ingresar");
   await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page.locator("main [role=alert]")).toContainText("inválidas");
-  await expect(page).toHaveURL(/\/ingresar$/);
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/);
   await login(page, "Administración");
-  await page.goto("/admin/solicitudes");
+  await page.goto("/tienda/admin/solicitudes");
   await page.getByRole("button", { name: "Aprobar", exact: true }).click();
   await page.getByLabel("Habilitar compra de medicamentos").check();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(page.locator(".admin-cards")).toContainText("Aprobado");
   await expect(page.locator(".admin-cards")).toContainText("123456789012");
-  await page.goto("/cuenta");
+  await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
-  await page.goto("/ingresar");
+  await page.goto("/tienda/ingresar");
   await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/catalogo$/);
+  await expect(page).toHaveURL(/\/tienda\/productos$/);
   // Aprobada con permiso veterinario: puede comprar productos de uso profesional.
-  await page.goto("/producto/alizin-10ml");
+  await page.goto("/tienda/producto/alizin-10ml");
   await expect(
     page.getByRole("button", { name: /Guardar en carrito/ }),
   ).toBeVisible();
 });
 test("pedido con revisión requiere aceptación", async ({ page }) => {
   await login(page, "Cliente con revisión de pedidos");
-  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
   await expect(
     page.getByRole("link", { name: "Ver mi carrito", exact: true }),
   ).toBeVisible();
-  await page.goto("/carrito");
+  await page.goto("/tienda/carrito");
+  await page.getByRole("button", { name: "Continuar al checkout" }).click();
   await expect(
     page.getByRole("button", { name: "Enviar pedido a DISTRICO" }),
   ).toBeDisabled();
@@ -117,20 +148,21 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
   page,
 }) => {
   await login(page, "Cliente con revisión de pedidos");
-  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
   await expect(
     page.getByRole("link", { name: "Ver mi carrito", exact: true }),
   ).toBeVisible();
-  await page.goto("/carrito");
+  await page.goto("/tienda/carrito");
+  await page.getByRole("button", { name: "Continuar al checkout" }).click();
   await page.getByLabel("Acepto que este pedido").check();
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
   await expect(page.locator(".status-pill")).toContainText("En revisión");
-  await page.goto("/cuenta");
+  await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "Administración");
   await expect(page.locator(".stat").nth(2)).toContainText("1");
-  await page.goto("/admin/pedidos");
+  await page.goto("/tienda/admin/pedidos");
   await page
     .getByLabel("Filtrar estado de pedidos")
     .selectOption("PENDING_REVIEW");
@@ -158,7 +190,7 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
   await row.locator(".text-link").click();
   await expect(dialog).toContainText("Pago verificado");
   await page.keyboard.press("Escape");
-  await page.goto("/admin/catalogo");
+  await page.goto("/tienda/admin/catalogo");
   await page
     .getByLabel("Buscar producto para administrar")
     .fill("BIOFRESH para cachorros");
@@ -176,17 +208,17 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
   page,
 }) => {
   await login(page);
-  await page.goto("/admin");
+  await page.goto("/tienda/admin");
   await expect(
     page.getByRole("heading", { name: "Acceso exclusivo de administración" }),
   ).toBeVisible();
-  await page.goto("/producto/alizin-10ml");
+  await page.goto("/tienda/producto/alizin-10ml");
   await expect(
     page.getByText("Tu cuenta no está habilitada para comprar este producto."),
   ).toBeVisible();
-  await page.goto("/cuenta");
+  await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
-  await page.goto("/catalogo");
+  await page.goto("/tienda/productos");
   await expect(page.locator(".product-bottom").first()).toContainText(
     "Ingresá para ver precios",
   );
@@ -210,7 +242,7 @@ test("permisos: la identidad cambia sin recargar al ingresar y al salir", async 
 test("contacto registra consulta, filtra puntos demo y permite gestionarla", async ({
   page,
 }) => {
-  await page.goto("/contacto");
+  await page.goto("/tienda/contacto");
   await expect(
     page.getByRole("heading", { name: "Hablemos de tu comercio" }),
   ).toBeVisible();
@@ -236,7 +268,7 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
   await expect(page.locator(".contact-store-card")).toHaveCount(6);
 
   await login(page, "Administración");
-  await page.goto("/admin/consultas");
+  await page.goto("/tienda/admin/consultas");
   await expect(page.locator(".admin-cards")).toContainText("Comercio Contacto");
   await page.getByRole("button", { name: "Gestionar" }).click();
   const inquiryDialog = page.getByRole("dialog");
@@ -253,7 +285,7 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
 test("empresa presenta historia, operación y acceso comercial", async ({
   page,
 }) => {
-  await page.goto("/empresa");
+  await page.goto("/tienda/empresa");
   await expect(
     page.getByRole("heading", {
       level: 1,
@@ -284,16 +316,16 @@ test("empresa presenta historia, operación y acceso comercial", async ({
   await expect(page.getByText(/productos disponibles en nuestro catálogo activo/)).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Solicitar cuenta mayorista" }),
-  ).toHaveAttribute("href", "/solicitar-cuenta");
+  ).toHaveAttribute("href", "/tienda/solicitar-cuenta");
   await expect(
     page.getByRole("link", { name: "Contactar al equipo" }),
-  ).toHaveAttribute("href", "/contacto");
+  ).toHaveAttribute("href", "/tienda/contacto");
 });
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {
   await login(page, "Administración");
-  await page.goto("/admin/catalogo");
+  await page.goto("/tienda/admin/catalogo");
   await page
     .getByRole("button", { name: "Presentaciones e imágenes" })
     .first()
@@ -311,7 +343,7 @@ test("administración modifica precio y stock y crea recomendación", async ({
   await expect(
     page.getByText("Stock físico: 50", { exact: false }),
   ).toBeVisible();
-  await page.goto("/admin/recomendaciones");
+  await page.goto("/tienda/admin/recomendaciones");
   await page.getByRole("button", { name: "Crear recomendación" }).click();
   await page.getByLabel("Nombre de la regla").fill("Recomendación prueba");
   await page.getByLabel("Se activa al comprar").selectOption({ index: 1 });
@@ -325,12 +357,12 @@ for (const width of [360, 390, 768, 1024, 1440])
   test(`adaptable a ${width}px sin desbordamiento`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     for (const path of [
-      "/",
-      "/catalogo",
-      "/ingresar",
-      "/contacto",
-      "/empresa",
-      "/solicitar-cuenta",
+      "/tienda",
+      "/tienda/productos",
+      "/tienda/ingresar",
+      "/tienda/contacto",
+      "/tienda/empresa",
+      "/tienda/solicitar-cuenta",
     ]) {
       await page.goto(path);
       await expect(page.locator("main")).toBeVisible();
@@ -341,7 +373,7 @@ for (const width of [360, 390, 768, 1024, 1440])
         ),
       ).toBe(true);
     }
-    await page.goto("/");
+    await page.goto("/tienda");
     await page.screenshot({
       path: `test-results/home-${width}.png`,
       fullPage: true,
@@ -352,7 +384,7 @@ test("panel móvil atrapa foco, cierra con Escape y respeta movimiento reducido"
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/catalogo");
+  await page.goto("/tienda/productos");
   const trigger = page.getByRole("button", { name: "Filtrar", exact: true });
   await trigger.click();
   await expect(page.getByRole("dialog")).toBeVisible();

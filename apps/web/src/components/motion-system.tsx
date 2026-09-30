@@ -48,13 +48,26 @@ export function MotionSystem() {
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const seen = new WeakSet<Element>();
+    const delays = new WeakMap<Element, number>();
     const parallax = new Set<HTMLElement>();
     let frame = 0;
     let observer: IntersectionObserver | null = null;
 
     const reveal = (element: Element) => {
-      element.setAttribute("data-motion-state", "visible");
       observer?.unobserve(element);
+      if (!reduced.matches && element instanceof HTMLElement) {
+        element.animate(
+          [
+            { opacity: 0, transform: "translate3d(0, 22px, 0)" },
+            { opacity: 1, transform: "none" },
+          ],
+          {
+            duration: 620,
+            delay: delays.get(element) ?? 0,
+            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          },
+        );
+      }
     };
 
     if ("IntersectionObserver" in window) {
@@ -104,16 +117,10 @@ export function MotionSystem() {
           parent.children,
           element,
         ) as number;
-        (element as HTMLElement).style.setProperty(
-          "--motion-delay",
-          `${Math.min(index, 5) * 65}ms`,
-        );
+        delays.set(element, Math.min(index, 5) * 65);
       }
       if (reduced.matches || !observer) reveal(element);
-      else {
-        element.setAttribute("data-motion-state", "pending");
-        observer.observe(element);
-      }
+      else observer.observe(element);
     };
 
     const scan = (node: ParentNode) => {
@@ -140,12 +147,18 @@ export function MotionSystem() {
 
     const onPreferenceChange = () => {
       if (reduced.matches) {
-        root.querySelectorAll('[data-motion-state="pending"]').forEach(reveal);
+        observer?.disconnect();
+        root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
         for (const element of parallax)
           element.style.removeProperty("--motion-parallax");
         if (frame) cancelAnimationFrame(frame);
         frame = 0;
-      } else scheduleParallax();
+      } else {
+        root.querySelectorAll(revealSelector).forEach((element) => {
+          if (seen.has(element)) observer?.observe(element);
+        });
+        scheduleParallax();
+      }
     };
     const onVisibilityChange = () => {
       document.documentElement.classList.toggle(
@@ -171,7 +184,7 @@ export function MotionSystem() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       document.documentElement.classList.remove("motion-tab-hidden");
       if (frame) cancelAnimationFrame(frame);
-      root.querySelectorAll('[data-motion-state="pending"]').forEach(reveal);
+      root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
       for (const element of parallax)
         element.style.removeProperty("--motion-parallax");
     };

@@ -5,6 +5,7 @@ import { useApi } from "@/components/providers";
 import { PageHeading, Loading, ErrorBox } from "@/components/ui";
 import { BrandLogo } from "@/components/brand-logo";
 import type { Entity } from "@/lib/types";
+import { storeRoutes, withSearch } from "@/lib/store-routes";
 export default function Page() {
   const brands = useApi<Entity[]>("brands"),
     labs = useApi<Entity[]>("laboratories");
@@ -37,7 +38,7 @@ export default function Page() {
                 {query.data.map((item) => (
                   <Link
                     className="card"
-                    href={`/catalogo?${key}=${encodeURIComponent(item.id)}`}
+                    href={withSearch(storeRoutes.products, new URLSearchParams({ [String(key)]: item.id }))}
                     key={item.id}
                   >
                     <h3 className={key === "brandId" ? "brand-card-heading" : undefined}>

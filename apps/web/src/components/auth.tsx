@@ -8,6 +8,7 @@ import { z } from "zod";
 import { CheckCircle, ArrowRight } from "lucide-react";
 import { DEMO, request, useSession } from "./providers";
 import { ActionLink, Empty, ErrorBox, Loading, PageHeading } from "./ui";
+import { storeRoutes } from "@/lib/store-routes";
 const loginSchema = z.object({
   email: z.email("Ingresá un correo válido."),
   password: z.string().min(8, "Usá al menos 8 caracteres."),
@@ -23,7 +24,7 @@ export function Login() {
     setError(undefined);
     try {
       const u = await login(data.email, data.password);
-      router.push(u.role === "ADMIN" ? "/admin" : "/catalogo");
+      router.push(u.role === "ADMIN" ? storeRoutes.admin : storeRoutes.products);
     } catch (e) {
       setError(e);
     }
@@ -32,7 +33,7 @@ export function Login() {
     return (
       <div className="container section">
         <PageHeading title="Ya estás dentro" />
-        <ActionLink href={user.role === "ADMIN" ? "/admin" : "/cuenta"}>
+        <ActionLink href={user.role === "ADMIN" ? storeRoutes.admin : storeRoutes.account}>
           Ir a mi cuenta
         </ActionLink>
       </div>
@@ -72,7 +73,7 @@ export function Login() {
                 {form.formState.errors.password?.message}
               </span>
             </label>
-            <Link className="text-link" href="/recuperar-acceso">
+            <Link className="text-link" href={storeRoutes.recoverAccess}>
               Olvidé mi contraseña
             </Link>
             {error !== undefined && <ErrorBox error={error} />}
@@ -94,7 +95,7 @@ export function Login() {
             cuenta.
           </p>
           <div className="actions">
-            <ActionLink href="/solicitar-cuenta" secondary>
+            <ActionLink href={storeRoutes.requestAccount} secondary>
               Quiero ser cliente
             </ActionLink>
           </div>
@@ -177,7 +178,7 @@ export function Apply() {
     return (
       <div className="container section">
         <PageHeading title="Ya tenés una cuenta" />
-        <ActionLink href={user.role === "ADMIN" ? "/admin" : "/cuenta"}>
+        <ActionLink href={user.role === "ADMIN" ? storeRoutes.admin : storeRoutes.account}>
           Ir a mi cuenta
         </ActionLink>
       </div>
@@ -198,7 +199,7 @@ export function Apply() {
               la contraseña <strong>Demo1234!</strong>.
             </p>
           )}
-          <ActionLink href="/ingresar">Volver al acceso</ActionLink>
+          <ActionLink href={storeRoutes.login}>Volver al acceso</ActionLink>
         </Empty>
       </div>
     );
@@ -305,13 +306,13 @@ export function AccessGate({
     return (
       <Empty title="Ingresá a tu cuenta">
         <p>Este espacio es exclusivo para clientes habilitados.</p>
-        <ActionLink href="/ingresar">Ingresar</ActionLink>
+        <ActionLink href={storeRoutes.login}>Ingresar</ActionLink>
       </Empty>
     );
   if (admin && user.role !== "ADMIN")
     return (
       <Empty title="Acceso exclusivo de administración">
-        <ActionLink href="/cuenta">Mi cuenta</ActionLink>
+        <ActionLink href={storeRoutes.account}>Mi cuenta</ActionLink>
       </Empty>
     );
   return children;

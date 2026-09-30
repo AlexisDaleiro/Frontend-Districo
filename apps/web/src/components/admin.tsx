@@ -25,6 +25,7 @@ import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
 import { orderBalance } from "@/lib/order-billing";
+import { storeRoutes } from "@/lib/store-routes";
 import {
   label,
   money,
@@ -124,7 +125,7 @@ function Dashboard() {
             ["newContactInquiries", "Consultas nuevas", "consultas", Inbox],
           ] as const
         ).map(([key, title, path, Icon]) => (
-          <Link className="card stat" href={`/admin/${path}`} key={key}>
+          <Link className="card stat" href={storeRoutes.adminSection(path)} key={key}>
             <span className="stat-icon" aria-hidden="true">
               <Icon size={18} />
             </span>
@@ -140,13 +141,13 @@ function Dashboard() {
           tu atención.
         </p>
         <div className="actions">
-          <Link className="button" href="/admin/solicitudes">
+          <Link className="button" href={storeRoutes.adminSection("solicitudes")}>
             Revisar solicitudes <ArrowUpRight size={16} />
           </Link>
-          <Link className="button secondary" href="/admin/pedidos">
+          <Link className="button secondary" href={storeRoutes.adminSection("pedidos")}>
             Gestionar pedidos
           </Link>
-          <Link className="button secondary" href="/admin/consultas">
+          <Link className="button secondary" href={storeRoutes.adminSection("consultas")}>
             Ver consultas
           </Link>
         </div>
@@ -1473,7 +1474,7 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
                   <Link
                     className={section === path ? "active" : ""}
                     aria-current={section === path ? "page" : undefined}
-                    href={`/admin${path ? `/${path}` : ""}`}
+                    href={path ? storeRoutes.adminSection(path) : storeRoutes.admin}
                     key={path}
                   >
                     <Icon size={17} aria-hidden="true" />

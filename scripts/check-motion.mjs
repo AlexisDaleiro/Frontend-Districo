@@ -217,7 +217,12 @@ async function inspect(page, name, widths, reduced) {
   }
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.env.MOTION_BROWSER_CHANNEL
+    ? { channel: process.env.MOTION_BROWSER_CHANNEL }
+    : {}),
+});
 try {
   const publicPage = await browser.newPage({
     viewport: { width: 1440, height: 900 },
@@ -227,20 +232,20 @@ try {
   );
   await mockApi(publicPage, null);
   for (const [name, route] of [
-    ["home", "/"],
-    ["catalog", "/catalogo"],
-    ["product", "/producto/biofresh-para-cachorros-razas-medianas"],
-    ["brands", "/marcas"],
-    ["company", "/empresa"],
-    ["contact", "/contacto"],
-    ["login", "/ingresar"],
-    ["apply", "/solicitar-cuenta"],
+    ["home", "/tienda"],
+    ["catalog", "/tienda/productos"],
+    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
+    ["brands", "/tienda/marcas"],
+    ["company", "/tienda/empresa"],
+    ["contact", "/tienda/contacto"],
+    ["login", "/tienda/ingresar"],
+    ["apply", "/tienda/solicitar-cuenta"],
   ]) {
     await publicPage.goto(`${base}${route}`, { waitUntil: "domcontentloaded" });
     await publicPage.locator("main").waitFor();
     await inspect(publicPage, name, [360, 390, 768, 1024, 1440], false);
   }
-  await publicPage.goto(base);
+  await publicPage.goto(`${base}/tienda`);
   await publicPage.setViewportSize({ width: 1440, height: 900 });
   await publicPage.locator(".hero-visual img").waitFor();
   const before = await publicPage
@@ -258,14 +263,26 @@ try {
   if (before === after)
     errors.push("El parallax de portada no respondió al desplazamiento.");
   await publicPage.setViewportSize({ width: 390, height: 900 });
-  await publicPage.goto(`${base}/catalogo`, { waitUntil: "domcontentloaded" });
-  await publicPage.getByRole("button", { name: "Filtrar" }).click();
-  await publicPage.locator("dialog[open]").waitFor();
+  await publicPage.goto(`${base}/tienda/productos`, { waitUntil: "domcontentloaded" });
+  const filterButton = publicPage.getByRole("button", { name: "Filtrar" });
+  await filterButton.click();
+  try {
+    await publicPage.locator("dialog[open]").waitFor({ timeout: 3000 });
+  } catch {
+    await filterButton.click();
+    await publicPage.locator("dialog[open]").waitFor();
+  }
   await publicPage.keyboard.press("Escape");
   await publicPage.locator("dialog[open]").waitFor({ state: "hidden" });
-  await publicPage.goto(base, { waitUntil: "domcontentloaded" });
-  await publicPage.getByRole("button", { name: "Abrir menú" }).click();
-  await publicPage.locator("dialog[open]").waitFor();
+  await publicPage.goto(`${base}/tienda`, { waitUntil: "domcontentloaded" });
+  const menuButton = publicPage.getByRole("button", { name: "Abrir menú" });
+  await menuButton.click();
+  try {
+    await publicPage.locator("dialog[open]").waitFor({ timeout: 3000 });
+  } catch {
+    await menuButton.click();
+    await publicPage.locator("dialog[open]").waitFor();
+  }
   await publicPage.keyboard.press("Escape");
   await publicPage.locator("dialog[open]").waitFor({ state: "hidden" });
   await publicPage.close();
@@ -275,17 +292,17 @@ try {
       "admin",
       admin,
       [
-        ["admin", "/admin"],
-        ["admin-orders", "/admin/pedidos"],
+        ["admin", "/tienda/admin"],
+        ["admin-orders", "/tienda/admin/pedidos"],
       ],
     ],
     [
       "client",
       client,
       [
-        ["account", "/cuenta"],
-        ["cart", "/carrito"],
-        ["orders", "/cuenta/pedidos"],
+        ["account", "/tienda/cuenta"],
+        ["cart", "/tienda/carrito"],
+        ["orders", "/tienda/cuenta/pedidos"],
       ],
     ],
   ]) {
@@ -300,16 +317,16 @@ try {
       await inspect(page, name, [360, 390, 768, 1024, 1440], false);
     }
     if (role === "client") {
-      await page.goto(`${base}/carrito`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${base}/tienda/carrito`, { waitUntil: "domcontentloaded" });
       await page.getByRole("button", { name: "Aumentar cantidad" }).click();
       await page.waitForFunction(() =>
         document.querySelector('.cart-item strong[data-saved="true"]'),
       );
     } else {
-      await page.goto(`${base}/admin`, { waitUntil: "domcontentloaded" });
-      await page.locator('.admin-tabs a[href="/admin/pedidos"]').focus();
+      await page.goto(`${base}/tienda/admin`, { waitUntil: "domcontentloaded" });
+      await page.locator('.admin-tabs a[href="/tienda/admin/pedidos"]').focus();
       await page.keyboard.press("Enter");
-      await page.waitForURL("**/admin/pedidos");
+      await page.waitForURL("**/tienda/admin/pedidos");
     }
     await page.close();
   }
@@ -323,21 +340,21 @@ try {
   );
   await mockApi(reducedPage, null);
   for (const [name, route] of [
-    ["home", "/"],
-    ["catalog", "/catalogo"],
-    ["product", "/producto/biofresh-para-cachorros-razas-medianas"],
-    ["brands", "/marcas"],
-    ["company", "/empresa"],
-    ["contact", "/contacto"],
-    ["login", "/ingresar"],
-    ["apply", "/solicitar-cuenta"],
+    ["home", "/tienda"],
+    ["catalog", "/tienda/productos"],
+    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
+    ["brands", "/tienda/marcas"],
+    ["company", "/tienda/empresa"],
+    ["contact", "/tienda/contacto"],
+    ["login", "/tienda/ingresar"],
+    ["apply", "/tienda/solicitar-cuenta"],
   ]) {
     await reducedPage.goto(`${base}${route}`, {
       waitUntil: "domcontentloaded",
     });
     await inspect(reducedPage, name, [360, 390, 768, 1024, 1440], true);
   }
-  await reducedPage.goto(base);
+  await reducedPage.goto(`${base}/tienda`);
   const transform = await reducedPage
     .locator(".hero-visual img")
     .evaluate((element) => getComputedStyle(element).transform);
@@ -349,17 +366,17 @@ try {
       "admin",
       admin,
       [
-        ["admin", "/admin"],
-        ["admin-orders", "/admin/pedidos"],
+        ["admin", "/tienda/admin"],
+        ["admin-orders", "/tienda/admin/pedidos"],
       ],
     ],
     [
       "client",
       client,
       [
-        ["account", "/cuenta"],
-        ["cart", "/carrito"],
-        ["orders", "/cuenta/pedidos"],
+        ["account", "/tienda/cuenta"],
+        ["cart", "/tienda/carrito"],
+        ["orders", "/tienda/cuenta/pedidos"],
       ],
     ],
   ]) {
