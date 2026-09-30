@@ -1,4 +1,5 @@
 import { ActionLink, PageHeading } from "@/components/ui";
+import { storeRoutes } from "@/lib/store-routes";
 export const metadata = { title: "Recuperar acceso" };
 export default function Page() {
   return (
@@ -18,7 +19,7 @@ export default function Page() {
         </a>
       </div>
       <div className="actions">
-        <ActionLink href="/ingresar">Volver al acceso</ActionLink>
+        <ActionLink href={storeRoutes.login}>Volver al acceso</ActionLink>
       </div>
     </div>
   );

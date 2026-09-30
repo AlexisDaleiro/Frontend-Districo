@@ -20,6 +20,7 @@ import { ProductGrid } from "./catalog";
 import { BrandLogo } from "./brand-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { catalogCardsPath } from "@/lib/catalog-query";
+import { storeRoutes, withSearch } from "@/lib/store-routes";
 const normalize = (text: string) =>
   text
     .toLowerCase()
@@ -117,14 +118,14 @@ export function Home() {
           ) : categories.isPending ? (
             <Loading />
           ) : !mapped.length ? (
-            <Link className="text-link" href="/catalogo">
+            <Link className="text-link" href={storeRoutes.products}>
               Explorá el catálogo completo <ArrowUpRight size={16} />
             </Link>
           ) : (
             <div className="need-list">
               {mapped.map((n) => (
                 <Link
-                  href={`/catalogo?categoryId=${n.id}`}
+                  href={storeRoutes.category(n.id)}
                   className="need"
                   key={n.id}
                   onMouseEnter={() => prefetchCategory(n.id)}
@@ -156,7 +157,7 @@ export function Home() {
               tu negocio.
             </p>
             <div className="actions">
-              <Link className="button" href="/catalogo">
+              <Link className="button" href={storeRoutes.products}>
                 Explorar catálogo <ArrowRight size={17} />
               </Link>
             </div>
@@ -200,7 +201,7 @@ export function Home() {
                 <p className="eyebrow">Un catálogo, muchas posibilidades</p>
                 <h2>Encontrá tu próxima solución.</h2>
               </div>
-              <Link className="text-link" href="/catalogo">
+              <Link className="text-link" href={storeRoutes.products}>
                 Ver todo <ArrowUpRight size={16} />
               </Link>
             </div>
@@ -209,7 +210,7 @@ export function Home() {
                 <Link
                   className="line-card"
                   key={n.id}
-                  href={`/catalogo?categoryId=${n.id}`}
+                  href={storeRoutes.category(n.id)}
                   onMouseEnter={() => prefetchCategory(n.id)}
                   onFocus={() => prefetchCategory(n.id)}
                 >
@@ -257,12 +258,12 @@ export function Home() {
                 <Link
                   className="brand-word"
                   key={b.id}
-                  href={`/catalogo?brandId=${encodeURIComponent(b.id)}`}
+                  href={withSearch(storeRoutes.products, new URLSearchParams({ brandId: b.id }))}
                 >
                   <BrandLogo brand={b} />
                 </Link>
               ))}
-              <Link className="text-link" href="/marcas">
+              <Link className="text-link" href={storeRoutes.brands}>
                 Conocé todas <ArrowUpRight size={16} />
               </Link>
             </div>
@@ -279,7 +280,7 @@ export function Home() {
                 Explorá las presentaciones y encontrá lo que necesitás.
               </p>
             </div>
-            <Link className="text-link" href="/catalogo">
+            <Link className="text-link" href={storeRoutes.products}>
               Ver catálogo <ArrowUpRight size={16} />
             </Link>
           </div>
@@ -309,7 +310,7 @@ export function Home() {
                 lugar.
               </p>
             </div>
-            <ActionLink href="/solicitar-cuenta" secondary>
+            <ActionLink href={storeRoutes.requestAccount} secondary>
               Quiero ser cliente
             </ActionLink>
           </section>

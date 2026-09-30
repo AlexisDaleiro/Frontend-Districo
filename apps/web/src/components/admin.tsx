@@ -10,6 +10,7 @@ import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
 import { orderBalance } from "@/lib/order-billing";
+import { storeRoutes } from "@/lib/store-routes";
 import {
   label,
   money,
@@ -103,13 +104,13 @@ function Dashboard() {
           tu atención.
         </p>
         <div className="actions">
-          <Link className="button" href="/admin/solicitudes">
+          <Link className="button" href={storeRoutes.adminSection("solicitudes")}>
             Revisar solicitudes <ArrowUpRight size={16} />
           </Link>
-          <Link className="button secondary" href="/admin/pedidos">
+          <Link className="button secondary" href={storeRoutes.adminSection("pedidos")}>
             Gestionar pedidos
           </Link>
-          <Link className="button secondary" href="/admin/consultas">
+          <Link className="button secondary" href={storeRoutes.adminSection("consultas")}>
             Ver consultas
           </Link>
         </div>
@@ -1415,7 +1416,7 @@ export function Admin({ section = "" }: { section?: string }) {
           {sections.map(([path, title]) => (
             <Link
               className={section === path ? "active" : ""}
-              href={`/admin${path ? `/${path}` : ""}`}
+              href={path ? storeRoutes.adminSection(path) : storeRoutes.admin}
               key={path}
             >
               {title}

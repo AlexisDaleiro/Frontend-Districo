@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
+import { storeRoutes, withSearch } from "@/lib/store-routes";
 import {
   ActionLink,
   Empty,
@@ -64,7 +65,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       onFocus={prefetchDetail}
     >
       <Link
-        href={`/producto/${product.slug}`}
+        href={storeRoutes.product(product.slug)}
         className="product-image"
         aria-label={`Ver ${product.name}`}
       >
@@ -90,7 +91,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           product.laboratory?.name ??
           "Selección mayorista"}
       </p>
-      <Link href={`/producto/${product.slug}`}>
+      <Link href={storeRoutes.product(product.slug)}>
         <h3>{product.name}</h3>
       </Link>
       <div className="product-bottom">
@@ -103,7 +104,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           </span>
         )}
         <Link
-          href={`/producto/${product.slug}`}
+          href={storeRoutes.product(product.slug)}
           className="icon-button"
           aria-label={`Ver presentaciones de ${product.name}`}
         >
@@ -246,13 +247,15 @@ function CategoryPicker({
     </details>
   );
 }
-export function Catalog() {
+export function Catalog({ categoryId }: { categoryId?: string }) {
   const params = useSearchParams(),
     router = useRouter();
+  const filters = new URLSearchParams(params);
+  if (categoryId) filters.set("categoryId", categoryId);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const client = useQueryClient();
   const { user, loading } = useSession();
-  const products = useApi<ProductCardList>(catalogCardsPath(params)),
+  const products = useApi<ProductCardList>(catalogCardsPath(filters)),
     categories = useApi<Entity[]>("categories/catalog"),
     brands = useApi<Entity[]>("brands"),
     labs = useApi<Entity[]>("laboratories"),
@@ -267,16 +270,16 @@ export function Catalog() {
     });
   }
   function set(key: string, value: string) {
-    const next = new URLSearchParams(params);
+    const next = new URLSearchParams(filters);
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.delete("page");
     if (key === "categoryId") prefetchCategory(next);
-    router.push(`/catalogo?${next}`, { scroll: false });
+    router.push(withSearch(storeRoutes.products, next), { scroll: false });
   }
   const categoryIds = canonicalCategoryIds(
     categories.data ?? [],
-    (params.get("categoryId") ?? "").split(",").filter(Boolean),
+    (filters.get("categoryId") ?? "").split(",").filter(Boolean),
   );
   const filterContent = (
     <>
@@ -288,7 +291,7 @@ export function Catalog() {
             selected={categoryIds}
             onChange={(ids) => set("categoryId", ids.join(","))}
             onPreview={(id) => {
-              const next = new URLSearchParams(params);
+              const next = new URLSearchParams(filters);
               const ids = categoryIds.includes(id)
                 ? categoryIds.filter((other) => other !== id)
                 : [...categoryIds, id];
@@ -309,7 +312,7 @@ export function Catalog() {
           <select
             className="form-input"
             aria-label={String(title)}
-            value={params.get(String(key)) ?? ""}
+            value={filters.get(String(key)) ?? ""}
             onChange={(e) => set(String(key), e.target.value)}
           >
             <option value="">Todos</option>
@@ -328,11 +331,11 @@ export function Catalog() {
             <label className="filter-option" key={v.id}>
               <input
                 type="checkbox"
-                checked={(params.get("attributeValueIds") ?? "")
+                checked={(filters.get("attributeValueIds") ?? "")
                   .split(",")
                   .includes(v.id)}
                 onChange={(e) => {
-                  const ids = (params.get("attributeValueIds") ?? "")
+                  const ids = (filters.get("attributeValueIds") ?? "")
                     .split(",")
                     .filter(Boolean)
                     .filter((id) => id !== v.id);
@@ -348,7 +351,7 @@ export function Catalog() {
       <button
         className="text-link"
         style={{ marginTop: 20 }}
-        onClick={() => router.push("/catalogo", { scroll: false })}
+        onClick={() => router.push(storeRoutes.products, { scroll: false })}
       >
         Limpiar filtros <X size={14} />
       </button>
@@ -357,7 +360,7 @@ export function Catalog() {
   return (
     <div className="container section">
       <div className="breadcrumbs">
-        <Link href="/">Inicio</Link>
+        <Link href={storeRoutes.home}>Inicio</Link>
         <ChevronRight size={12} />
         <span>Catálogo</span>
       </div>
@@ -393,12 +396,12 @@ export function Catalog() {
               }}
             >
               <input
-                key={params.get("search")}
+                key={filters.get("search")}
                 className="form-input"
                 aria-label="Buscar en el catálogo"
                 name="search"
                 placeholder="Nombre o código de producto"
-                defaultValue={params.get("search") ?? ""}
+                defaultValue={filters.get("search") ?? ""}
               />
               <button className="button small" type="submit">
                 Buscar
@@ -429,20 +432,20 @@ export function Catalog() {
               "featured",
               "attributeValueIds",
             ]
-              .filter((key) => params.has(key))
+              .filter((key) => filters.has(key))
               .map((key) => (
                 <button className="chip" key={key} onClick={() => set(key, "")}>
                   {[
                     ...(categories.data ?? []),
                     ...(brands.data ?? []),
                     ...(labs.data ?? []),
-                  ].find((e) => e.id === params.get(key))?.name ??
+                  ].find((e) => e.id === filters.get(key))?.name ??
                     (key === "featured"
                       ? "Destacados"
                       : key === "productType"
-                        ? label(params.get(key) ?? "")
+                        ? label(filters.get(key) ?? "")
                         : key === "attributeValueIds"
-                          ? (params.get(key) ?? "")
+                          ? (filters.get(key) ?? "")
                               .split(",")
                               .map(
                                 (id) =>
@@ -452,7 +455,7 @@ export function Catalog() {
                               )
                               .filter(Boolean)
                               .join(", ") || "Atributos"
-                          : params.get(key))}
+                          : filters.get(key))}
                   <X size={12} />
                 </button>
               ))}
@@ -479,12 +482,12 @@ export function Catalog() {
           ) : !products.data.items.length ? (
             <Empty title="No encontramos productos">
               <p>Probá con otra búsqueda o quitá algún filtro.</p>
-              <ActionLink href="/catalogo">Ver todo el catálogo</ActionLink>
+              <ActionLink href={storeRoutes.products}>Ver todo el catálogo</ActionLink>
             </Empty>
           ) : (
             <>
               <ProductGrid
-                key={params.toString()}
+                key={filters.toString()}
                 products={products.data.items}
               />
               <div className="pagination">
@@ -604,8 +607,8 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
           Ingresá con tu cuenta mayorista para ver precios y comprar.
         </p>
         <div className="actions">
-          <ActionLink href="/ingresar">Ingresar</ActionLink>
-          <Link className="text-link" href="/solicitar-cuenta">
+          <ActionLink href={storeRoutes.login}>Ingresar</ActionLink>
+          <Link className="text-link" href={storeRoutes.requestAccount}>
             Solicitar cuenta
           </Link>
         </div>
@@ -622,7 +625,7 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
             veterinarios.
           </p>
         )}
-        <Link className="text-link" href="/contacto">
+        <Link className="text-link" href={storeRoutes.contact}>
           Consultar a DISTRICO
         </Link>
       </div>
@@ -635,7 +638,7 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
             ? `Hay ${variant.availableStock} unidades disponibles, menos que el mínimo de compra (${firstQuantity(variant)}).`
             : "Esta presentación no tiene stock disponible."}
         </p>
-        <Link className="text-link" href="/contacto">
+        <Link className="text-link" href={storeRoutes.contact}>
           Consultar a DISTRICO
         </Link>
       </div>
@@ -670,7 +673,7 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
       )}
       {mutation.error && <ErrorBox error={mutation.error} />}{" "}
       {mutation.isSuccess && (
-        <Link className="text-link" href="/carrito">
+        <Link className="text-link" href={storeRoutes.cart}>
           <Check size={16} />
           Ver mi carrito
         </Link>
@@ -819,9 +822,9 @@ export function ProductDetail({ slug }: { slug: string }) {
   return (
     <div className="container section">
       <div className="breadcrumbs">
-        <Link href="/">Inicio</Link>
+        <Link href={storeRoutes.home}>Inicio</Link>
         <ChevronRight size={12} />
-        <Link href="/catalogo">Catálogo</Link>
+        <Link href={storeRoutes.products}>Catálogo</Link>
         <ChevronRight size={12} />
         <span>{q.data?.name ?? "Producto"}</span>
       </div>

@@ -1,17 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 async function admin(page: Page) {
-  await page.goto("/ingresar");
-  await page
-    .getByRole("button", { name: "Administración", exact: true })
-    .click();
+  await page.goto("/tienda/ingresar");
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page).toHaveURL(/\/tienda\/admin$/);
 }
 test("administración crea producto, presentación, precio, stock y medio", async ({
   page,
 }) => {
   await admin(page);
-  await page.goto("/admin/catalogo");
+  await page.goto("/tienda/admin/catalogo");
   await page.getByRole("button", { name: "Crear producto" }).click();
   await page
     .getByRole("textbox", { name: "Nombre *", exact: true })
@@ -48,11 +49,11 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
   await page.getByRole("button", { name: "Agregar imagen por URL" }).click();
   await page
     .getByLabel("URL de la imagen")
-    .fill("http://127.0.0.1:3000/images/placeholder.svg");
+    .fill(new URL("/images/placeholder.svg", page.url()).href);
   await page.getByLabel("Texto alternativo").fill("Imagen de prueba");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await page.goto("/producto/aa-producto-prueba");
+  await page.goto("/tienda/producto/aa-producto-prueba");
   await expect(
     page.getByRole("heading", { name: "AA Producto de prueba" }),
   ).toBeVisible();
@@ -64,7 +65,7 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
 });
 test("crea promociones simples y por vencimiento", async ({ page }) => {
   await admin(page);
-  await page.goto("/admin/promociones");
+  await page.goto("/tienda/admin/promociones");
   await page
     .getByRole("button", { name: "Crear promoción", exact: true })
     .click();
@@ -94,13 +95,16 @@ test("crea promociones simples y por vencimiento", async ({ page }) => {
 test("imagen no disponible tiene sustituto y búsqueda vacía tiene salida", async ({
   page,
 }) => {
-  await page.route("**/images/product-0-0.jpg", (route) => route.abort());
-  await page.goto("/producto/biofresh-para-cachorros-razas-medianas");
+  await page.route(
+    (url) => url.pathname === "/_next/image" && url.searchParams.get("url") === "/images/product-0-0.jpg",
+    (route) => route.abort(),
+  );
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await expect(page.locator(".detail-image img")).toHaveAttribute(
     "src",
     "/images/placeholder.svg",
   );
-  await page.goto("/catalogo?search=producto-que-no-existe");
+  await page.goto("/tienda/productos?search=producto-que-no-existe");
   await expect(
     page.getByRole("heading", { name: "No encontramos productos" }),
   ).toBeVisible();

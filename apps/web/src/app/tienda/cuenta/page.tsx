@@ -5,6 +5,7 @@ import { useSession } from "@/components/providers";
 import { ActionLink, PageHeading, ErrorBox } from "@/components/ui";
 import { label } from "@/lib/commerce";
 import { useState } from "react";
+import { storeRoutes } from "@/lib/store-routes";
 export default function Page() {
   const { user, logout } = useSession();
   const router = useRouter();
@@ -44,24 +45,24 @@ export default function Page() {
             <p className="muted">
               Consultá el detalle y estado de los pedidos enviados.
             </p>
-            <ActionLink href="/cuenta/pedidos">Ver pedidos</ActionLink>
+            <ActionLink href={storeRoutes.orders}>Ver pedidos</ActionLink>
           </div>
           <div className="card stack">
             <h2>Mi próximo pedido</h2>
             <p className="muted">Explorá productos y revisá tu carrito.</p>
-            <ActionLink href="/catalogo">Explorar catálogo</ActionLink>
+            <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
           </div>
         </div>
         <div className="actions">
           {user?.role === "ADMIN" && (
-            <ActionLink href="/admin">Administración</ActionLink>
+            <ActionLink href={storeRoutes.admin}>Administración</ActionLink>
           )}
           <button
             className="button secondary"
             onClick={async () => {
               try {
                 await logout();
-                router.push("/");
+                router.push(storeRoutes.home);
               } catch (e) {
                 setError(e);
               }

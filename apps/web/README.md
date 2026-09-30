@@ -13,7 +13,9 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Abrir http://127.0.0.1:3000. Por defecto funciona en **modo demo**. Las operaciones quedan únicamente en el almacenamiento local del navegador. No usar datos personales ni contraseñas reales en este modo. «Reiniciar demo» restaura el escenario original.
+Abrir http://127.0.0.1:3000/tienda. Por defecto funciona en **modo demo**. Las operaciones quedan únicamente en el almacenamiento local del navegador. No usar datos personales ni contraseñas reales en este modo. «Reiniciar demo» restaura el escenario original.
+
+`/` es un puente temporal hacia `/tienda`; se reemplaza únicamente `src/app/page.tsx` cuando esté lista la landing institucional. El layout de la tienda vive en `src/app/tienda/layout.tsx`, separado del layout raíz. Las URLs de navegación se mantienen en `src/lib/store-routes.ts`. El catálogo está en `/tienda/productos`, cada categoría en `/tienda/categorias/[id]`, el envío del pedido en `/tienda/checkout` y la administración en `/tienda/admin`. El proxy `/api/backend/...` no cambia.
 
 Para ensayar la compilación de producción:
 
@@ -33,7 +35,7 @@ Todas usan `Demo1234!`. Los botones de la pantalla de acceso completan las crede
 | `clientepago@gmail.com` | Pedidos sujetos a revisión           |
 | `admin@districo.com`    | Administración                       |
 
-Las solicitudes creadas en modo demo se aprueban en `/admin/solicitudes`. La cuenta aprobada usa el correo de la solicitud y `Demo1234!`; no se persiste la contraseña ingresada en el formulario.
+Las solicitudes creadas en modo demo se aprueban en `/tienda/admin/solicitudes`. La cuenta aprobada usa el correo de la solicitud y `Demo1234!`; no se persiste la contraseña ingresada en el formulario.
 
 ## API real
 

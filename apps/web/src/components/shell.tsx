@@ -16,11 +16,12 @@ import { DEMO, useSession, useApi } from "./providers";
 import { Picture, Modal } from "./ui";
 import type { Cart } from "@/lib/types";
 import { can } from "@/lib/commerce";
+import { storeRoutes } from "@/lib/store-routes";
 const links = [
-  ["/catalogo", "Catálogo"],
-  ["/marcas", "Marcas y laboratorios"],
-  ["/empresa", "Nuestra empresa"],
-  ["/contacto", "Contacto"],
+  [storeRoutes.products, "Catálogo"],
+  [storeRoutes.brands, "Marcas y laboratorios"],
+  [storeRoutes.company, "Nuestra empresa"],
+  [storeRoutes.contact, "Contacto"],
 ];
 export function Header() {
   const { user, logout, reset } = useSession();
@@ -32,7 +33,12 @@ export function Header() {
   const nav = (
     <>
       {links.map(([href, text]) => {
-        const current = pathname === href || pathname.startsWith(`${href}/`);
+        const current =
+          pathname === href ||
+          pathname.startsWith(`${href}/`) ||
+          (href === storeRoutes.products &&
+            (pathname.startsWith(storeRoutes.category("")) ||
+              pathname.startsWith(storeRoutes.product(""))));
         return (
           <Link
             key={href}
@@ -80,7 +86,7 @@ export function Header() {
           >
             <Menu />
           </button>
-          <Link href="/" aria-label="DISTRICO · Inicio" className="logo">
+          <Link href={storeRoutes.home} aria-label="DISTRICO · Inicio de tienda" className="logo">
             <Picture
               src="/images/logo-districo.png"
               alt="DISTRICO"
@@ -88,7 +94,7 @@ export function Header() {
               height={38}
             />
           </Link>
-          <form className="search" action="/catalogo">
+          <form className="search" action={storeRoutes.products}>
             <Search size={19} />
             <input
               aria-label="Buscar productos"
@@ -101,7 +107,7 @@ export function Header() {
           </form>
           <div className="header-actions">
             <Link
-              href={user ? "/cuenta" : "/ingresar"}
+              href={user ? storeRoutes.account : storeRoutes.login}
               className="account-link"
               aria-label={user ? "Mi cuenta" : "Ingresar al portal mayorista"}
             >
@@ -115,7 +121,7 @@ export function Header() {
             </Link>
             <Link
               className="cart-link icon-button"
-              href="/carrito"
+              href={storeRoutes.cart}
               aria-label={`Carrito, ${cart.data?.items.length ?? 0} productos`}
             >
               <ShoppingBag />
@@ -130,7 +136,7 @@ export function Header() {
             {(!user || user.role === "ADMIN") && (
               <Link
                 className="be-client"
-                href={user ? "/admin" : "/solicitar-cuenta"}
+                href={user ? storeRoutes.admin : storeRoutes.requestAccount}
               >
                 {user ? "Administración" : "Quiero ser cliente"}
                 <ArrowUpRight size={16} />
@@ -147,12 +153,12 @@ export function Header() {
         <nav className="mobile-nav">
           {nav}
           {user?.role === "ADMIN" ? (
-            <Link href="/admin" onClick={() => setOpen(false)}>
+            <Link href={storeRoutes.admin} onClick={() => setOpen(false)}>
               Administración
             </Link>
           ) : (
             !user && (
-              <Link href="/solicitar-cuenta" onClick={() => setOpen(false)}>
+              <Link href={storeRoutes.requestAccount} onClick={() => setOpen(false)}>
                 Quiero ser cliente
               </Link>
             )
@@ -162,7 +168,7 @@ export function Header() {
               onClick={async () => {
                 await logout();
                 setOpen(false);
-                router.push("/");
+                router.push(storeRoutes.home);
               }}
             >
               <LogOut size={18} /> Cerrar sesión
@@ -185,7 +191,7 @@ export function Header() {
             onClick={() => {
               reset();
               setResetOpen(false);
-              router.push("/");
+              router.push(storeRoutes.home);
             }}
           >
             Reiniciar escenario
@@ -245,7 +251,7 @@ export function Footer() {
             cada necesidad de tu negocio.
           </p>
           {!user && (
-            <Link className="text-link" href="/solicitar-cuenta">
+            <Link className="text-link" href={storeRoutes.requestAccount}>
               Solicitar acceso mayorista <ArrowUpRight size={16} />
             </Link>
           )}

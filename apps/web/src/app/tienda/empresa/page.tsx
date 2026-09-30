@@ -1,5 +1,6 @@
 import { CompanyCatalogMetric } from "@/components/company-catalog-metric";
 import { ActionLink, PageHeading, Picture } from "@/components/ui";
+import { storeRoutes } from "@/lib/store-routes";
 import { Dumbbell, Mail, UtensilsCrossed, WashingMachine } from "lucide-react";
 
 export const metadata = { title: "Nuestra empresa" };
@@ -289,10 +290,10 @@ export default function Page() {
             <CompanyCatalogMetric />
           </div>
           <div className="actions">
-            <ActionLink href="/solicitar-cuenta">
+            <ActionLink href={storeRoutes.requestAccount}>
               Solicitar cuenta mayorista
             </ActionLink>
-            <ActionLink href="/contacto" secondary>
+            <ActionLink href={storeRoutes.contact} secondary>
               Contactar al equipo
             </ActionLink>
           </div>

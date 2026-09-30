@@ -17,6 +17,7 @@ import {
   reviewRequired,
 } from "@/lib/commerce";
 import { ApiError } from "@/lib/http";
+import { storeRoutes } from "@/lib/store-routes";
 function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
   const [quantity, setQuantity] = useState(item.quantity);
   const client = useQueryClient();
@@ -55,7 +56,7 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
   return (
     <div className="cart-item">
       <div>
-        <Link href={`/producto/${item.product.slug}`}>
+        <Link href={storeRoutes.product(item.product.slug)}>
           <h3>{item.product.name}</h3>
         </Link>
         <p>
@@ -101,12 +102,12 @@ function CartLine({ item, busy }: { item: CartItem; busy: boolean }) {
     </div>
   );
 }
-function CartContent() {
+function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   const { user } = useSession();
   const q = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
   const recommendations = useApi<{ rule: string; product: Product }[]>(
     "cart/recommendations",
-    can(user, "CAN_PLACE_ORDERS"),
+    can(user, "CAN_PLACE_ORDERS") && !checkoutMode,
   );
   const [accept, setAccept] = useState(false),
     [uncertain, setUncertain] = useState(false);
@@ -120,9 +121,9 @@ function CartContent() {
   const checkout = useMutation({
     mutationFn: () =>
       request<Order>("checkout", "POST", { acceptManualReview: accept }),
-    onSuccess: async (order) => {
-      await client.invalidateQueries();
-      router.push(`/cuenta/pedidos/${order.id}?confirmado=1`);
+    onSuccess: (order) => {
+      router.replace(`${storeRoutes.order(order.id)}?confirmado=1`);
+      void client.invalidateQueries();
     },
     onError: (error) => {
       // El carrito o el historial pudieron cambiar (stock, precio o un pedido
@@ -139,7 +140,7 @@ function CartContent() {
   if (!can(user, "CAN_PLACE_ORDERS"))
     return (
       <Empty title="Tu cuenta no está habilitada para enviar pedidos">
-        <ActionLink href="/contacto">Consultar</ActionLink>
+        <ActionLink href={storeRoutes.contact}>Consultar</ActionLink>
       </Empty>
     );
   // Sin respuesta al enviar: el pedido pudo registrarse (y el carrito vaciarse).
@@ -151,7 +152,7 @@ function CartContent() {
           No sabemos si el pedido se confirmó. Revisá tus pedidos antes de
           volver a enviar.
         </p>
-        <Link className="button secondary small" href="/cuenta/pedidos">
+        <Link className="button secondary small" href={storeRoutes.orders}>
           Ver mis pedidos
         </Link>
       </div>
@@ -163,7 +164,7 @@ function CartContent() {
     return (
       <Empty title="Tu carrito está esperando">
         <p>Explorá el catálogo y elegí las presentaciones para tu negocio.</p>
-        <ActionLink href="/catalogo">Explorar catálogo</ActionLink>
+        <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
       </Empty>
     );
   return (
@@ -173,8 +174,8 @@ function CartContent() {
           <CartLine key={item.id} item={item} busy={checkout.isPending} />
         ))}
         <div className="actions">
-          <ActionLink href="/catalogo" secondary>
-            Seguir explorando
+          <ActionLink href={checkoutMode ? storeRoutes.cart : storeRoutes.products} secondary>
+            {checkoutMode ? "Volver al carrito" : "Seguir explorando"}
           </ActionLink>
         </div>
         {recommendations.data?.length ? (
@@ -184,7 +185,7 @@ function CartContent() {
               <p key={`${r.product.id}-${i}`} style={{ marginTop: 10 }}>
                 <Link
                   className="text-link"
-                  href={`/producto/${r.product.slug}`}
+                  href={storeRoutes.product(r.product.slug)}
                 >
                   {r.product.name}
                   <ArrowUpRight size={15} />
@@ -211,7 +212,7 @@ function CartContent() {
           Los descuentos aplicables se confirman al enviar el pedido. No se
           realizará ningún cobro en línea. La entrega se coordina con DISTRICO.
         </p>
-        {manual && (
+        {checkoutMode && manual && (
           <label className="check-field" style={{ marginTop: 20 }}>
             <input
               type="checkbox"
@@ -226,17 +227,25 @@ function CartContent() {
             Revisá las líneas marcadas antes de enviar el pedido.
           </p>
         )}
-        {checkout.error && <ErrorBox error={checkout.error} />}
-        <button
-          className="button"
-          disabled={
-            checkout.isPending || (manual && !accept) || q.isFetching || blocked
-          }
-          onClick={() => checkout.mutate()}
-        >
-          {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
-          <ArrowUpRight size={17} />
-        </button>
+        {checkoutMode && checkout.error && <ErrorBox error={checkout.error} />}
+        {checkoutMode ? (
+          <button
+            className="button"
+            disabled={checkout.isPending || (manual && !accept) || q.isFetching || blocked}
+            onClick={() => checkout.mutate()}
+          >
+            {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
+            <ArrowUpRight size={17} />
+          </button>
+        ) : (
+          <button
+            className="button"
+            disabled={q.isFetching || blocked}
+            onClick={() => router.push(storeRoutes.checkout)}
+          >
+            Continuar al checkout <ArrowUpRight size={17} />
+          </button>
+        )}
         {DEMO && (
           <p className="info-note">
             Operación simulada. No genera pedidos comerciales.
@@ -251,7 +260,17 @@ export function CartPage() {
     <div className="container section">
       <PageHeading eyebrow="Un paso más cerca" title="Tu carrito" />
       <AccessGate>
-        <CartContent />
+        <CartContent checkoutMode={false} />
+      </AccessGate>
+    </div>
+  );
+}
+export function CheckoutPage() {
+  return (
+    <div className="container section">
+      <PageHeading eyebrow="Revisá tu pedido" title="Confirmar pedido" />
+      <AccessGate>
+        <CartContent checkoutMode />
       </AccessGate>
     </div>
   );
@@ -307,7 +326,7 @@ function OrdersContent({ id }: { id?: string }) {
     return (
       <Empty title="No encontramos ese pedido">
         <p>Puede no existir o pertenecer a otra cuenta.</p>
-        <ActionLink href="/cuenta/pedidos">Ver mis pedidos</ActionLink>
+        <ActionLink href={storeRoutes.orders}>Ver mis pedidos</ActionLink>
       </Empty>
     );
   if (q.error)
@@ -316,7 +335,7 @@ function OrdersContent({ id }: { id?: string }) {
   if (!orders.length)
     return (
       <Empty title="Todavía no hay pedidos">
-        <ActionLink href="/catalogo">Armar mi primer pedido</ActionLink>
+        <ActionLink href={storeRoutes.products}>Armar mi primer pedido</ActionLink>
       </Empty>
     );
   return (
@@ -353,7 +372,7 @@ function OrdersContent({ id }: { id?: string }) {
                 {order.items.length === 1 ? "producto" : "productos"} ·{" "}
                 <strong>{money(order.total, order.currency)}</strong>
               </span>
-              <ActionLink href={`/cuenta/pedidos/${order.id}`} secondary>
+              <ActionLink href={storeRoutes.order(order.id)} secondary>
                 Ver detalle
               </ActionLink>
             </div>
@@ -394,7 +413,7 @@ export function OrdersPage({
         <OrdersContent id={id} />
         {id && (
           <div className="actions">
-            <ActionLink href="/cuenta/pedidos" secondary>
+            <ActionLink href={storeRoutes.orders} secondary>
               Todos mis pedidos
             </ActionLink>
           </div>
