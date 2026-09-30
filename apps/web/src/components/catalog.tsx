@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
@@ -681,12 +681,167 @@ function BuyForm({ product, variant }: { product: Product; variant: Variant }) {
     </div>
   );
 }
+function RelatedProducts({ product }: { product: Product }) {
+  // La categoría más específica es la última; comparte caché con el catálogo.
+  const categoryId = product.categories.at(-1)?.categoryId;
+  const q = useApi<ProductCardList>(
+    catalogCardsPath(new URLSearchParams(categoryId ? { categoryId } : {})),
+    !!categoryId,
+  );
+  const items = q.data?.items.filter((p) => p.id !== product.id).slice(0, 4);
+  if (!categoryId || !items?.length) return null;
+  const category = product.categories.at(-1)?.category;
+  return (
+    <section className="detail-related">
+      <div className="section-title">
+        <div>
+          <p className="eyebrow">Para completar el pedido</p>
+          <h2>Más de {category?.name ?? "esta categoría"}</h2>
+        </div>
+        <Link
+          className="text-link"
+          href={`/catalogo?categoryId=${encodeURIComponent(categoryId)}`}
+        >
+          Ver todos <ArrowUpRight size={16} />
+        </Link>
+      </div>
+      <ProductGrid products={items} />
+    </section>
+  );
+}
+function ProductTabs({
+  product,
+  variant,
+}: {
+  product: Product;
+  variant?: Variant;
+}) {
+  const [tab, setTab] = useState<"descripcion" | "ficha">("descripcion");
+  const tabs = [
+    ["descripcion", "Descripción"],
+    ["ficha", "Ficha técnica"],
+  ] as const;
+  const categories = product.categories.filter((c) => c.category);
+  // Solo filas con dato: la ficha no inventa valores.
+  const rows: [string, ReactNode][] = [
+    [
+      "Marca",
+      product.brand && (
+        <Link
+          href={`/catalogo?brandId=${encodeURIComponent(product.brand.id)}`}
+        >
+          {product.brand.name}
+        </Link>
+      ),
+    ],
+    ["Laboratorio", product.laboratory?.name],
+    [
+      "Categorías",
+      categories.length > 0 &&
+        categories.map((c, i) => (
+          <span key={c.categoryId}>
+            {i > 0 && " · "}
+            <Link
+              href={`/catalogo?categoryId=${encodeURIComponent(c.categoryId)}`}
+            >
+              {c.category?.name}
+            </Link>
+          </span>
+        )),
+    ],
+    ["Tipo", product.productType !== "OTHER" && label(product.productType)],
+    [
+      "Presentación",
+      variant &&
+        [variant.name, variant.presentation].filter(Boolean).join(" · "),
+    ],
+    ["SKU", variant?.sku],
+    ["EAN", variant?.ean],
+    [
+      "Venta",
+      variant &&
+        `Mínimo ${variant.minimumOrderQuantity} · Múltiplos de ${variant.saleMultiple}`,
+    ],
+    [
+      "Uso profesional",
+      product.requiresMedicationPermission &&
+        "Requiere habilitación para medicamentos veterinarios",
+    ],
+  ];
+  return (
+    <div className="detail-tabs">
+      <div
+        role="tablist"
+        aria-label="Información del producto"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+          const next = tab === "descripcion" ? "ficha" : "descripcion";
+          setTab(next);
+          document.getElementById(`tab-${next}`)?.focus();
+        }}
+      >
+        {tabs.map(([id, title]) => (
+          <button
+            type="button"
+            role="tab"
+            id={`tab-${id}`}
+            key={id}
+            aria-selected={tab === id}
+            aria-controls={`panel-${id}`}
+            tabIndex={tab === id ? 0 : -1}
+            onClick={() => setTab(id)}
+          >
+            {title}
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id={`panel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+        className="detail-tab-panel"
+      >
+        {tab === "descripcion" ? (
+          <>
+            <p style={{ whiteSpace: "pre-line" }}>
+              {product.description?.replace(/<[^>]+>/g, " ") ||
+                "Consultá a DISTRICO para obtener más información."}
+            </p>
+            {product.sourceUrl && (
+              <a
+                className="text-link"
+                style={{ marginTop: 16 }}
+                href={product.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Información del proveedor <ArrowUpRight size={14} />
+              </a>
+            )}
+          </>
+        ) : (
+          <dl className="detail-specs">
+            {rows
+              .filter(([, value]) => value)
+              .map(([title, value]) => (
+                <div key={title}>
+                  <dt>{title}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+          </dl>
+        )}
+      </div>
+    </div>
+  );
+}
 function ProductDetailContent({ product }: { product: Product }) {
   const [variantId, setVariantId] = useState(
     product.variants.find((v) => v.active !== false)?.id ?? "",
   );
   const [imageId, setImageId] = useState<string>();
   const variant = product.variants.find((v) => v.id === variantId);
+  const variants = product.variants.filter((v) => v.active !== false);
   // Imágenes generales y las de la presentación elegida, en el orden de la API
   // (principal primero); la de la presentación se muestra al elegirla.
   const images = product.media.filter(
@@ -696,125 +851,144 @@ function ProductDetailContent({ product }: { product: Product }) {
     images.find((m) => m.id === imageId) ??
     images.find((m) => m.variantId === variantId) ??
     images[0];
+  const category = product.categories.at(-1);
   return (
-    <div className="detail-grid">
-      <div>
-        <div
-          className="detail-image"
-          onPointerMove={(e) => {
-            if (e.pointerType !== "mouse") return;
-            const r = e.currentTarget.getBoundingClientRect();
-            e.currentTarget.style.setProperty(
-              "--zoom-origin",
-              `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`,
-            );
-          }}
-        >
-          <Picture
-            key={image?.id ?? "placeholder"}
-            src={image?.url ?? "/images/placeholder.svg"}
-            alt={image?.alt || product.name}
-          />
-        </div>
-        {images.length > 1 && (
-          <div className="thumbs">
-            {images.map((m, index) => (
-              <button
-                type="button"
-                key={m.id}
-                aria-label={`Ver imagen ${index + 1} de ${images.length}`}
-                aria-pressed={m.id === image?.id}
-                onClick={() => setImageId(m.id)}
-              >
-                <Picture src={m.url} alt="" sizes="96px" />
-              </button>
-            ))}
+    <>
+      <div className="detail-grid">
+        <div className="detail-gallery">
+          <div
+            className="detail-image"
+            onPointerMove={(e) => {
+              if (e.pointerType !== "mouse") return;
+              const r = e.currentTarget.getBoundingClientRect();
+              e.currentTarget.style.setProperty(
+                "--zoom-origin",
+                `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`,
+              );
+            }}
+          >
+            <Picture
+              key={image?.id ?? "placeholder"}
+              src={image?.url ?? "/images/placeholder.svg"}
+              alt={image?.alt || product.name}
+            />
           </div>
-        )}
-      </div>
-      <div className="detail-info">
-        <p className="eyebrow">
-          {product.brand?.name ??
-            product.laboratory?.name ??
-            product.categories[0]?.category?.name}
-        </p>
-        <h1>{product.name}</h1>
-        <p className="muted small-copy">{product.shortDescription}</p>
-        {variant && (
-          <>
-            <div className="row" style={{ marginTop: 20 }}>
+          {images.length > 1 && (
+            <div className="thumbs">
+              {images.map((m, index) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  aria-label={`Ver imagen ${index + 1} de ${images.length}`}
+                  aria-pressed={m.id === image?.id}
+                  onClick={() => setImageId(m.id)}
+                >
+                  <Picture src={m.url} alt="" sizes="96px" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="detail-info">
+          <p className="eyebrow detail-eyebrow">
+            {product.brand ? (
+              <Link
+                href={`/catalogo?brandId=${encodeURIComponent(product.brand.id)}`}
+              >
+                {product.brand.name}
+              </Link>
+            ) : (
+              product.laboratory?.name
+            )}
+            {category?.category && (
+              <>
+                {(product.brand || product.laboratory) && " · "}
+                <Link
+                  href={`/catalogo?categoryId=${encodeURIComponent(category.categoryId)}`}
+                >
+                  {category.category.name}
+                </Link>
+              </>
+            )}
+          </p>
+          <h1>{product.name}</h1>
+          {product.shortDescription && (
+            <p className="muted detail-lead">{product.shortDescription}</p>
+          )}
+          <div className="detail-pills">
+            {variant && (
               <span
                 className={`status-pill${variant.availableStock > 0 ? "" : " pending"}`}
               >
                 {variant.availableStock > 0 ? "Disponible" : "Sin stock"}
               </span>
-              <span className="muted small-copy">SKU {variant.sku}</span>
-            </div>
-            {variant.price && (
-              <p className="price">
-                {money(variant.price.amount, variant.price.currency)}
-              </p>
             )}
-            <label className="field" style={{ marginTop: 22 }}>
-              Presentación
-              <select
-                value={variantId}
-                onChange={(e) => {
-                  setVariantId(e.target.value);
-                  setImageId(undefined);
-                }}
-              >
-                {product.variants
-                  .filter((v) => v.active !== false)
-                  .map((v) => (
-                    <option value={v.id} key={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            {variant.presentation && (
-              <p className="muted small-copy" style={{ marginTop: 8 }}>
-                {variant.presentation}
-              </p>
+            {product.newProduct && <span className="status-pill">Nuevo</span>}
+            {product.featured && <span className="status-pill">Destacado</span>}
+            {product.requiresMedicationPermission && (
+              <span className="status-pill pending">Uso profesional</span>
             )}
-            <BuyForm key={variantId} product={product} variant={variant} />
-          </>
-        )}
-        {!variant && (
-          <p className="panel">
-            Este producto todavía no tiene presentaciones disponibles.
-          </p>
-        )}
-        <div style={{ marginTop: 30 }}>
-          <h3>Acerca del producto</h3>
-          <p
-            className="small-copy muted"
-            style={{ marginTop: 12, whiteSpace: "pre-line" }}
-          >
-            {product.description?.replace(/<[^>]+>/g, " ") ||
-              "Consultá a DISTRICO para obtener más información."}
-          </p>
-          {product.sourceUrl && (
-            <a
-              className="text-link"
-              style={{ marginTop: 12 }}
-              href={product.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Información del proveedor <ArrowUpRight size={14} />
-            </a>
+          </div>
+          {variant ? (
+            <>
+              {variants.length > 1 ? (
+                <div className="detail-variants">
+                  <p id="presentaciones">Presentación</p>
+                  <div role="radiogroup" aria-labelledby="presentaciones">
+                    {variants.map((v) => (
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={v.id === variantId}
+                        key={v.id}
+                        onClick={() => {
+                          setVariantId(v.id);
+                          setImageId(undefined);
+                        }}
+                      >
+                        {v.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="detail-variant-single">
+                  Presentación: <strong>{variant.name}</strong>
+                </p>
+              )}
+              <div className="detail-purchase">
+                <div className="row between">
+                  {variant.price ? (
+                    <p className="price">
+                      {money(variant.price.amount, variant.price.currency)}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="muted small-copy">SKU {variant.sku}</span>
+                </div>
+                {variant.presentation && (
+                  <p className="muted small-copy">{variant.presentation}</p>
+                )}
+                <BuyForm key={variantId} product={product} variant={variant} />
+              </div>
+            </>
+          ) : (
+            <p className="panel">
+              Este producto todavía no tiene presentaciones disponibles.
+            </p>
+          )}
+          {DEMO && (
+            <p className="info-note">
+              Nombre e imagen de catálogo público. Precio, stock, permisos y
+              presentación comercial son datos de demostración.
+            </p>
           )}
         </div>
-        {DEMO && (
-          <p className="info-note">
-            Nombre e imagen de catálogo público. Precio, stock, permisos y
-            presentación comercial son datos de demostración.
-          </p>
-        )}
       </div>
-    </div>
+      <ProductTabs product={product} variant={variant} />
+      <RelatedProducts product={product} />
+    </>
   );
 }
 export function ProductDetail({ slug }: { slug: string }) {

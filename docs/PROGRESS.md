@@ -2,6 +2,15 @@
 
 Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
 
+## Mejora: ficha de producto «comercial B2B» (30/09)
+
+- `src/components/catalog.tsx` (`ProductDetailContent`, nuevos `ProductTabs` y `RelatedProducts`): la galería queda sticky desde 900px. El eyebrow enlaza a la marca y a la categoría. Hay píldoras Disponible/Sin stock, Nuevo (`newProduct`), Destacado (`featured`) y Uso profesional.
+- Las presentaciones son botones (`radiogroup`) en lugar del `<select>`; con una sola se muestra como texto. La caja de compra es una tarjeta con precio, SKU y `BuyForm` sin cambios de lógica.
+- Pestañas accesibles «Descripción» / «Ficha técnica» (flechas del teclado). La ficha técnica muestra marca, laboratorio, categorías con link, tipo (salvo `OTHER`), presentación, SKU, EAN, mínimo/múltiplo y uso profesional, solo las filas con dato.
+- «Más de {categoría}» usa `catalogCardsPath` (misma caché que el catálogo): excluye el producto actual y muestra 4. Si no hay otros, no se muestra.
+- No se muestra el peso: `ProductVariant.weight` no tiene unidad definida en el schema (`unitOfMeasure` es la unidad de venta) y se veía «7 u.» en una bolsa de 7 kg. `src/lib/types.ts`: `Product.newProduct`.
+- Pruebas: `tsc`, ESLint y 46/46 tests. Con la copia demo en 3100 (`E2E_PORT=3100`): e2e `flows.spec.ts` + `admin-complete.spec.ts` 20/20. Playwright a 1280 y 390 px sin scroll horizontal. En modo real, ficha pública con 3 presentaciones: botones y ficha técnica correctos.
+
 ## Corrección: entrada de secciones al hacer scroll (30/09)
 
 - Tras el merge con la integración de rutas `/tienda`, el controlador pasó a animar con `element.animate()` sin ocultar antes. Resultado: cada sección y tarjeta se veía, desaparecía de golpe al entrar en pantalla y recién ahí aparecía; las tarjetas con retraso escalonado se veían completas durante el retraso.

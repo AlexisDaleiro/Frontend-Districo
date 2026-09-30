@@ -71,6 +71,7 @@ export type Product = {
   requiresMedicationPermission: boolean;
   medicationRestricted?: boolean;
   featured?: boolean;
+  newProduct?: boolean;
   active?: boolean;
   source?: string;
   sourceUrl?: string;
