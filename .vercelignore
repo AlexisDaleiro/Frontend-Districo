@@ -1,0 +1,3 @@
+# Never upload local credentials with a CLI deployment.
+.env*
+**/.env*

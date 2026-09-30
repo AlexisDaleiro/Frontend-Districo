@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allowedPath, sanitize } from "@/lib/proxy-policy";
 import { backendApiUrl } from "@/lib/backend-url";
+import { isDemoMode } from "@/lib/data-mode";
 export const dynamic = "force-dynamic";
 const cookieOptions = {
   httpOnly: true,
@@ -20,7 +21,7 @@ async function handle(
     });
   if (!allowedPath(path, request.method))
     return reply({ message: "Ruta no disponible." }, 404);
-  if (process.env.NEXT_PUBLIC_DATA_MODE !== "real")
+  if (isDemoMode())
     return reply({ message: "Esta instalación funciona en modo demo." }, 503);
   if (request.method !== "GET") {
     // Next puede informar localhost en nextUrl aunque el navegador use otra
@@ -78,7 +79,7 @@ async function handle(
   try {
     const token = request.cookies.get("districo-access")?.value;
     const upstream = await fetch(
-      upstreamUrl,
+      upstreamUrl.toString(),
       {
         method: request.method,
         headers: {

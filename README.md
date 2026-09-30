@@ -47,5 +47,5 @@ Agregar una dependencia: `npm install <paquete> -w apps/web` (o `-w apps/api`). 
 
 ## Despliegue
 
-- **Frontend:** Vercel, con *Root Directory* `apps/web`. Detalles en `docs/DEPLOYMENT.md`.
-- **Backend:** imagen Docker construida desde la raíz: `docker build -f apps/api/Dockerfile .`
+- **Vercel:** un proyecto con *Framework Preset* `Services` y *Root Directory* vacío (raíz del repositorio). `vercel.json` despliega `apps/web` y `apps/api` y enlaza ambos servicios. Detalles en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- **Docker alternativo para API:** `docker build -f apps/api/Dockerfile .` desde la raíz.

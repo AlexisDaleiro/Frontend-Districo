@@ -16,9 +16,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { http, ApiError } from "@/lib/http";
-import { demoRequest, resetDemo } from "@/lib/demo";
+import { DEMO } from "@/lib/data-mode";
 import type { User } from "@/lib/types";
-export const DEMO = process.env.NEXT_PUBLIC_DATA_MODE !== "real";
+export { DEMO } from "@/lib/data-mode";
 export const apiQueryKey = (path: string, userId?: string) => [
   DEMO ? "demo" : "real",
   userId ?? "public",
@@ -29,9 +29,9 @@ export async function request<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const result = await (DEMO
-    ? demoRequest<T>(path, method, body)
-    : http<T>(path, method, body));
+  const result = DEMO
+    ? await (await import("@/lib/demo")).demoRequest<T>(path, method, body)
+    : await http<T>(path, method, body);
   if ((path === "categories" || path === "categories/catalog") && method === "GET") {
     type Node = { children?: Node[] };
     const flatten = (nodes: Node[]): Node[] =>
@@ -135,7 +135,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
     }
   }
   async function reset() {
-    resetDemo();
+    if (DEMO) (await import("@/lib/demo")).resetDemo();
     await expire();
     setNotice("Escenario de demostración reiniciado.");
     sessionChannel.current?.postMessage("changed");

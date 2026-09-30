@@ -13,8 +13,6 @@ jobs:
   web:
     name: Frontend (apps/web)
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_DATA_MODE: demo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

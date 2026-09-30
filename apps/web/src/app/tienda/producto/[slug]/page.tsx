@@ -3,12 +3,13 @@ import { ProductDetail } from "@/components/catalog";
 import { seedProducts } from "@/lib/demo-seed";
 import type { Product } from "@/lib/types";
 import { backendApiUrl } from "@/lib/backend-url";
+import { isDemoMode } from "@/lib/data-mode";
 
 type Props = { params: Promise<{ slug: string }> };
 
 // Solo datos públicos del catálogo: sin token ni precios.
 async function findProduct(slug: string): Promise<Product | undefined> {
-  if (process.env.NEXT_PUBLIC_DATA_MODE !== "real")
+  if (isDemoMode())
     return seedProducts().find((p) => p.slug === slug);
   const url = backendApiUrl(`products/${encodeURIComponent(slug)}`);
   if (!url) return undefined;

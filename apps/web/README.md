@@ -13,7 +13,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Abrir http://127.0.0.1:3000/tienda. Por defecto funciona en **modo demo**. Las operaciones quedan únicamente en el almacenamiento local del navegador. No usar datos personales ni contraseñas reales en este modo. «Reiniciar demo» restaura el escenario original.
+Abrir http://127.0.0.1:3000/tienda. Por defecto usa la **API real**. Para trabajar sin backend durante el desarrollo local, cambiar explícitamente `NEXT_PUBLIC_DATA_MODE=demo` en `.env.local` y reiniciar `next dev`. Las operaciones demo quedan únicamente en el almacenamiento local del navegador. No usar datos personales ni contraseñas reales en este modo. «Reiniciar demo» restaura el escenario original. Una compilación de producción nunca muestra datos demo, incluso si heredó ese valor.
 
 `/` es un puente temporal hacia `/tienda`; se reemplaza únicamente `src/app/page.tsx` cuando esté lista la landing institucional. El layout de la tienda vive en `src/app/tienda/layout.tsx`, separado del layout raíz. Las URLs de navegación se mantienen en `src/lib/store-routes.ts`. El catálogo está en `/tienda/productos`, cada categoría en `/tienda/categorias/[id]`, el envío del pedido en `/tienda/checkout` y la administración en `/tienda/admin`. El proxy `/api/backend/...` no cambia.
 
@@ -43,12 +43,12 @@ Configurar antes de compilar:
 
 ```dotenv
 NEXT_PUBLIC_DATA_MODE=real
-BACKEND_API_URL=https://API-DE-TU-SOCIO/api
+BACKEND_API_URL=http://127.0.0.1:3001/api
 ```
 
-Cambiar de modo requiere reiniciar el servidor de desarrollo o recompilar. No hay sustitución automática por datos simulados. En modo real, las llamadas pasan por `/api/backend/...`, que guarda los tokens en cookies HttpOnly y transporta las solicitudes a la API. Nunca se modifica la base de datos directamente desde Next.js.
+`NEXT_PUBLIC_DATA_MODE` puede omitirse: `real` es el valor predeterminado. `BACKEND_API_URL` solo sirve para ejecutar Next.js y NestJS por separado en local y debe incluir `/api`. En Vercel, `vercel.json` inyecta `API_SERVICE_URL` al servicio web en tiempo de ejecución; no configurarlo a mano. Cambiar de modo local requiere reiniciar el servidor. Si la API falla en modo real, se muestra un error; nunca se sustituyen sus respuestas por datos simulados. Las llamadas pasan por `/api/backend/...`, que guarda los tokens en cookies HttpOnly. Next.js nunca modifica PostgreSQL directamente.
 
-**La integración contra la API publicada sigue pendiente de su URL y disponibilidad.** Las pruebas de transporte utilizan respuestas controladas, no certifican el funcionamiento del backend de tu socio.
+El despliegue y sus variables se describen en [docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md). Las pruebas unitarias de transporte usan respuestas controladas; para validar una instalación hay que consultar `/api/backend/products?limit=1` en su URL real.
 
 ## Documentación y continuación con Claude Code
 
@@ -70,7 +70,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Las pruebas de navegador esperan un servidor en **modo demo**. Arrancan la compilación de producción automáticamente si no hay uno en el puerto 3000. Detener un servidor anterior si se necesita probar una compilación nueva.
+Las pruebas de navegador arrancan `next dev` en **modo demo explícito** y requieren el puerto 3000 libre. El build de producción utiliza siempre el backend real.
 
 ## Límites de esta entrega
 

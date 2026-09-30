@@ -21,9 +21,10 @@ export default defineConfig({
     },
   }],
   webServer: {
-    command: `npm run start -- --port ${port}`,
+    command: `npm run dev -- --port ${port}`,
+    env: { NEXT_PUBLIC_DATA_MODE: "demo" },
     url: `http://127.0.0.1:${port}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

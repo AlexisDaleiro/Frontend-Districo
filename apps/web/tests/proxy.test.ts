@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, POST } from "../src/app/api/backend/[...path]/route";
 import { allowedPath, sanitize } from "../src/lib/proxy-policy";
+import { backendApiUrl } from "../src/lib/backend-url";
+import { isDemoMode } from "../src/lib/data-mode";
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -10,6 +12,30 @@ const params = (path: string) => ({
   params: Promise.resolve({ path: path.split("/") }),
 });
 describe("Frontera entre frontend y API", () => {
+  it("usa datos reales por defecto y reserva demo al desarrollo explícito", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const upstream = vi.fn().mockResolvedValue(Response.json({ items: [], meta: {} }));
+    vi.stubGlobal("fetch", upstream);
+    expect(isDemoMode()).toBe(false);
+    const result = await GET(
+      new NextRequest("http://localhost/api/backend/products"),
+      params("products"),
+    );
+    expect(result.status).toBe(200);
+    expect(upstream).toHaveBeenCalledOnce();
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "demo");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(isDemoMode()).toBe(false);
+  });
+  it("usa el binding en Vercel y exige que exista allí", () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("BACKEND_API_URL", "http://127.0.0.1:3001/api");
+    vi.stubEnv("API_SERVICE_URL", "https://api.internal/");
+    expect(backendApiUrl("products")?.toString()).toBe("https://api.internal/api/products");
+    vi.stubEnv("API_SERVICE_URL", "");
+    expect(backendApiUrl("products")).toBeUndefined();
+  });
   it("limita rutas y elimina secretos recursivamente", () => {
     expect(allowedPath("../auth/login", "POST")).toBe(false);
     expect(allowedPath("https://elsewhere.test", "GET")).toBe(false);

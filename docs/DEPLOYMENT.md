@@ -1,35 +1,41 @@
-# Publicación y respaldo
+# Despliegue temporal de DISTRICO en Vercel
 
-## Estado
+Este proyecto sigue en demo comercial, pero la tienda publicada consulta la API y la base reales. Los datos simulados del frontend solo se habilitan expresamente con `NEXT_PUBLIC_DATA_MODE=demo` durante `next dev` local. Una compilación de producción nunca usa ese modo, aunque exista un valor antiguo de la variable. Si falla la API, el usuario ve un error de conexión.
 
-El repositorio incluye `vercel.json` en la raíz para desplegar `apps/web` (Next.js) y `apps/api` (NestJS) como servicios de un solo proyecto. Configurar *Root Directory* = raíz del repositorio. La API queda interna; la ruta pública `/(.*)` llega a `web`. El navegador usa `/api/backend/*`, el proxy de Next.js, que llama a `api` con el binding `API_SERVICE_URL`. No configurar esa variable manualmente. No asumir publicación ni integración real hasta que consten URL y fecha verificadas en `PROGRESS.md`.
+**Verificado el 30/09/2026:** `frontend-districo.vercel.app` despliega ambos servicios y el binding privado. `GET /api/backend/products?limit=1` respondió 200 con un producto de PostgreSQL y `meta.total=570`; categorías y tarjetas respondieron 200 y `auth/me` anónimo respondió 401 como corresponde. La página `/tienda/productos` mostró 570 productos y no el aviso de modo demo. No se probaron escrituras, pedidos ni acceso con credenciales reales. Algunos registros de la base compartida tienen variantes de prueba; provienen del backend, no de mocks del frontend.
 
-Para modo real, configurar en el proyecto `NEXT_PUBLIC_DATA_MODE=real`, `DATABASE_URL`, `DIRECT_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` y las variables de Supabase necesarias para facturas. La API usa PostgreSQL externo; el contenedor de `docker-compose.yml` es solo local. `NEXT_PUBLIC_DATA_MODE` debe estar disponible durante la compilación de Next.js. No ejecutar `prisma migrate deploy` ni sembrar una base de producción automáticamente: aplicar migraciones con el procedimiento de base de datos acordado.
+## Flujo de solicitudes
 
-El servicio `api` conserva sus rutas `/api/*`, pero no tiene rewrite público. En particular, `auth/forgot-password` del backend entrega actualmente un token de recuperación y el proxy lo bloquea; revisar ese flujo antes de exponer la API directamente. El binding solo funciona en funciones durante la ejecución. Para desarrollo integrado, usar `vercel dev -L` desde la raíz; para los dos servidores locales independientes, `BACKEND_API_URL=http://localhost:3001/api` sigue siendo válido en `apps/web/.env.local`.
-
-## Demo aislada en Vercel
-
-1. Crear proyecto de Vercel con este repositorio, *Root Directory* en la raíz. Usar un proyecto separado de `importadora.vercel.app` para conservar la propuesta anterior.
-2. Configurar `NEXT_PUBLIC_DATA_MODE=demo`. El frontend no usará la API ni la base de datos en este modo; el servicio `api` sigue incluido en el despliegue.
-3. Desplegar con `npx vercel` para preview. Abrir la URL, entrar como cliente y administrador y completar el guion.
-4. Si la preview exige sesión de Vercel, acordar el mecanismo de acceso a la reunión; no afirmar que el enlace es público sin probarlo desde navegador sin sesión.
-
-## Entorno de API real
-
-Configurar `NEXT_PUBLIC_DATA_MODE=real`, recompilar y volver a desplegar. `web` recibirá `API_SERVICE_URL` desde su binding con `api` durante la ejecución. Mantener una URL demo separada para respaldo. No apuntar los tests automatizados a una base con pedidos reales.
-
-No guardar tokens, credenciales, URL privadas con secretos ni archivos `.env.local` en Git. `.env.example` solo contiene valores de ejemplo.
-
-## Respaldo local
-
-```powershell
-npm ci
-cd apps/web
-npm run build
-npm run start
+```text
+Navegador -> /api/backend/products en web (Next.js)
+          -> API_SERVICE_URL/api/products en api (NestJS)
+          -> Prisma -> PostgreSQL (Supabase)
 ```
 
-Con `apps/web/.env.local` en modo demo, todos los recursos visuales utilizados están en `apps/web/public/images`, la fuente viene del paquete local y los datos de prueba persisten en el navegador. No es una PWA: el servidor local debe estar encendido.
+`vercel.json` debe estar en la raíz del repositorio. El proyecto Vercel debe tener *Framework Preset* `Services`, *Root Directory* vacío y Node.js 22 o 24. El servicio `api` usa la raíz del monorepo para incluir dependencias npm elevadas al `node_modules` raíz, compila el workspace `apps/api` y arranca en `apps/api/src/main.ts`; NestJS registra las rutas bajo `/api`. Si `api.root` se cambia a `apps/api`, la función puede compilar pero fallar al ejecutar con `Cannot find module '@nestjs/common'`. El servicio `web` se construye desde `apps/web`. El binding de `web` a `api` inyecta `API_SERVICE_URL` al ejecutar funciones; no es una variable que haya que crear en el panel. El rewrite público lleva todas las rutas a `web`. La API queda privada y el navegador nunca recibe una URL de base de datos ni claves de Supabase. `.vercelignore` impide subir archivos `.env*` privados en despliegues por CLI. [Configuración de Services](https://vercel.com/kb/guide/vercel-services), [NestJS en Vercel](https://vercel.com/docs/frameworks/backend/nestjs).
 
-Revisar puerto 3000 y tener la compilación lista antes de la reunión. Para una sesión nueva o un ensayo limpio usar «Reiniciar demo».
+## Variables
+
+| Dónde | Variable | Uso |
+| --- | --- | --- |
+| Web, compilación | `NEXT_PUBLIC_DATA_MODE` | Opcional. Omitida o `real` = API real. `demo` solo funciona con `next dev` local. Quitar cualquier valor `demo` antiguo de Production y Preview. |
+| Web, local separado | `BACKEND_API_URL` | `http://127.0.0.1:3001/api`. No configurarla en Vercel. |
+| Web, runtime de Vercel | `API_SERVICE_URL` | La crea automáticamente el binding `web` → `api` en `vercel.json`. No configurarla manualmente. |
+| API | `DATABASE_URL` | PostgreSQL de aplicación, con SSL y pooler apropiado. |
+| API | `DIRECT_URL` | Conexión directa o Session pooler para migraciones Prisma; no Transaction pooler. |
+| API | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Secretos distintos, largos y privados. |
+| API | `PORT`, `HOST` | Para local: `3001`, `127.0.0.1`. En Vercel no forzar `HOST=127.0.0.1`; usar `0.0.0.0` o quitarlo. `PORT` puede omitirse para que la plataforma lo asigne. |
+| API | `CORS_ORIGIN` | Lista separada por comas de orígenes permitidos **solo si llaman directamente a NestJS**. No se necesita para el proxy del mismo origen; si se omite, no se habilita acceso CORS. Nunca usar `*` con credenciales. |
+| API, facturas | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_INVOICE_BUCKET` | Storage privado para facturas. `SUPABASE_INVOICE_BUCKET` usa `order-invoices` por defecto. |
+| API, opcionales | `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `BCRYPT_SALT_ROUNDS` | Duraciones y coste configurables. `DEMO_SEED_PASSWORD` solo para siembra local explícita; quitarla de Vercel. |
+
+No poner secretos en `NEXT_PUBLIC_*`, en Git ni en `.env.example`. Comprobar que las variables de API estén asignadas a los entornos Vercel que se vayan a desplegar. Cambiar variables requiere un nuevo despliegue para funciones y, en el caso de `NEXT_PUBLIC_*`, también una nueva compilación. No ejecutar semillas ni migraciones en producción automáticamente; aplicar las migraciones mediante el procedimiento acordado con quien administra la base.
+
+## Verificación
+
+1. En local, ejecutar `npm run db:check -w apps/api` (solo lectura), `npm run dev:api` y `npm run dev:web`; comprobar `http://127.0.0.1:3001/api/products?limit=1` y `http://127.0.0.1:3000/api/backend/products?limit=1`. Ambas respuestas deben ser JSON con `items` y `meta`, sin el mensaje de modo demo.
+2. Ejecutar `npm run typecheck`, `npm run lint`, `npm test` y `npm run build` desde la raíz. La batería e2e usa `next dev` en demo explícito y no debe dirigirse a la base real.
+3. En Vercel, verificar que el despliegue muestre servicios `web` y `api`, y el enlace `API_SERVICE_URL` entre ellos. Revisar los logs de construcción y función de ambos servicios.
+4. Tras publicar el cambio, consultar `https://frontend-districo.vercel.app/api/backend/products?limit=1`. Esperar HTTP 200 y JSON `{ "items": [...], "meta": ... }` desde PostgreSQL. HTTP 503 con “Esta instalación funciona en modo demo” indica código viejo o una compilación anterior. HTTP 503 con “La API aún no está configurada” indica binding ausente; HTTP 502 indica fallo de conexión con la API o la base. En los dos últimos casos, revisar el despliegue y los logs, sin recurrir a mocks.
+
+Esta es una configuración temporal para la demo. Antes de tratarla como producción comercial se deben cerrar los pendientes de [backend](BACKEND-PENDIENTES.md) y [contacto](CONTACTO-PENDIENTES.md). El proxy bloquea `auth/forgot-password` porque la API actual devuelve un token de recuperación al solicitante.
