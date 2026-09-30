@@ -5,8 +5,8 @@ import { useEffect } from "react";
 const revealSelector = [
   ".needs-intro",
   ".need",
-  ".hero-copy",
-  ".hero-visual",
+  ".hero:not(.home-carousel-slide) .hero-copy",
+  ".hero:not(.home-carousel-slide) .hero-visual",
   ".benefits > div",
   ".section-title",
   ".line-card",
@@ -58,8 +58,8 @@ export function MotionSystem() {
       if (!reduced.matches && element instanceof HTMLElement) {
         element.animate(
           [
-            { opacity: 0, transform: "translate3d(0, 22px, 0)" },
-            { opacity: 1, transform: "none" },
+            { opacity: 0, translate: "0 22px" },
+            { opacity: 1, translate: "0 0" },
           ],
           {
             duration: 620,

@@ -245,23 +245,23 @@ try {
     await publicPage.locator("main").waitFor();
     await inspect(publicPage, name, [360, 390, 768, 1024, 1440], false);
   }
-  await publicPage.goto(`${base}/tienda`);
+  await publicPage.goto(`${base}/tienda/empresa`);
   await publicPage.setViewportSize({ width: 1440, height: 900 });
-  await publicPage.locator(".hero-visual img").waitFor();
+  await publicPage.locator(".company-hero-visual img").waitFor();
   const before = await publicPage
-    .locator(".hero-visual img")
+    .locator(".company-hero-visual img")
     .evaluate((element) =>
       getComputedStyle(element).getPropertyValue("--motion-parallax"),
     );
   await publicPage.evaluate(() => scrollTo(0, 250));
   await publicPage.waitForTimeout(150);
   const after = await publicPage
-    .locator(".hero-visual img")
+    .locator(".company-hero-visual img")
     .evaluate((element) =>
       getComputedStyle(element).getPropertyValue("--motion-parallax"),
     );
   if (before === after)
-    errors.push("El parallax de portada no respondió al desplazamiento.");
+    errors.push("El parallax de la fotografía de empresa no respondió al desplazamiento.");
   await publicPage.setViewportSize({ width: 390, height: 900 });
   await publicPage.goto(`${base}/tienda/productos`, { waitUntil: "domcontentloaded" });
   const filterButton = publicPage.getByRole("button", { name: "Filtrar" });
@@ -324,7 +324,7 @@ try {
       );
     } else {
       await page.goto(`${base}/tienda/admin`, { waitUntil: "domcontentloaded" });
-      await page.locator('.admin-tabs a[href="/tienda/admin/pedidos"]').focus();
+      await page.locator('.admin-nav a[href="/tienda/admin/pedidos"]').focus();
       await page.keyboard.press("Enter");
       await page.waitForURL("**/tienda/admin/pedidos");
     }
