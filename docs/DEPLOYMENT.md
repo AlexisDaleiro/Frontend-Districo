@@ -21,8 +21,8 @@ Navegador -> /api/backend/products en web (Next.js)
 | Web, compilación | `NEXT_PUBLIC_DATA_MODE` | Opcional. Omitida o `real` = API real. `demo` solo funciona con `next dev` local. Quitar cualquier valor `demo` antiguo de Production y Preview. |
 | Web, local separado | `BACKEND_API_URL` | `http://127.0.0.1:3001/api`. No configurarla en Vercel. |
 | Web, runtime de Vercel | `API_SERVICE_URL` | La crea automáticamente el binding `web` → `api` en `vercel.json`. No configurarla manualmente. |
-| API | `DATABASE_URL` | PostgreSQL de aplicación, con SSL y pooler apropiado. |
-| API | `DIRECT_URL` | Conexión directa o Session pooler para migraciones Prisma; no Transaction pooler. |
+| API | `DATABASE_URL` | PostgreSQL de aplicación, con SSL. En Vercel, si apunta al Session pooler de Supabase (`*.pooler.supabase.com:5432`), la API usa automáticamente el Transaction pooler (`:6543`) con `pgbouncer=true` y `connection_limit=1`. También se puede poner directamente esa URL de Transaction pooler en Vercel. Para otros servidores PostgreSQL en Vercel se limita igualmente a una conexión por instancia. |
+| API | `DIRECT_URL` | Conexión directa o Session pooler (`:5432`) para migraciones Prisma; nunca Transaction pooler. No se modifica en ejecución. |
 | API | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Secretos distintos, largos y privados. |
 | API | `PORT`, `HOST` | Para local: `3001`, `127.0.0.1`. En Vercel no forzar `HOST=127.0.0.1`; usar `0.0.0.0` o quitarlo. `PORT` puede omitirse para que la plataforma lo asigne. |
 | API | `CORS_ORIGIN` | Lista separada por comas de orígenes permitidos **solo si llaman directamente a NestJS**. No se necesita para el proxy del mismo origen; si se omite, no se habilita acceso CORS. Nunca usar `*` con credenciales. |
@@ -30,6 +30,8 @@ Navegador -> /api/backend/products en web (Next.js)
 | API, opcionales | `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `BCRYPT_SALT_ROUNDS` | Duraciones y coste configurables. `DEMO_SEED_PASSWORD` solo para siembra local explícita; quitarla de Vercel. |
 
 No poner secretos en `NEXT_PUBLIC_*`, en Git ni en `.env.example`. Comprobar que las variables de API estén asignadas a los entornos Vercel que se vayan a desplegar. Cambiar variables requiere un nuevo despliegue para funciones y, en el caso de `NEXT_PUBLIC_*`, también una nueva compilación. No ejecutar semillas ni migraciones en producción automáticamente; aplicar las migraciones mediante el procedimiento acordado con quien administra la base.
+
+El Session pooler de Supabase tiene un cupo bajo de conexiones persistentes. Cada instancia serverless de Prisma puede abrir su propio pool, lo que agotó el cupo durante el despliegue. El Transaction pooler y `connection_limit=1` son la configuración para solicitudes breves en Vercel; Prisma conecta al consultar y no ocupa una sesión durante peticiones que no usan la base. La URL directa sigue reservada para migraciones. [Supabase: solución de problemas con Prisma](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting), [Prisma: poolers de conexión](https://www.prisma.io/docs/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer).
 
 ## Verificación
 
