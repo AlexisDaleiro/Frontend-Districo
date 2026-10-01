@@ -109,6 +109,21 @@ describe("Frontera entre frontend y API", () => {
     expect(upstream.mock.calls[0][1].headers["Content-Type"]).toMatch(/^multipart\/form-data;/);
     expect(upstream.mock.calls[0][1].body).toBeInstanceOf(ArrayBuffer);
   });
+  it("permite registrar solo el número de factura por multipart", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const upstream = vi.fn().mockResolvedValue(Response.json({ id: "invoice-number-1" }));
+    vi.stubGlobal("fetch", upstream);
+    const form = new FormData();
+    form.set("requestId", "00000000-0000-4000-8000-000000000007");
+    form.set("invoiceNumber", "A-123");
+    const result = await POST(new NextRequest("http://localhost:3000/api/backend/admin/orders/order-1/invoices", {
+      method: "POST", headers: { origin: "http://localhost:3000" }, body: form,
+    }), params("admin/orders/order-1/invoices"));
+    expect(result.status).toBe(200);
+    expect(upstream.mock.calls[0][1].headers["Content-Type"]).toMatch(/^multipart\/form-data;/);
+    expect(upstream.mock.calls[0][1].body).toBeInstanceOf(ArrayBuffer);
+  });
   it("convierte los tokens en cookies HttpOnly y no los devuelve al navegador", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");

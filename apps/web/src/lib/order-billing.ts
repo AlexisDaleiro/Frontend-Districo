@@ -6,6 +6,6 @@ export function orderBalance(order: Pick<Order, "total" | "paidTotal">) {
   return {
     paid: paid / 100,
     due: Math.max(0, total - paid) / 100,
-    status: paid <= 0 ? "Sin pagos" : paid < total ? "Parcial" : "Completo",
+    status: paid <= 0 ? "Pendiente" : paid < total ? "Parcial" : "Completo",
   };
 }

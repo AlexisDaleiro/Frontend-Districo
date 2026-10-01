@@ -16,6 +16,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Save,
   Sparkles,
   Tags,
   Trash2,
@@ -32,13 +33,13 @@ import { CountUp } from "./count-up";
 import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
 import { orderBalance } from "@/lib/order-billing";
+import { orderProgressChoices, orderProgressOptionLabel } from "@/lib/order-progress";
 import { storeRoutes } from "@/lib/store-routes";
 import {
   label,
   money,
-  orderStatuses,
   orderStockEffect,
-  orderTransitions,
+  orderStatuses,
 } from "@/lib/commerce";
 import type {
   Application,
@@ -391,7 +392,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const rows = q.data.filter((c) =>
-    `${c.businessName} ${c.rut}`.toLowerCase().includes(search.toLowerCase()),
+    `${c.businessName} ${c.rut} ${c.phone ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
   return (
     <>
@@ -413,6 +414,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
               {c.legalName} · {c.rut}
             </p>
             <p>{c.users?.map((u) => u.email).join(", ")}</p>
+            <p>Teléfono: {c.phone || "Sin registrar"}</p>
             <p>
               <span className="status-pill">{label(c.accountStatus)}</span> ·{" "}
               {label(c.creditStatus)}
@@ -431,6 +433,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
                     method: "PATCH",
                     initial: { ...c },
                     fields: [
+                      { ...text("phone", "Teléfono", false), allowEmpty: true },
                       select(
                         "accountStatus",
                         "Estado de cuenta",
@@ -482,40 +485,87 @@ function Customers({ edit }: { edit: OpenEditor }) {
     </>
   );
 }
-function orderEditor(o: Order): Editor {
-  const next = orderTransitions[o.status] ?? [];
-  return {
-    title: `Gestionar ${o.orderNumber}`,
-    path: `admin/orders/${o.id}/status`,
-    method: "PATCH",
-    fields: [
-      select("status", "Nuevo estado", options(next)),
-      text("reviewReason", "Observación", false),
-    ],
-    description: [
-      `Estado actual: ${label(o.status)}.`,
-      ...next.map((to) => `${label(to)}: ${orderStockEffect(o.status, to)}`),
-      "Los importes del pedido no cambian. Sin observación se conserva la anterior.",
-      ...(DEMO
-        ? []
-        : [
-            "La API vence las reservas de un pedido a las 48 h; si vencieron, aprobar no descuenta stock.",
-          ]),
-    ].join(" "),
-    success: (result) => {
-      const r = result as Partial<Order> | undefined;
-      return `${o.orderNumber}: ${label(r?.status ?? "")}.`;
+function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
+  const { notify } = useSession();
+  const [selected, setSelected] = useState(order.status);
+  const [reviewReason, setReviewReason] = useState("");
+  const choices = orderProgressChoices(order.status, Number(order.paidTotal ?? 0));
+  const mutation = useMutation({
+    mutationFn: () => request(`admin/orders/${order.id}/status`, "PATCH", {
+      status: selected,
+      ...(reviewReason.trim()
+        ? { reviewReason: reviewReason.trim() }
+        : {}),
+    }),
+    onSuccess: async () => {
+      await onUpdated();
+      notify("Estado del pedido actualizado.");
     },
-  };
+    onError: () => { void onUpdated(); },
+  });
+
+  return (
+    <section className="order-management-status">
+      <h3>Estado del pedido</h3>
+      <p className="small-copy muted">Actual: {orderProgressOptionLabel(order.status)}</p>
+      {choices.length > 1 && (
+        <div className="order-management-status-fields">
+          <label className="field">
+            Nuevo estado
+            <select
+              className="form-input"
+              value={selected}
+              disabled={mutation.isPending}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              {choices.map((choice) => (
+                <option value={choice} key={choice}>{orderProgressOptionLabel(choice)}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Nueva observación
+            <input
+              className="form-input"
+              value={reviewReason}
+              disabled={mutation.isPending}
+              onChange={(event) => setReviewReason(event.target.value)}
+            />
+          </label>
+          <button
+            className="button small secondary"
+            type="button"
+            disabled={selected === order.status || mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            <Save size={16} /> Guardar estado
+          </button>
+          {selected !== order.status && (
+            <p className="small-copy muted order-management-status-effect">
+              {orderStockEffect(order.status, selected)}
+            </p>
+          )}
+        </div>
+      )}
+      {mutation.error && <ErrorBox error={mutation.error} />}
+    </section>
+  );
 }
-function AdminOrders({ edit }: { edit: OpenEditor }) {
+function AdminOrders() {
   const q = useApi<Order[]>("admin/orders");
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  const rows = q.data.filter((o) => !status || o.status === status);
+  const query = search.trim().toLowerCase();
+  const rows = q.data.filter((o) =>
+    (!status || o.status === status) &&
+    (!query || [o.id, o.orderNumber, o.customerAccount?.businessName,
+      o.customerAccount?.legalName, o.user?.email]
+      .some((value) => value?.toLowerCase().includes(query))),
+  );
   // El detalle se lee de la lista vigente: tras un cambio muestra el estado nuevo.
   const detail = q.data.find((o) => o.id === detailId);
   const count = (key: string) => q.data.filter((o) => o.status === key).length;
@@ -525,23 +575,33 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
         <h2>Pedidos</h2>
         <span className="muted small-copy">
           {rows.length} {rows.length === 1 ? "pedido" : "pedidos"}
-          {status ? ` · ${q.data.length} en total` : ""}
+          {status || query ? ` · ${q.data.length} en total` : ""}
         </span>
-        <select
-          className="form-input"
-          aria-label="Filtrar estado de pedidos"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">Todos los estados</option>
-          {orderStatuses
-            .filter((key) => key !== "DRAFT" || count(key))
-            .map((key) => (
-              <option value={key} key={key}>
-                {label(key)} ({count(key)})
-              </option>
-            ))}
-        </select>
+        <div className="admin-order-filters">
+          <input
+            className="form-input"
+            type="search"
+            aria-label="Buscar pedidos"
+            placeholder="ID, cliente o correo"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            className="form-input"
+            aria-label="Filtrar estado de pedidos"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">Todos los estados</option>
+            {orderStatuses
+              .filter((key) => key !== "DRAFT" || count(key))
+              .map((key) => (
+                <option value={key} key={key}>
+                  {label(key)} ({count(key)})
+                </option>
+              ))}
+          </select>
+        </div>
       </div>
       {rows.length ? (
         <div className="table-wrap">
@@ -569,24 +629,20 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
                     <br />
                     {new Date(o.createdAt).toLocaleDateString("es-UY")}
                   </td>
-                  <td>{o.customerAccount?.businessName ?? "Cliente"}</td>
+                  <td>{o.user?.email || o.customerAccount?.businessName || "Sin correo"}</td>
                   <td>
                     <span className="status-pill">{label(o.status)}</span>
                   </td>
                   <td>{money(o.total, o.currency)}</td>
                   <td>{money(orderBalance(o).paid, o.currency)}</td>
                   <td>
-                    {orderTransitions[o.status] ? (
-                      <button
-                        className="button small secondary"
-                        aria-label={`Gestionar ${o.orderNumber}`}
-                        onClick={() => edit(orderEditor(o))}
-                      >
-                        Gestionar
-                      </button>
-                    ) : (
-                      <span className="muted small-copy">Estado final</span>
-                    )}
+                    <button
+                      className="button small secondary"
+                      aria-label={`Gestionar ${o.orderNumber}`}
+                      onClick={() => setDetailId(o.id)}
+                    >
+                      Gestionar
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -597,7 +653,9 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
         <Empty
           title={
             q.data.length
-              ? "No hay pedidos en este estado"
+              ? query
+                ? "No hay pedidos que coincidan con la búsqueda"
+                : "No hay pedidos en este estado"
               : "Todavía no hay pedidos"
           }
         />
@@ -605,7 +663,7 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
       <Modal
         open={!!detail}
         onClose={() => setDetailId(null)}
-        title={detail?.orderNumber ?? "Pedido"}
+        title={detail ? `Gestionar ${detail.orderNumber}` : "Gestionar pedido"}
       >
         {detail && (
           <>
@@ -613,8 +671,7 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               <div>
                 <dt>Cliente</dt>
                 <dd>
-                  {detail.customerAccount?.businessName ?? "Cliente"}
-                  {detail.user?.email ? ` · ${detail.user.email}` : ""}
+                  {detail.user?.email || detail.customerAccount?.businessName || "Sin correo"}
                 </dd>
               </div>
               <div>
@@ -624,12 +681,6 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
                     dateStyle: "short",
                     timeStyle: "short",
                   })}
-                </dd>
-              </div>
-              <div>
-                <dt>Estado</dt>
-                <dd>
-                  <span className="status-pill">{label(detail.status)}</span>
                 </dd>
               </div>
               {detail.requiresManualReview && (
@@ -644,12 +695,16 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               )}
               {detail.reviewReason && (
                 <div>
-                  <dt>Observación</dt>
+                  <dt>Observación actual</dt>
                   <dd>{label(detail.reviewReason)}</dd>
                 </div>
               )}
             </dl>
-            <OrderItems order={detail} />
+            <OrderProgressControl
+              key={`${detail.id}-${detail.status}`}
+              order={detail}
+              onUpdated={async () => { await q.refetch(); }}
+            />
             <OrderBilling
               key={detail.id}
               order={detail}
@@ -661,19 +716,10 @@ function AdminOrders({ edit }: { edit: OpenEditor }) {
               Importes registrados al confirmar el pedido; no cambian con
               precios posteriores.
             </p>
-            {orderTransitions[detail.status] && (
-              <div className="actions">
-                <button
-                  className="button secondary"
-                  onClick={() => {
-                    setDetailId(null);
-                    edit(orderEditor(detail));
-                  }}
-                >
-                  Cambiar estado
-                </button>
-              </div>
-            )}
+            <section className="order-management-items">
+              <h3>Productos del pedido</h3>
+              <OrderItems order={detail} />
+            </section>
           </>
         )}
       </Modal>
@@ -1543,7 +1589,7 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
   ) : section === "clientes" ? (
     <Customers edit={edit} />
   ) : section === "pedidos" ? (
-    <AdminOrders edit={edit} />
+    <AdminOrders />
   ) : section === "catalogo" ? (
     <ProductManagement edit={edit} />
   ) : section === "organizacion" ? (

@@ -7,6 +7,13 @@ export type Entity = {
   parentId?: string | null;
   aliasIds?: string[];
 };
+export type CustomerAddress = {
+  id: string;
+  label: string;
+  address: string;
+  city?: string | null;
+  department?: string | null;
+};
 export type Customer = {
   id: string;
   businessName: string;
@@ -19,6 +26,7 @@ export type Customer = {
   address?: string;
   city?: string;
   department?: string;
+  addresses?: CustomerAddress[];
   creditLimit?: number;
   internalCreditNote?: string;
   users?: { id: string; email: string }[];
@@ -122,7 +130,7 @@ export type Order = {
   customerAccount?: Customer;
   user?: { email: string };
   payments?: { id: string; amount: number | string; createdAt: string }[];
-  invoices?: { id: string; originalName: string; mimeType: string; size: number; createdAt: string }[];
+  invoices?: { id: string; invoiceNumber?: string | null; originalName?: string | null; mimeType?: string | null; size?: number | null; createdAt: string }[];
   items: {
     id?: string;
     variantId: string;

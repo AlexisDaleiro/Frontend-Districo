@@ -210,6 +210,7 @@ model CustomerAccount {
   accountStatus        AccountStatus @default(PENDING)
   medicationPermission Boolean      @default(false)
   users                User[]
+  addresses            CustomerAddress[]
   documents            CustomerDocument[]
   orders               Order[]
   createdAt            DateTime     @default(now())
@@ -511,15 +512,31 @@ model OrderInvoice {
   id           String   @id @default(cuid())
   orderId      String
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  storagePath  String   @unique
+  storagePath  String?  @unique
   requestId    String   @unique
-  originalName String
-  mimeType     String
-  size         Int
+  invoiceNumber String? @db.VarChar(80)
+  originalName String?
+  mimeType     String?
+  size         Int?
   uploadedById String
   createdAt    DateTime @default(now())
 
   @@index([orderId, createdAt])
+  @@unique([orderId, invoiceNumber])
+}
+
+model CustomerAddress {
+  id                String          @id @default(cuid())
+  customerAccountId String
+  customerAccount   CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Cascade)
+  label             String
+  address           String
+  city              String?
+  department        String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([customerAccountId, createdAt])
 }
 
 model Promotion {

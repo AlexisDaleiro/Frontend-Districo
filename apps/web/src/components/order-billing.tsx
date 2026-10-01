@@ -11,6 +11,7 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
   const { notify } = useSession();
   const [mode, setMode] = useState<"partial" | "full">("full");
   const [amount, setAmount] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<"payment" | "invoice" | "download" | null>(null);
   const [error, setError] = useState("");
@@ -19,8 +20,6 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
   const invoiceRequestId = useRef(crypto.randomUUID());
   const balance = orderBalance(order);
   const canPay = balance.due > 0 && !["DRAFT", "REJECTED", "CANCELLED"].includes(order.status);
-
-  if (DEMO) return null;
 
   async function recordPayment(event: FormEvent) {
     event.preventDefault();
@@ -50,21 +49,28 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
   async function attachInvoice(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (!file || file.size === 0 || file.size > 5_000_000) {
-      setError("Seleccioná un PDF, PNG o JPG de hasta 5 MB.");
+    const number = invoiceNumber.trim();
+    if (!number && !file) {
+      setError("Ingresá un número de factura o seleccioná un archivo.");
+      return;
+    }
+    if (number.length > 80 || (file && (file.size === 0 || file.size > 5_000_000))) {
+      setError("El número admite hasta 80 caracteres y el archivo hasta 5 MB.");
       return;
     }
     const form = new FormData();
-    form.set("file", file);
+    if (file) form.set("file", file);
+    if (number) form.set("invoiceNumber", number);
     form.set("requestId", invoiceRequestId.current);
     setBusy("invoice");
     try {
       await request(`admin/orders/${order.id}/invoices`, "POST", form);
       await onUpdated();
       setFile(null);
+      setInvoiceNumber("");
       invoiceRequestId.current = crypto.randomUUID();
       if (fileInput.current) fileInput.current.value = "";
-      notify("Factura adjuntada.");
+      notify("Factura registrada.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo adjuntar la factura.");
     } finally {
@@ -88,9 +94,9 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
     <section className="order-billing">
       <h3>Facturación y pagos</h3>
       <div className="order-billing-summary">
-        <div><span>Abonado</span><strong>{money(balance.paid, order.currency)}</strong></div>
-        <div><span>Saldo pendiente</span><strong>{money(balance.due, order.currency)}</strong></div>
-        <span className={`status-pill${balance.status === "Parcial" ? " pending" : ""}`}>{balance.status}</span>
+        <div><span>Estado de pago</span><strong className={`status-pill${balance.status === "Parcial" ? " pending" : ""}`}>{balance.status}</strong></div>
+        <div><span>Monto pagado</span><strong>{money(balance.paid, order.currency)}</strong></div>
+        <div><span>Monto a pagar</span><strong>{money(balance.due, order.currency)}</strong></div>
       </div>
       {!!order.payments?.length && (
         <div className="order-billing-history">
@@ -103,18 +109,18 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
           ))}</ul>
         </div>
       )}
-      {canPay && (
+      {!DEMO && canPay && (
         <form onSubmit={(event) => void recordPayment(event)} className="order-billing-form">
-          <h4>Registrar abono</h4>
-          <div className="order-billing-modes" role="group" aria-label="Tipo de abono">
-            <button type="button" aria-pressed={mode === "partial"} onClick={() => { setMode("partial"); requestId.current = crypto.randomUUID(); }}>Parcial</button>
-            <button type="button" aria-pressed={mode === "full"} onClick={() => { setMode("full"); requestId.current = crypto.randomUUID(); }}>Completo</button>
+          <h4>Actualizar estado de pago</h4>
+          <div className="order-billing-modes" role="group" aria-label="Tipo de pago">
+            <button type="button" aria-pressed={mode === "partial"} onClick={() => { setMode("partial"); requestId.current = crypto.randomUUID(); }}>Pago parcial</button>
+            <button type="button" aria-pressed={mode === "full"} onClick={() => { setMode("full"); requestId.current = crypto.randomUUID(); }}>Pago completo</button>
           </div>
           <label className="field">
-            Importe abonado ({order.currency})
+            Monto de este pago ({order.currency})
             <input className="form-input" type="number" min="0.01" max={mode === "partial" ? Math.max(0, balance.due - 0.01) : balance.due} step="0.01" required value={mode === "full" ? balance.due.toFixed(2) : amount} readOnly={mode === "full"} onChange={(event) => { setAmount(event.target.value); requestId.current = crypto.randomUUID(); }} />
           </label>
-          <button className="button small" type="submit" disabled={!!busy}><CreditCard size={16} /> Registrar pago</button>
+          <button className="button small" type="submit" disabled={!!busy}><CreditCard size={16} /> Guardar pago</button>
         </form>
       )}
       <div className="order-billing-history">
@@ -122,18 +128,30 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
         {order.invoices?.length ? (
           <ul>{order.invoices.map((invoice) => (
             <li key={invoice.id}>
-              <span>{invoice.originalName} · {new Date(invoice.createdAt).toLocaleDateString("es-UY")}</span>
-              <button className="text-link" type="button" disabled={!!busy} onClick={() => void download(invoice.id, invoice.originalName)}><Download size={16} /> Descargar</button>
+              <span>
+                {invoice.invoiceNumber ? `Factura ${invoice.invoiceNumber}` : "Factura sin número"}
+                {invoice.originalName ? ` · ${invoice.originalName}` : ""}
+                {` · ${new Date(invoice.createdAt).toLocaleDateString("es-UY")}`}
+              </span>
+              {invoice.originalName && (
+                <button className="text-link" type="button" disabled={!!busy} onClick={() => void download(invoice.id, invoice.originalName!)}><Download size={16} /> Descargar</button>
+              )}
             </li>
           ))}</ul>
-        ) : <p className="muted small-copy">Sin factura adjunta.</p>}
+        ) : <p className="muted small-copy">Sin facturas registradas.</p>}
       </div>
-      <form className="order-billing-form" onSubmit={(event) => void attachInvoice(event)}>
-        <label className="field">Adjuntar factura
-          <input ref={fileInput} className="form-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => { setFile(event.target.files?.[0] ?? null); invoiceRequestId.current = crypto.randomUUID(); }} />
-        </label>
-        <button className="button small secondary" type="submit" disabled={!file || !!busy}><FileUp size={16} /> Adjuntar factura</button>
-      </form>
+      {!DEMO && (
+        <form className="order-billing-form" onSubmit={(event) => void attachInvoice(event)}>
+          <h4>Registrar factura</h4>
+          <label className="field">Número de factura
+            <input className="form-input" type="text" maxLength={80} value={invoiceNumber} onChange={(event) => { setInvoiceNumber(event.target.value); invoiceRequestId.current = crypto.randomUUID(); }} />
+          </label>
+          <label className="field">Archivo de factura (PDF, PNG o JPG)
+            <input ref={fileInput} className="form-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => { setFile(event.target.files?.[0] ?? null); invoiceRequestId.current = crypto.randomUUID(); }} />
+          </label>
+          <button className="button small secondary" type="submit" disabled={(!file && !invoiceNumber.trim()) || !!busy}><FileUp size={16} /> Registrar factura</button>
+        </form>
+      )}
       {error && <p className="error" role="alert">{error}</p>}
     </section>
   );

@@ -96,7 +96,7 @@ test("imagen no disponible tiene sustituto y búsqueda vacía tiene salida", asy
   page,
 }) => {
   await page.route(
-    (url) => url.pathname === "/_next/image" && url.searchParams.get("url") === "/images/product-0-0.jpg",
+    (url) => url.pathname === "/images/product-0-0.jpg",
     (route) => route.abort(),
   );
   await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");

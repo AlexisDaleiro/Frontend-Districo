@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { AccessGate } from "@/components/auth";
+import { AccountDetails } from "@/components/account-details";
 import { useSession } from "@/components/providers";
 import { ActionLink, PageHeading, ErrorBox } from "@/components/ui";
 import { label } from "@/lib/commerce";
@@ -38,6 +39,9 @@ export default function Page() {
               </strong>
             </p>
           </div>
+        )}
+        {user?.customerAccount && (
+          <AccountDetails customer={user.customerAccount} email={user.email} />
         )}
         <div className="account-panels">
           <div className="card stack">

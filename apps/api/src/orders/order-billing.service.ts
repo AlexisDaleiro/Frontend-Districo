@@ -68,43 +68,46 @@ export class OrderBillingService {
     return payment;
   }
 
-  async attachInvoice(orderId: string, file: { buffer: Buffer; size: number; originalname: string }, dto: AttachOrderInvoiceDto, adminId: string) {
-    if (!file?.buffer?.length || file.size > MAX_INVOICE_BYTES || file.buffer.length > MAX_INVOICE_BYTES) {
+  async attachInvoice(orderId: string, file: { buffer: Buffer; size: number; originalname: string } | undefined, dto: AttachOrderInvoiceDto, adminId: string) {
+    const invoiceNumber = dto.invoiceNumber?.trim() || null;
+    if (!file && !invoiceNumber) throw new BadRequestException('Ingresá un número de factura o adjuntá un archivo.');
+    if (file && (!file.buffer?.length || file.size > MAX_INVOICE_BYTES || file.buffer.length > MAX_INVOICE_BYTES)) {
       throw new BadRequestException('La factura debe pesar entre 1 byte y 5 MB.');
     }
     const order = await this.prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
-    const existing = await this.prisma.orderInvoice.findUnique({ where: { requestId: dto.requestId }, select: { id: true, orderId: true, originalName: true, mimeType: true, size: true, createdAt: true } });
+    const existing = await this.prisma.orderInvoice.findUnique({ where: { requestId: dto.requestId }, select: { id: true, orderId: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true } });
     if (existing) {
-      if (existing.orderId !== orderId) throw new ConflictException('La referencia de factura ya se utilizó.');
+      if (existing.orderId !== orderId || existing.invoiceNumber !== invoiceNumber) throw new ConflictException('La referencia de factura ya se utilizó.');
       const { orderId: _, ...invoice } = existing;
       return invoice;
     }
-    const { mimeType, extension } = invoiceFileType(file.buffer);
-    const stem = file.originalname.split(/[\\/]/).pop()?.replace(/[\x00-\x1f\x7f]/g, '').replace(/\.[^.]+$/, '').trim().slice(0, 100) || 'factura';
-    const originalName = `${stem}.${extension}`;
-    const storagePath = `orders/${orderId}/${randomUUID()}.${extension}`;
-    await this.storage.upload(storagePath, file.buffer, mimeType);
+    const fileType = file ? invoiceFileType(file.buffer) : null;
+    const stem = file?.originalname.split(/[\\/]/).pop()?.replace(/[\x00-\x1f\x7f]/g, '').replace(/\.[^.]+$/, '').trim().slice(0, 100) || 'factura';
+    const originalName = fileType ? `${stem}.${fileType.extension}` : null;
+    const storagePath = fileType ? `orders/${orderId}/${randomUUID()}.${fileType.extension}` : null;
+    if (file && fileType && storagePath) await this.storage.upload(storagePath, file.buffer, fileType.mimeType);
     try {
       return await this.prisma.$transaction(async (tx) => {
         const invoice = await tx.orderInvoice.create({
-          data: { orderId, storagePath, requestId: dto.requestId, originalName, mimeType, size: file.size, uploadedById: adminId },
-          select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true },
+          data: { orderId, storagePath, requestId: dto.requestId, invoiceNumber, originalName, mimeType: fileType?.mimeType ?? null, size: file?.size ?? null, uploadedById: adminId },
+          select: { id: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true },
         });
         await tx.auditLog.create({
           data: { action: 'ORDER_INVOICE_ATTACHED', entityType: 'Order', entityId: orderId, userId: adminId,
-            metadata: { invoiceId: invoice.id, originalName } },
+            metadata: { invoiceId: invoice.id, invoiceNumber, originalName } },
         });
         return invoice;
       });
     } catch (error) {
-      await this.storage.remove(storagePath);
+      if (storagePath) await this.storage.remove(storagePath);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        const invoice = await this.prisma.orderInvoice.findUnique({ where: { requestId: dto.requestId }, select: { id: true, orderId: true, originalName: true, mimeType: true, size: true, createdAt: true } });
-        if (invoice && invoice.orderId === orderId) {
+        const invoice = await this.prisma.orderInvoice.findUnique({ where: { requestId: dto.requestId }, select: { id: true, orderId: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true } });
+        if (invoice && invoice.orderId === orderId && invoice.invoiceNumber === invoiceNumber) {
           const { orderId: _, ...result } = invoice;
           return result;
         }
+        throw new ConflictException('Ese número de factura ya está registrado en el pedido.');
       }
       throw error;
     }
@@ -112,7 +115,7 @@ export class OrderBillingService {
 
   async invoice(orderId: string, invoiceId: string) {
     const invoice = await this.prisma.orderInvoice.findFirst({ where: { id: invoiceId, orderId } });
-    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice?.storagePath || !invoice.mimeType || !invoice.originalName) throw new NotFoundException('Esta factura no tiene archivo adjunto.');
     return { bytes: await this.storage.download(invoice.storagePath), mimeType: invoice.mimeType, name: invoice.originalName };
   }
 }

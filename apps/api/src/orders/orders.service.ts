@@ -172,7 +172,7 @@ export class OrdersService {
         user: { select: { email: true } },
         customerAccount: true,
         payments: { orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, createdAt: true } },
-        invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true } },
+        invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true } },
       },
     });
   }

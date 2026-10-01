@@ -89,6 +89,9 @@ export class ApplicationsService {
           address: application.address,
           city: application.city,
           department: application.department,
+          addresses: application.address?.trim()
+            ? { create: { label: 'Principal', address: application.address.trim(), city: application.city, department: application.department } }
+            : undefined,
           accountStatus: 'APPROVED',
           medicationPermission,
         },

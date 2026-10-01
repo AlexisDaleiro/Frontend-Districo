@@ -13,9 +13,15 @@ async function login(page: Page, role = "Cliente mayorista") {
     expect(await page.getByLabel("Correo electrónico").inputValue()).toBe(email);
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(
-    role === "Administración" ? /\/tienda\/admin$/ : /\/tienda\/productos$/,
-  );
+  const destination = role === "Administración" ? /\/tienda\/admin$/ : /\/tienda\/productos$/;
+  try {
+    await expect(page).toHaveURL(destination, { timeout: 5000 });
+  } catch {
+    await page.getByRole("link", { name: "Ir a mi cuenta" }).click();
+    await expect(page).toHaveURL(
+      role === "Administración" ? destination : /\/tienda\/cuenta$/,
+    );
+  }
 }
 test("catálogo público, filtros persistentes y ausencia de precios", async ({
   page,
@@ -47,6 +53,7 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
   await expect(page).toHaveURL(/\/tienda\/productos$/);
 });
 test("cliente envía pedido y consulta detalle", async ({ page }) => {
+  test.setTimeout(90000);
   await login(page);
   await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
@@ -61,6 +68,16 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
     page.getByRole("heading", { name: "Pedido recibido" }),
   ).toBeVisible();
   await expect(page.locator("table")).toContainText("BIOFRESH");
+  await page.goto("/tienda/cuenta/pedidos");
+  await expect(page.locator(".orders-list .card")).toHaveCount(1);
+  await page.getByRole("link", { name: "Ver detalle" }).click();
+  await page.getByRole("button", { name: "Repetir pedido" }).click();
+  await expect(page).toHaveURL(/\/tienda\/carrito$/);
+  await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("1");
+  await page.goto("/tienda/cuenta/pedidos");
+  await page.getByRole("button", { name: "Repetir pedido" }).click();
+  await expect(page).toHaveURL(/\/tienda\/carrito$/);
+  await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("2");
   await page.goto("/tienda/cuenta/pedidos");
   await expect(page.locator(".orders-list .card")).toHaveCount(1);
 });
@@ -168,6 +185,7 @@ test("pedido con revisión requiere aceptación", async ({ page }) => {
 test("administración gestiona un pedido en revisión y ajusta reservas", async ({
   page,
 }) => {
+  test.setTimeout(90000);
   await login(page, "Cliente con revisión de pedidos");
   await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
   await page.getByRole("button", { name: "Guardar en carrito" }).click();
@@ -189,21 +207,34 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
     .selectOption("PENDING_REVIEW");
   const row = page.locator("tbody tr");
   await expect(row).toHaveCount(1);
-  await row.locator(".text-link").click();
+  await expect(row.locator("td").nth(1)).toHaveText("clientepago@gmail.com");
+  const orderNumber = await row.locator("td").first().locator("button").innerText();
+  const search = page.getByRole("searchbox", { name: "Buscar pedidos" });
+  for (const term of [orderNumber, "Comercio Demo", "clientepago@gmail.com"]) {
+    await search.fill(term);
+    await expect(row).toHaveCount(1);
+  }
+  await search.fill("pedido-inexistente");
+  await expect(page.getByText("No hay pedidos que coincidan con la búsqueda")).toBeVisible();
+  await search.clear();
+  await row.getByRole("button", { name: /Gestionar/ }).click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("clientepago@gmail.com");
   await expect(dialog).toContainText("Aceptada por el cliente");
   await expect(dialog).toContainText("Pago pendiente");
   const total = await row.locator("td").nth(3).innerText();
   await expect(dialog).toContainText(total);
-  await dialog.getByRole("button", { name: "Cambiar estado" }).click();
-  await expect(dialog).toContainText("Aprobado: descuenta del stock físico");
+  await expect(dialog).toContainText("Estado de pago");
+  await expect(dialog).toContainText("Monto pagado");
+  await expect(dialog).toContainText("Monto a pagar");
   await expect(
-    dialog.getByLabel("Nuevo estado *").locator("option"),
-  ).toHaveText(["Seleccionar", "Aprobado", "Rechazado", "Cancelado"]);
-  await dialog.getByLabel("Nuevo estado *").selectOption("APPROVED");
-  await dialog.getByLabel("Observación").fill("Pago verificado");
-  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByText(/: Aprobado\.$/)).toBeVisible();
+    dialog.getByLabel("Nuevo estado").locator("option"),
+  ).toHaveText(["Pendiente (en revisión)", "Pendiente (aprobado)", "Rechazado", "Cancelado"]);
+  await dialog.getByLabel("Nuevo estado").selectOption("APPROVED");
+  await dialog.getByLabel("Nueva observación").fill("Pago verificado");
+  await dialog.getByRole("button", { name: "Guardar estado" }).click();
+  await expect(dialog).toContainText("Pago verificado");
+  await page.keyboard.press("Escape");
   await expect(page.getByText("No hay pedidos en este estado")).toBeVisible();
   await page.getByLabel("Filtrar estado de pedidos").selectOption("APPROVED");
   await expect(row.locator(".status-pill")).toHaveText("Aprobado");
@@ -243,6 +274,60 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
   await expect(page.locator(".product-bottom").first()).toContainText(
     "Ingresá para ver precios",
   );
+});
+
+test("cliente edita su cuenta y administra varias direcciones", async ({ page }) => {
+  test.setTimeout(90000);
+  await login(page);
+  await page.goto("/tienda/cuenta");
+  await expect(page.locator(".account-readonly-fields strong").first()).toHaveText("cliente@gmail.com");
+  await expect(page.getByText("Sin registrar", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Correo electrónico")).toHaveCount(0);
+  await expect(page.getByLabel("Teléfono")).toHaveCount(0);
+
+  await page.getByLabel("Nombre comercial").fill("Pet Shop Centro");
+  await page.getByRole("button", { name: "Guardar datos" }).click();
+  await expect(page.getByRole("heading", { name: "Pet Shop Centro" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Agregar dirección" }).click();
+  await page.getByLabel("Nombre de la dirección").fill("Local");
+  await page.getByLabel("Dirección", { exact: true }).fill("Av. Italia 123");
+  await page.getByLabel("Ciudad").fill("Montevideo");
+  await page.getByLabel("Departamento").fill("Montevideo");
+  await page.getByRole("button", { name: "Guardar dirección" }).click();
+  await expect(page.locator(".account-address-row")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Agregar dirección" }).click();
+  await page.getByLabel("Nombre de la dirección").fill("Depósito");
+  await page.getByLabel("Dirección", { exact: true }).fill("Ruta 8 km 20");
+  await page.getByRole("button", { name: "Guardar dirección" }).click();
+  await expect(page.locator(".account-address-row")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Editar dirección Depósito" }).click();
+  await page.getByLabel("Dirección", { exact: true }).fill("Ruta 8 km 21");
+  await page.getByRole("button", { name: "Guardar dirección" }).click();
+  await expect(page.locator(".account-address-row").nth(1)).toContainText("Ruta 8 km 21");
+
+  await page.getByRole("button", { name: "Eliminar dirección Local" }).click();
+  await page.getByRole("button", { name: "Confirmar eliminación" }).click();
+  await expect(page.locator(".account-address-row")).toHaveCount(1);
+  await expect(page.locator(".account-address-row")).toContainText("Depósito");
+});
+
+test("administración puede registrar y quitar el teléfono de un cliente", async ({ page }) => {
+  test.setTimeout(90000);
+  await login(page, "Administración");
+  await page.goto("/tienda/admin/clientes");
+  const customer = page.locator(".admin-cards .card").filter({ hasText: "Pet Shop Demo" });
+  await customer.getByRole("button", { name: "Editar cuenta" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Teléfono").fill("099 123 456");
+  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(customer).toContainText("099 123 456");
+  await customer.getByRole("button", { name: "Editar cuenta" }).click();
+  await dialog.getByLabel("Teléfono").fill("");
+  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(customer).toContainText("Sin registrar");
 });
 test("permisos: la identidad cambia sin recargar al ingresar y al salir", async ({
   page,

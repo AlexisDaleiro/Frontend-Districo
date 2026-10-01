@@ -11,6 +11,7 @@ export type Field = {
   type?:
     "text" | "number" | "textarea" | "checkbox" | "select" | "date" | "url";
   required?: boolean;
+  allowEmpty?: boolean;
   min?: number;
   max?: number;
   step?: string;
@@ -55,6 +56,8 @@ export function AdminForm({
         if (field.required) {
           form.setError(field.key, { message: "Completá este campo." });
           invalid = true;
+        } else if (field.allowEmpty) {
+          data[field.key] = "";
         }
         continue;
       }

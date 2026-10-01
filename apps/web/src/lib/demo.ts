@@ -4,6 +4,7 @@ import type {
   Cart,
   ContactInquiry,
   Customer,
+  CustomerAddress,
   Entity,
   Expiration,
   Order,
@@ -281,6 +282,61 @@ export async function demoRequest<T>(
     s.session = found.id;
     result = { user: found };
   } else if (route === "auth/me") result = needUser();
+  else if (route === "account/me" || route.startsWith("account/me/addresses")) {
+    const account = needUser().customerAccount;
+    if (!account) throw new ApiError("No hay una cuenta de cliente activa.", 403);
+    const addresses = (account.addresses ??= []);
+    const addressId = route.split("/")[3];
+    const syncPrimary = () => {
+      account.address = addresses[0]?.address;
+      account.city = addresses[0]?.city ?? undefined;
+      account.department = addresses[0]?.department ?? undefined;
+    };
+    if (route === "account/me" && method === "PATCH") {
+      if (Object.keys(b).some((key) => !["businessName", "legalName", "rut"].includes(key)))
+        throw new ApiError("Este dato no se puede editar desde Mi cuenta.", 400);
+      for (const key of ["businessName", "legalName", "rut"] as const) {
+        if (b[key] !== undefined) {
+          const value = String(b[key]).trim();
+          if (!value) throw new ApiError("Completá los datos del cliente.", 400);
+          account[key] = value;
+        }
+      }
+      result = account;
+    } else if (route === "account/me/addresses" && method === "POST") {
+      const label = String(b.label ?? "").trim();
+      const address = String(b.address ?? "").trim();
+      if (!label || !address) throw new ApiError("Completá el nombre y la dirección.", 400);
+      const created: CustomerAddress = {
+        id: id(), label, address,
+        city: String(b.city ?? "").trim() || null,
+        department: String(b.department ?? "").trim() || null,
+      };
+      addresses.push(created);
+      syncPrimary();
+      result = created;
+    } else if (addressId && ["PATCH", "DELETE"].includes(method)) {
+      const index = addresses.findIndex((address) => address.id === addressId);
+      if (index < 0) throw new ApiError("Dirección no encontrada.", 404);
+      if (method === "DELETE") {
+        addresses.splice(index, 1);
+        result = { success: true };
+      } else {
+        const updated = addresses[index];
+        for (const key of ["label", "address", "city", "department"] as const) {
+          if (b[key] !== undefined) {
+            const value = String(b[key]).trim();
+            if (!value && ["label", "address"].includes(key))
+              throw new ApiError("Completá el nombre y la dirección.", 400);
+            if (key === "label" || key === "address") updated[key] = value;
+            else updated[key] = value || null;
+          }
+        }
+        result = updated;
+      }
+      syncPrimary();
+    } else throw new ApiError("Esta operación no está disponible en la demo.", 404);
+  }
   else if (route === "auth/logout") {
     s.session = null;
     result = { success: true };
@@ -592,6 +648,9 @@ export async function demoRequest<T>(
           accountStatus: "APPROVED",
           creditStatus: "GOOD_STANDING",
           medicationPermission: medication,
+          addresses: a.address?.trim()
+            ? [{ id: id(), label: "Principal", address: a.address.trim(), city: a.city, department: a.department }]
+            : [],
         };
         s.users.push({
           id: id(),

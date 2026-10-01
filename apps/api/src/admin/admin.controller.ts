@@ -79,7 +79,7 @@ export class AdminController {
 
   @Post('orders/:id/invoices')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_INVOICE_BYTES, files: 1 } }))
-  attachInvoice(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string }, @Body() dto: AttachOrderInvoiceDto, @CurrentUser() user: JwtUser) {
+  attachInvoice(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string } | undefined, @Body() dto: AttachOrderInvoiceDto, @CurrentUser() user: JwtUser) {
     return this.billing.attachInvoice(id, file, dto, user.sub);
   }
 

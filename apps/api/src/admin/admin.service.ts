@@ -44,6 +44,7 @@ export class AdminService {
       where: { id },
       data: {
         accountStatus: dto.accountStatus,
+        phone: dto.phone === undefined ? undefined : dto.phone.trim() || null,
         medicationPermission: dto.medicationPermission,
         creditStatus: dto.creditStatus,
         creditLimit: dto.creditLimit,
