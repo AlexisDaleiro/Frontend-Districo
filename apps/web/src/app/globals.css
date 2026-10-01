@@ -1647,6 +1647,24 @@ html:has(.modal[open]) {
   width: 100%;
   margin-top: 22px;
 }
+/* Vista previa del carrito en el panel lateral: el pie queda fijo abajo. */
+.cart-preview .cart-item:first-child {
+  padding-top: 0;
+}
+.cart-preview-foot {
+  position: sticky;
+  bottom: -28px;
+  margin-bottom: -28px;
+  padding: 4px 0 28px;
+  background: #fff;
+  box-shadow: 0 -12px 24px -18px #0004;
+  display: grid;
+  gap: 10px;
+}
+.cart-preview-foot .total {
+  font-size: 20px;
+  padding-block: 14px 6px;
+}
 .orders-list {
   display: grid;
   gap: 18px;

@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 import { DEMO, useSession, useApi } from "./providers";
 import { Picture, Modal } from "./ui";
+import { CartPreview } from "./orders";
 import type { Cart } from "@/lib/types";
 import { can } from "@/lib/commerce";
 import { whatsappUrl } from "@/lib/contact";
@@ -30,9 +31,11 @@ export function Header() {
   const { user, logout, reset } = useSession();
   const [open, setOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const cart = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
+  const canOrder = can(user, "CAN_PLACE_ORDERS");
+  const cart = useApi<Cart>("cart", canOrder);
   // El contador rebota cuando cambia la cantidad de productos, no al cargar.
   const cartCount = cart.data?.items.length;
   const [seenCount, setSeenCount] = useState(cartCount);
@@ -149,19 +152,38 @@ export function Header() {
                 </small>
               </span>
             </Link>
-            <Link
-              className="cart-link icon-button"
-              href={storeRoutes.cart}
-              aria-label={`Carrito, ${cartCount ?? 0} productos`}
-            >
-              <ShoppingBag />
-              <span
-                className={bumps ? "cart-count is-bump" : "cart-count"}
-                key={bumps}
+            {/* Sin permiso para pedir, el ícono lleva a /carrito (pide ingresar). */}
+            {canOrder ? (
+              <button
+                className="cart-link icon-button"
+                aria-label={`Carrito, ${cartCount ?? 0} productos`}
+                aria-haspopup="dialog"
+                aria-expanded={cartOpen}
+                onClick={() => setCartOpen(true)}
               >
-                {cartCount ?? 0}
-              </span>
-            </Link>
+                <ShoppingBag />
+                <span
+                  className={bumps ? "cart-count is-bump" : "cart-count"}
+                  key={bumps}
+                >
+                  {cartCount ?? 0}
+                </span>
+              </button>
+            ) : (
+              <Link
+                className="cart-link icon-button"
+                href={storeRoutes.cart}
+                aria-label={`Carrito, ${cartCount ?? 0} productos`}
+              >
+                <ShoppingBag />
+                <span
+                  className={bumps ? "cart-count is-bump" : "cart-count"}
+                  key={bumps}
+                >
+                  {cartCount ?? 0}
+                </span>
+              </Link>
+            )}
           </div>
         </div>
         <div className="navline">
@@ -210,6 +232,14 @@ export function Header() {
             </button>
           )}
         </nav>
+      </Modal>
+      <Modal
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        title="Tu carrito"
+        sheet
+      >
+        <CartPreview onNavigate={() => setCartOpen(false)} />
       </Modal>
       <Modal
         open={resetOpen}

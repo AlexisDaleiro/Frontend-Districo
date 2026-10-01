@@ -307,6 +307,80 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
     </div>
   );
 }
+// Vista previa editable del carrito (panel lateral del header). Comparte la
+// consulta "cart" con el header y la página; los importes llegan de la API.
+export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
+  const { user } = useSession();
+  const q = useApi<Cart>("cart", can(user, "CAN_PLACE_ORDERS"));
+  const router = useRouter();
+  const [pendingLines, setPendingLines] = useState<string[]>([]);
+  const onPendingChange = useCallback((id: string, pending: boolean) => {
+    setPendingLines((current) => {
+      const present = current.includes(id);
+      if (present === pending) return current;
+      return pending ? [...current, id] : current.filter((line) => line !== id);
+    });
+  }, []);
+  if (q.isPending) return <Loading />;
+  if (q.error)
+    return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
+  const blocked = q.data.items.some(
+    (i) => !i.unitPrice || quantityError(i.variant, i.quantity),
+  );
+  return (
+    // Cualquier enlace del panel (producto, carrito, catálogo) lo cierra.
+    <div
+      className="cart-preview"
+      onClick={(e) => {
+        if ((e.target as Element).closest("a")) onNavigate();
+      }}
+    >
+      {!q.data.items.length ? (
+        <Empty title="Tu carrito está esperando">
+          <p>Explorá el catálogo y elegí las presentaciones para tu negocio.</p>
+          <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
+        </Empty>
+      ) : (
+        <>
+          <div className="cart-preview-items">
+            {q.data.items.map((item) => (
+              <CartLine
+                key={item.id}
+                item={item}
+                busy={false}
+                onPendingChange={onPendingChange}
+              />
+            ))}
+          </div>
+          <div className="cart-preview-foot">
+            <SubtotalRow value={q.data.total}>
+              <strong>Subtotal</strong>
+              <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
+            </SubtotalRow>
+            {blocked && (
+              <p className="field-error">
+                Revisá las líneas marcadas antes de enviar el pedido.
+              </p>
+            )}
+            <button
+              className="button"
+              disabled={q.isFetching || blocked || pendingLines.length > 0}
+              onClick={() => {
+                onNavigate();
+                router.push(storeRoutes.checkout);
+              }}
+            >
+              Finalizar pedido <ArrowUpRight size={17} />
+            </button>
+            <ActionLink href={storeRoutes.cart} secondary>
+              Ver carrito
+            </ActionLink>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 export function CartPage() {
   return (
     <div className="container section">

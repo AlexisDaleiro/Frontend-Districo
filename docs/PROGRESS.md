@@ -2,6 +2,15 @@
 
 Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
 
+## Mejora: vista previa del carrito en panel lateral (30/09)
+
+- `src/components/shell.tsx`: con `CAN_PLACE_ORDERS`, el ícono del carrito es un botón (`aria-haspopup="dialog"`) que abre `<Modal sheet title="Tu carrito">`. Sin sesión o sin permiso para pedir, sigue siendo el enlace a `/carrito`.
+- `src/components/orders.tsx`: nuevo `CartPreview`. Comparte la consulta `cart` con el header y la página, y reutiliza `CartLine`, así que permite cambiar cantidades y quitar líneas con las mismas validaciones. Muestra el subtotal que devuelve la API (el frontend no calcula importes) y los botones «Finalizar pedido» y «Ver carrito». Igual que en la página, «Finalizar pedido» se deshabilita si hay líneas guardándose o líneas que la API rechazaría. Cualquier enlace del panel lo cierra.
+- `globals.css`: `.cart-preview-foot` queda fijo al pie del panel. Sin márgenes horizontales negativos, porque con barra de scroll desbordaban 6 px a 390 px.
+- `tests/e2e/flows.spec.ts`: test nuevo «el panel del carrito permite revisar y editar sin salir de la página»: abrir el panel, Escape sin cambiar de URL, quitar una línea, ver el estado vacío y que «Explorar catálogo» navegue y cierre el panel.
+- Pruebas: `tsc`, ESLint y 48/48 unit tests correctos. Copia demo en 3100 (`NEXT_PUBLIC_DATA_MODE=demo`, `E2E_PORT=3100`): e2e completo 30/30. A 390 y 1280 px, sin scroll horizontal en la página ni en el panel. `prettier --check` ya fallaba en `orders.tsx` y `shell.tsx` antes de este cambio.
+- Pendiente: no se probó en modo real contra la API.
+
 ## Corrección: el banner de /tienda se desplazaba al cargar (30/09)
 
 - Causa: la fila «¿Qué estás buscando?» (encima del carrusel) mostraba `<Loading />` mientras cargaba `categories/catalog`. Al llegar la lista de círculos, más alta, empujaba el banner unos 18 px en escritorio y 14 px en móvil.

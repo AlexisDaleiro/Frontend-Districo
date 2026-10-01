@@ -64,6 +64,25 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
   await page.goto("/tienda/cuenta/pedidos");
   await expect(page.locator(".orders-list .card")).toHaveCount(1);
 });
+test("el panel del carrito permite revisar y editar sin salir de la página", async ({ page }) => {
+  await login(page);
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(page.getByRole("button", { name: "Carrito, 1 productos" })).toBeVisible();
+  await page.getByRole("button", { name: "Carrito, 1 productos" }).click();
+  const panel = page.getByRole("dialog", { name: "Tu carrito" });
+  await expect(panel).toContainText("BIOFRESH");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(page).toHaveURL(/biofresh-para-cachorros-razas-medianas$/);
+  await page.getByRole("button", { name: "Carrito, 1 productos" }).click();
+  await panel.getByRole("button", { name: /^Quitar / }).click();
+  await expect(panel.getByRole("heading", { name: "Tu carrito está esperando" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Carrito, 0 productos" })).toBeAttached();
+  await panel.getByRole("link", { name: "Explorar catálogo" }).click();
+  await expect(page).toHaveURL(/[/]tienda[/]productos$/);
+  await expect(panel).toBeHidden();
+});
 test("el checkout espera el guardado de una cantidad modificada", async ({ page }) => {
   await login(page);
   await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
