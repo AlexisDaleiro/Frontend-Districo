@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -15,12 +15,21 @@ import { OrdersService } from '../orders/orders.service';
 import { OrderBillingService, MAX_INVOICE_BYTES } from '../orders/order-billing.service';
 import { RecordOrderPaymentDto } from '../orders/dto/record-order-payment.dto';
 import { AttachOrderInvoiceDto } from '../orders/dto/attach-order-invoice.dto';
+import { VoidOrderRecordDto } from '../orders/dto/void-order-record.dto';
 import { CreatePromotionDto } from '../promotions/dto/create-promotion.dto';
 import { PromotionsService } from '../promotions/promotions.service';
 import { CreateRecommendationRuleDto } from '../recommendations/dto/create-recommendation-rule.dto';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AdminService } from './admin.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { CustomerListQueryDto, OrderListQueryDto } from './dto/admin-list-query.dto';
+import { SalesQueryDto } from './dto/sales-query.dto';
+import { UpdateStaffRoleDto } from './dto/update-staff-role.dto';
+import { InviteStaffDto } from './dto/invite-staff.dto';
+import { UpdateStaffActiveDto } from './dto/update-staff-active.dto';
+import { RecordCreditNoteDto } from '../orders/dto/record-credit-note.dto';
+import { RecordRefundDto } from '../orders/dto/record-refund.dto';
+import { ApplicationListQueryDto } from './dto/application-list-query.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -38,13 +47,27 @@ export class AdminController {
   ) {}
 
   @Get('dashboard')
+  @Roles(Role.ADMIN, Role.SALES, Role.CATALOG, Role.FINANCE)
   dashboard() {
     return this.admin.dashboard();
   }
 
+  @Get('sales')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  sales(@Query() query: SalesQueryDto) {
+    return this.admin.sales(query.period);
+  }
+
   @Get('customers')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
   customers() {
     return this.admin.customers();
+  }
+
+  @Get('customers/page')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  customersPage(@Query() query: CustomerListQueryDto) {
+    return this.admin.customersPage(query);
   }
 
   @Patch('customers/:id')
@@ -53,8 +76,15 @@ export class AdminController {
   }
 
   @Get('applications')
+  @Roles(Role.ADMIN, Role.SALES)
   applicationsList() {
     return this.admin.applicationsAdmin();
+  }
+
+  @Get('applications/page')
+  @Roles(Role.ADMIN, Role.SALES)
+  applicationsPage(@Query() query: ApplicationListQueryDto) {
+    return this.applications.findPage(query);
   }
 
   @Post('applications/:id/approve')
@@ -68,22 +98,44 @@ export class AdminController {
   }
 
   @Get('orders')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
   ordersList() {
     return this.admin.ordersAdmin();
   }
 
+  @Get('orders/page')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  ordersPage(@Query() query: OrderListQueryDto) {
+    return this.admin.ordersPage(query);
+  }
+
   @Post('orders/:id/payments')
+  @Roles(Role.ADMIN, Role.FINANCE)
   recordPayment(@Param('id') id: string, @Body() dto: RecordOrderPaymentDto, @CurrentUser() user: JwtUser) {
     return this.billing.recordPayment(id, dto, user.sub);
   }
 
+  @Post('orders/:id/payments/:paymentId/void')
+  @Roles(Role.ADMIN, Role.FINANCE)
+  voidPayment(@Param('id') id: string, @Param('paymentId') paymentId: string, @Body() dto: VoidOrderRecordDto, @CurrentUser() user: JwtUser) {
+    return this.billing.voidPayment(id, paymentId, dto, user.sub);
+  }
+
   @Post('orders/:id/invoices')
+  @Roles(Role.ADMIN, Role.FINANCE)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_INVOICE_BYTES, files: 1 } }))
   attachInvoice(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string } | undefined, @Body() dto: AttachOrderInvoiceDto, @CurrentUser() user: JwtUser) {
     return this.billing.attachInvoice(id, file, dto, user.sub);
   }
 
+  @Post('orders/:id/invoices/:invoiceId/void')
+  @Roles(Role.ADMIN, Role.FINANCE)
+  voidInvoice(@Param('id') id: string, @Param('invoiceId') invoiceId: string, @Body() dto: VoidOrderRecordDto, @CurrentUser() user: JwtUser) {
+    return this.billing.voidInvoice(id, invoiceId, dto, user.sub);
+  }
+
   @Get('orders/:id/invoices/:invoiceId')
+  @Roles(Role.ADMIN, Role.FINANCE)
   async downloadInvoice(@Param('id') id: string, @Param('invoiceId') invoiceId: string, @Res({ passthrough: true }) response: Response) {
     const invoice = await this.billing.invoice(id, invoiceId);
     response.set({
@@ -97,16 +149,19 @@ export class AdminController {
   }
 
   @Patch('orders/:id/status')
+  @Roles(Role.ADMIN, Role.SALES)
   updateOrderStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto, @CurrentUser() user: JwtUser) {
     return this.orders.updateStatus(id, dto.status, user.sub, dto.reviewReason);
   }
 
   @Post('orders/:id/approve')
+  @Roles(Role.ADMIN, Role.SALES)
   approveOrder(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.orders.updateStatus(id, OrderStatus.APPROVED, user.sub);
   }
 
   @Post('orders/:id/reject')
+  @Roles(Role.ADMIN, Role.SALES)
   rejectOrder(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.orders.updateStatus(id, OrderStatus.REJECTED, user.sub);
   }
@@ -117,22 +172,73 @@ export class AdminController {
   }
 
   @Get('promotions')
+  @Roles(Role.ADMIN, Role.CATALOG)
   promotionsList() {
     return this.promotions.findMany();
   }
 
   @Post('promotions')
+  @Roles(Role.ADMIN, Role.CATALOG)
   createPromotion(@Body() dto: CreatePromotionDto, @CurrentUser() user: JwtUser) {
     return this.promotions.create(dto, user.sub);
   }
 
   @Get('recommendations')
+  @Roles(Role.ADMIN, Role.CATALOG)
   recommendationsList() {
     return this.recommendations.findMany();
   }
 
   @Post('recommendations')
+  @Roles(Role.ADMIN, Role.CATALOG)
   createRecommendation(@Body() dto: CreateRecommendationRuleDto, @CurrentUser() user: JwtUser) {
     return this.recommendations.create(dto, user.sub);
+  }
+
+  @Get('staff')
+  staff() {
+    return this.admin.staff();
+  }
+
+  @Post('staff/invitations')
+  inviteStaff(@Body() dto: InviteStaffDto, @CurrentUser() user: JwtUser) {
+    return this.admin.inviteStaff(dto.email, dto.role, user.sub);
+  }
+
+  @Patch('staff/:id/active')
+  updateStaffActive(@Param('id') id: string, @Body() dto: UpdateStaffActiveDto, @CurrentUser() user: JwtUser) {
+    return this.admin.updateStaffActive(id, dto.active, user.sub);
+  }
+
+  @Patch('staff/:id/role')
+  updateStaffRole(@Param('id') id: string, @Body() dto: UpdateStaffRoleDto, @CurrentUser() user: JwtUser) {
+    return this.admin.updateStaffRole(id, dto.role, user.sub);
+  }
+
+  @Post('orders/:id/credit-notes')
+  @Roles(Role.ADMIN, Role.FINANCE)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_INVOICE_BYTES, files: 1 } }))
+  recordCreditNote(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string } | undefined, @Body() dto: RecordCreditNoteDto, @CurrentUser() user: JwtUser) {
+    return this.billing.recordCreditNote(id, file, dto, user.sub);
+  }
+
+  @Get('orders/:id/credit-notes/:noteId')
+  @Roles(Role.ADMIN, Role.FINANCE)
+  async downloadCreditNote(@Param('id') id: string, @Param('noteId') noteId: string, @Res({ passthrough: true }) response: Response) {
+    const note = await this.billing.creditNote(id, noteId);
+    response.set({
+      'Content-Type': note.mimeType,
+      'Content-Disposition': `attachment; filename="nota-credito"; filename*=UTF-8''${encodeURIComponent(note.name)}`,
+      'Content-Length': String(note.bytes.length),
+      'Cache-Control': 'no-store, private',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(note.bytes);
+  }
+
+  @Post('orders/:id/refunds')
+  @Roles(Role.ADMIN, Role.FINANCE)
+  recordRefund(@Param('id') id: string, @Body() dto: RecordRefundDto, @CurrentUser() user: JwtUser) {
+    return this.billing.recordRefund(id, dto, user.sub);
   }
 }

@@ -8,4 +8,13 @@ export class AttachOrderInvoiceDto {
   @IsString()
   @MaxLength(80)
   invoiceNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  replacesInvoiceId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  replacementReason?: string;
 }

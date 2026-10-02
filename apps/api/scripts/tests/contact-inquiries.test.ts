@@ -60,6 +60,20 @@ test('honeypot returns success without persisting', async () => {
   assert.equal(created, false);
 });
 
+test('admin inquiry search is paged on the server', async () => {
+  let listQuery: Record<string, unknown> | undefined;
+  const prisma = { contactInquiry: {
+    findMany: async (query: Record<string, unknown>) => { listQuery = query; return [{ id: 'inquiry-21' }]; },
+    count: async () => 42,
+  } } as unknown as PrismaService;
+  const service = new ContactInquiriesService(prisma, {} as AuditService, {} as NotificationsService);
+  const result = await service.findPage({ page: 2, limit: 20, search: ' Pet ', status: ContactInquiryStatus.NEW });
+  assert.deepEqual(result.meta, { total: 42, page: 2, limit: 20 });
+  assert.equal(listQuery?.skip, 20);
+  assert.equal(listQuery?.take, 20);
+  assert.equal((listQuery?.where as { status: string }).status, ContactInquiryStatus.NEW);
+});
+
 test('resolving an inquiry records handler, date and audit', async () => {
   const current = { id: 'inquiry-1', status: ContactInquiryStatus.NEW, resolvedAt: null };
   let updateData: Record<string, unknown> | undefined;

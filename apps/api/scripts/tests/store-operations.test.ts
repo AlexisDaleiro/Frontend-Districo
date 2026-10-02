@@ -1,0 +1,188 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { BadRequestException, ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AccountStatus, OrderStatus, Permission, Prisma, Role } from '@prisma/client';
+import { effectivePermissions } from '../../src/common/business/account-access';
+import { OrdersService } from '../../src/orders/orders.service';
+import { OrderBillingService } from '../../src/orders/order-billing.service';
+import { InvoiceStorageService } from '../../src/orders/invoice-storage.service';
+import { BannerStorageService, bannerFileType } from '../../src/banners/banner-storage.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
+import { AdminController } from '../../src/admin/admin.controller';
+import { ProductsController } from '../../src/catalog/products/products.controller';
+import { ROLES_KEY } from '../../src/common/decorators/roles.decorator';
+import { ApplicationsService } from '../../src/applications/applications.service';
+import { AdminService } from '../../src/admin/admin.service';
+
+test('staff roles can access only their operational routes', () => {
+  const roles = (target: object, method: string) => Reflect.getMetadata(ROLES_KEY, Reflect.get(target, method)) as Role[] | undefined;
+  assert.deepEqual(roles(AdminController.prototype, 'ordersPage'), [Role.ADMIN, Role.SALES, Role.FINANCE]);
+  assert.deepEqual(roles(AdminController.prototype, 'recordRefund'), [Role.ADMIN, Role.FINANCE]);
+  assert.deepEqual(roles(AdminController.prototype, 'updateOrderStatus'), [Role.ADMIN, Role.SALES]);
+  assert.deepEqual(roles(ProductsController.prototype, 'create'), [Role.ADMIN, Role.CATALOG]);
+  assert.deepEqual(roles(AdminController.prototype, 'updateStaffRole'), undefined);
+  assert.deepEqual(Reflect.getMetadata(ROLES_KEY, AdminController), [Role.ADMIN]);
+});
+
+test('application search returns bounded pages without password hashes', async () => {
+  let listQuery: Record<string, unknown> | undefined;
+  const prisma = { customerApplication: {
+    findMany: async (query: Record<string, unknown>) => { listQuery = query; return [{ id: 'app-1' }]; },
+    count: async () => 37,
+  } } as unknown as PrismaService;
+  const service = new ApplicationsService(prisma, {} as never, {} as never);
+  const result = await service.findPage({ page: 3, limit: 10, search: 'Pet', status: undefined });
+  assert.deepEqual(result.meta, { total: 37, page: 3, limit: 10 });
+  assert.equal(listQuery?.skip, 20);
+  assert.equal(listQuery?.take, 10);
+  assert.equal((listQuery?.select as Record<string, unknown>).passwordHash, undefined);
+});
+
+test('only existing internal accounts can be assigned a staff role', async () => {
+  let accountId: string | null = 'customer-1';
+  let removedPermissions = false;
+  const tx = {
+    user: {
+      findUnique: async () => ({ id: 'internal-1', email: 'staff@example.test', role: Role.CLIENT, active: true, customerAccountId: accountId }),
+      update: async () => ({ id: 'internal-1', email: 'staff@example.test', role: Role.SALES, active: true }),
+    },
+    userPermission: { deleteMany: async () => { removedPermissions = true; } },
+    auditLog: { create: async () => ({}) },
+  };
+  const prisma = { $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const service = new AdminService(prisma, {} as never, {} as never, {} as never);
+  await assert.rejects(() => service.updateStaffRole('internal-1', Role.SALES, 'admin-1'));
+  accountId = null;
+  const result = await service.updateStaffRole('internal-1', Role.SALES, 'admin-1');
+  assert.equal(result.role, Role.SALES);
+  assert.equal(removedPermissions, true);
+  await assert.rejects(() => service.updateStaffRole('admin-1', Role.SALES, 'admin-1'), ForbiddenException);
+});
+
+test('suspended clients retain account access but lose purchase permission', () => {
+  const permissions = [Permission.CAN_VIEW_PRICES, Permission.CAN_PLACE_ORDERS];
+  assert.deepEqual(effectivePermissions(Role.CLIENT, AccountStatus.SUSPENDED, permissions), [Permission.CAN_VIEW_PRICES]);
+  assert.deepEqual(effectivePermissions(Role.CLIENT, AccountStatus.APPROVED, permissions), permissions);
+  assert.deepEqual(effectivePermissions(Role.ADMIN, undefined, permissions), []);
+  assert.deepEqual(effectivePermissions(Role.SALES, undefined, permissions), []);
+});
+
+test('checkout rejects a suspended account even with an old token', async () => {
+  const prisma = { cart: { findUnique: async () => ({ items: [{}], user: { customerAccount: { accountStatus: AccountStatus.SUSPENDED, addresses: [] } } }) } } as unknown as PrismaService;
+  const orders = new OrdersService(prisma, {} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(() => orders.checkout({ sub: 'client-1', email: 'client@example.test', role: Role.CLIENT, permissions: [Permission.CAN_PLACE_ORDERS] }), ForbiddenException);
+});
+
+test('checkout requires one of the signed-in customer addresses when there are several', async () => {
+  const prisma = { cart: { findUnique: async () => ({ items: [{}], user: { customerAccount: {
+    accountStatus: AccountStatus.APPROVED,
+    addresses: [
+      { id: 'address-1', address: 'First' },
+      { id: 'address-2', address: 'Second' },
+    ],
+  } } }) } } as unknown as PrismaService;
+  const orders = new OrdersService(prisma, {} as never, {} as never, {} as never, {} as never);
+  const user = { sub: 'client-1', email: 'client@example.test', role: Role.CLIENT, permissions: [Permission.CAN_PLACE_ORDERS] };
+  await assert.rejects(() => orders.checkout(user), BadRequestException);
+  await assert.rejects(() => orders.checkout(user, false, 'another-customers-address'), BadRequestException);
+});
+
+test('checkout puts orders above available credit into manual review', async () => {
+  let created: Record<string, unknown> | undefined;
+  const cart = { id: 'cart-1', items: [{ quantity: 1, productVariant: {
+    id: 'variant-1', productId: 'product-1', name: 'Caja', sku: 'SKU-1',
+    prices: [{ amount: new Prisma.Decimal('60') }],
+    product: { name: 'Producto', brandId: null, laboratoryId: null, categories: [], requiresMedicationPermission: false },
+  } }], user: { customerAccount: { accountStatus: AccountStatus.APPROVED, creditStatus: 'GOOD_STANDING', creditLimit: new Prisma.Decimal('100'), addresses: [{ id: 'address-1', label: 'Principal', address: 'Calle 1' }] } } };
+  const tx = {
+    $queryRaw: async () => [{ id: 'account-1' }],
+    customerAccount: { findUniqueOrThrow: async () => ({ accountStatus: AccountStatus.APPROVED, creditLimit: new Prisma.Decimal('100') }) },
+    order: {
+      findMany: async () => [{ total: new Prisma.Decimal('80'), creditedTotal: new Prisma.Decimal('10'), paidTotal: new Prisma.Decimal('20'), refundedTotal: new Prisma.Decimal(0) }],
+      create: async ({ data }: { data: Record<string, unknown> }) => { created = data; return { id: 'order-1' }; },
+      findUnique: async () => ({ id: 'order-1', status: created?.status }),
+    },
+    stockReservation: { findMany: async () => [], create: async () => ({}) },
+    orderItem: { create: async () => ({}) },
+    productVariant: { update: async () => ({}) },
+    cartItem: { deleteMany: async () => ({}) },
+  };
+  const prisma = { cart: { findUnique: async () => cart }, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const orders = new OrdersService(prisma, { validateAvailableStock: () => {} } as never, { calculateDiscounts: async () => [] } as never, { log: async () => {} } as never, { notify: async () => {} } as never);
+  const user = { sub: 'client-1', email: 'client@example.test', role: Role.CLIENT, customerAccountId: 'account-1', permissions: [Permission.CAN_PLACE_ORDERS] };
+  const result = await orders.checkout(user, false, 'address-1');
+  assert.equal(created?.status, OrderStatus.PENDING_REVIEW);
+  assert.equal(created?.reviewReason, 'CREDIT_LIMIT_EXCEEDED');
+  assert.equal(result?.status, OrderStatus.PENDING_REVIEW);
+});
+
+test('voiding a payment keeps the original and reduces the paid balance with audit', async () => {
+  const amount = new Prisma.Decimal('25.50');
+  let reduced = '';
+  let changed: Record<string, unknown> | undefined;
+  let audit: Record<string, unknown> | undefined;
+  const tx = {
+    orderPayment: {
+      findFirst: async () => ({ id: 'payment-1', orderId: 'order-1', amount, voidedAt: null }),
+      updateMany: async ({ data }: { data: Record<string, unknown> }) => { changed = data; return { count: 1 }; },
+      findUniqueOrThrow: async () => ({ id: 'payment-1', ...changed }),
+    },
+    order: { findUniqueOrThrow: async () => ({ paidTotal: new Prisma.Decimal('25.50'), refundedTotal: new Prisma.Decimal(0) }), updateMany: async ({ data }: { data: { paidTotal: { decrement: Prisma.Decimal } } }) => { reduced = data.paidTotal.decrement.toString(); return { count: 1 }; } },
+    auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => { audit = data; } },
+  };
+  const prisma = { $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const service = new OrderBillingService(prisma, {} as InvoiceStorageService);
+  await service.voidPayment('order-1', 'payment-1', { reason: 'Pago duplicado', requestId: '00000000-0000-4000-8000-000000000010' }, 'admin-1');
+  assert.equal(reduced, '25.5');
+  assert.equal(changed?.voidedById, 'admin-1');
+  assert.equal(changed?.voidReason, 'Pago duplicado');
+  assert.equal(audit?.action, 'ORDER_PAYMENT_VOIDED');
+});
+
+test('voiding a payment twice with a different request is rejected', async () => {
+  const tx = { orderPayment: { findFirst: async () => ({ voidedAt: new Date(), voidRequestId: 'original' }) } };
+  const prisma = { $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const service = new OrderBillingService(prisma, {} as InvoiceStorageService);
+  await assert.rejects(() => service.voidPayment('order-1', 'payment-1', { reason: 'Error de importe', requestId: 'new' }, 'admin-1'), ConflictException);
+});
+
+test('replacing an invoice marks the original void and records the responsible admin', async () => {
+  let voidData: Record<string, unknown> | undefined;
+  let invoiceData: Record<string, unknown> | undefined;
+  let audit: Record<string, unknown> | undefined;
+  const tx = {
+    orderInvoice: {
+      updateMany: async ({ data }: { data: Record<string, unknown> }) => { voidData = data; return { count: 1 }; },
+      create: async ({ data }: { data: Record<string, unknown> }) => { invoiceData = data; return { id: 'new-invoice' }; },
+    },
+    auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => { audit = data; } },
+  };
+  const prisma = {
+    order: { findUnique: async () => ({ id: 'order-1' }) },
+    orderInvoice: { findUnique: async () => null },
+    $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx),
+  } as unknown as PrismaService;
+  const service = new OrderBillingService(prisma, {} as InvoiceStorageService);
+  await service.attachInvoice('order-1', undefined, {
+    requestId: '00000000-0000-4000-8000-000000000011', invoiceNumber: 'A-2',
+    replacesInvoiceId: 'old-invoice', replacementReason: 'Número incorrecto',
+  }, 'admin-1');
+  assert.equal(voidData?.voidedById, 'admin-1');
+  assert.equal(invoiceData?.replacesInvoiceId, 'old-invoice');
+  assert.equal(audit?.action, 'ORDER_INVOICE_REPLACED');
+});
+
+test('banner uploads require a public bucket and actual image bytes', async () => {
+  assert.equal(bannerFileType(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])).mimeType, 'image/png');
+  assert.throws(() => bannerFileType(Buffer.from('<script>')), BadRequestException);
+  const config = { get: (key: string) => ({ SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SECRET_KEY: 'sb_secret_test' })[key as 'SUPABASE_URL' | 'SUPABASE_SECRET_KEY'] } as ConfigService;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ public: false });
+  try {
+    const storage = new BannerStorageService(config);
+    await assert.rejects(() => storage.upload('banners/test.png', Buffer.from('image'), 'image/png'), ServiceUnavailableException);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

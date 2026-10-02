@@ -13,7 +13,7 @@ test('records an abono and increments the paid amount atomically', async () => {
   const payment = { id: 'payment-1', orderId: 'order-1', amount: new Prisma.Decimal('25.50') };
   const tx = {
     order: {
-      findUnique: async () => ({ total: new Prisma.Decimal('100'), paidTotal: new Prisma.Decimal('10'), status: OrderStatus.APPROVED }),
+      findUnique: async () => ({ total: new Prisma.Decimal('100'), paidTotal: new Prisma.Decimal('10'), creditedTotal: new Prisma.Decimal('0'), refundedTotal: new Prisma.Decimal('0'), status: OrderStatus.APPROVED }),
       updateMany: async ({ data }: { data: { paidTotal: { increment: Prisma.Decimal } } }) => {
         increment = data.paidTotal.increment.toString();
         return { count: 1 };
@@ -34,7 +34,7 @@ test('records an abono and increments the paid amount atomically', async () => {
 });
 
 test('rejects an abono above the outstanding balance', async () => {
-  const tx = { order: { findUnique: async () => ({ total: new Prisma.Decimal('100'), paidTotal: new Prisma.Decimal('80'), status: OrderStatus.APPROVED }) } };
+  const tx = { order: { findUnique: async () => ({ total: new Prisma.Decimal('100'), paidTotal: new Prisma.Decimal('80'), creditedTotal: new Prisma.Decimal('0'), refundedTotal: new Prisma.Decimal('0'), status: OrderStatus.APPROVED }) } };
   const prisma = {
     orderPayment: { findUnique: async () => null },
     $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx),
@@ -48,6 +48,51 @@ test('recognizes PDF and image signatures, rejecting unsupported content', () =>
   assert.equal(invoiceFileType(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])).extension, 'png');
   assert.equal(invoiceFileType(Buffer.from([255, 216, 255, 1])).extension, 'jpg');
   assert.throws(() => invoiceFileType(Buffer.from('<script>')), BadRequestException);
+});
+
+test('payment balance accounts for credit notes and prior refunds', async () => {
+  const tx = { order: { findUnique: async () => ({ total: new Prisma.Decimal('100'), paidTotal: new Prisma.Decimal('40'), creditedTotal: new Prisma.Decimal('30'), refundedTotal: new Prisma.Decimal('10'), status: OrderStatus.APPROVED }) } };
+  const prisma = { orderPayment: { findUnique: async () => null }, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const service = new OrderBillingService(prisma, {} as InvoiceStorageService);
+  await assert.rejects(() => service.recordPayment('order-1', { amount: '40.01', requestId: '00000000-0000-4000-8000-000000000020' }, 'admin-1'), BadRequestException);
+});
+
+test('partial credit note and refund are append-only and bounded', async () => {
+  const order = { total: new Prisma.Decimal('100'), creditedTotal: new Prisma.Decimal('0'), paidTotal: new Prisma.Decimal('70'), refundedTotal: new Prisma.Decimal('0'), status: OrderStatus.APPROVED };
+  const notes: Array<{ id: string; orderId: string; amount: Prisma.Decimal; requestId: string; noteNumber: string | null }> = [];
+  const refunds: Array<{ id: string; orderId: string; amount: Prisma.Decimal; requestId: string }> = [];
+  const audits: string[] = [];
+  const tx = {
+    order: {
+      findUnique: async () => order,
+      updateMany: async ({ data }: { data: { creditedTotal?: { increment: Prisma.Decimal }; refundedTotal?: { increment: Prisma.Decimal } } }) => {
+        if (data.creditedTotal) order.creditedTotal = order.creditedTotal.plus(data.creditedTotal.increment);
+        if (data.refundedTotal) order.refundedTotal = order.refundedTotal.plus(data.refundedTotal.increment);
+        return { count: 1 };
+      },
+    },
+    orderCreditNote: { create: async ({ data }: { data: typeof notes[number] }) => { const note = { ...data, id: 'note-1' }; notes.push(note); return note; } },
+    orderRefund: { create: async ({ data }: { data: typeof refunds[number] }) => { const refund = { ...data, id: 'refund-1' }; refunds.push(refund); return refund; } },
+    auditLog: { create: async ({ data }: { data: { action: string } }) => { audits.push(data.action); } },
+  };
+  const prisma = {
+    orderCreditNote: { findUnique: async ({ where }: { where: { requestId: string } }) => notes.find((note) => note.requestId === where.requestId) ?? null },
+    orderRefund: { findUnique: async ({ where }: { where: { requestId: string } }) => refunds.find((refund) => refund.requestId === where.requestId) ?? null },
+    $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx),
+  } as unknown as PrismaService;
+  const service = new OrderBillingService(prisma, {} as InvoiceStorageService);
+  const noteDto = { amount: '30.00', noteNumber: 'NC-1', reason: 'Devolución parcial', requestId: '00000000-0000-4000-8000-000000000021' };
+  await service.recordCreditNote('order-1', undefined, noteDto, 'admin-1');
+  await service.recordCreditNote('order-1', undefined, noteDto, 'admin-1');
+  assert.equal(notes.length, 1);
+  assert.equal(order.creditedTotal.toString(), '30');
+  await assert.rejects(() => service.recordRefund('order-1', { amount: '30.01', reason: 'Reintegro', requestId: '00000000-0000-4000-8000-000000000022' }, 'admin-1'), BadRequestException);
+  const refundDto = { amount: '20.00', reason: 'Transferencia', reference: 'TX-1', requestId: '00000000-0000-4000-8000-000000000023' };
+  await service.recordRefund('order-1', refundDto, 'admin-1');
+  await service.recordRefund('order-1', refundDto, 'admin-1');
+  assert.equal(refunds.length, 1);
+  assert.equal(order.refundedTotal.toString(), '20');
+  assert.deepEqual(audits, ['ORDER_CREDIT_NOTE_RECORDED', 'ORDER_REFUND_RECORDED']);
 });
 
 test('registers an invoice number without uploading a file', async () => {

@@ -12,8 +12,17 @@ import {
 import type { Entity } from "@/lib/types";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { Picture } from "./ui";
+import { usePublicApi } from "./providers";
+import type { StoreBanner } from "./admin-banners";
 
-const slides = [
+type Slide = {
+  id: string; name: string; eyebrow: string; title: string; description: string;
+  action: string; image: string; imageWidth: number; imageHeight: number; imageAlt: string;
+  mobileImage?: string; mobileWidth?: number; mobileHeight?: number;
+  brandSlug?: string; href?: string; managed?: boolean;
+};
+
+const fallbackSlides: Slide[] = [
   {
     id: "biofresh",
     brandSlug: "biofresh",
@@ -56,7 +65,7 @@ const slides = [
     imageHeight: 1554,
     imageAlt: "Profesional veterinaria atendiendo a un cachorro",
   },
-] as const;
+];
 
 const brandKey = (value: string) =>
   value
@@ -75,6 +84,14 @@ const subscribeReduced = (onChange: () => void) => {
 type Direction = "first" | "forward" | "back";
 
 export function HomeCarousel({ brands }: { brands?: Entity[] }) {
+  const managed = usePublicApi<StoreBanner[]>("banners");
+  const slides: Slide[] = managed.data?.length ? managed.data.map((banner) => ({
+    id: banner.id, name: banner.title, eyebrow: "DISTRICO",
+    title: banner.title, description: banner.subtitle ?? "", action: banner.actionLabel,
+    image: banner.imageUrl, imageWidth: 1950, imageHeight: 500, imageAlt: banner.alt,
+    mobileImage: banner.mobileImageUrl ?? undefined, mobileWidth: 768, mobileHeight: 1024,
+    href: banner.href, managed: true,
+  })) : fallbackSlides;
   const [{ active, direction }, setSlide] = useState<{
     active: number;
     direction: Direction;
@@ -88,24 +105,25 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
   );
   const rotating = playing && !reduced;
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const slide = slides[active];
+  const shownIndex = Math.min(active, slides.length - 1);
+  const slide = slides[shownIndex];
   const layout = slide.imageWidth / slide.imageHeight >= 2 ? "art" : "photo";
   const brand =
-    "brandSlug" in slide
+    slide.brandSlug
       ? brands?.find(
           (item) =>
-            brandKey(item.slug ?? item.name) === brandKey(slide.brandSlug),
+            brandKey(item.slug ?? item.name) === brandKey(slide.brandSlug!),
         )
       : undefined;
-  const href =
-    "brandSlug" in slide
+  const href = slide.href ?? (
+    slide.brandSlug
       ? withSearch(
           storeRoutes.products,
           new URLSearchParams(
             brand ? { brandId: brand.id } : { search: slide.name },
           ),
         )
-      : storeRoutes.products;
+      : storeRoutes.products);
   const show = (index: number) =>
     setSlide((current) => ({
       active: index,
@@ -113,7 +131,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
     }));
   const step = (delta: 1 | -1) =>
     setSlide((current) => ({
-      active: (current.active + delta + slides.length) % slides.length,
+      active: (Math.min(current.active, slides.length - 1) + delta + slides.length) % slides.length,
       direction: delta > 0 ? "forward" : "back",
     }));
 
@@ -148,12 +166,12 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
         }}
       >
         <article
-          className={`hero home-carousel-slide home-carousel-slide-${slide.id} home-carousel-slide-${layout}${"mobileImage" in slide ? " home-carousel-has-mobile-art" : ""} is-${direction}`}
+          className={`hero home-carousel-slide home-carousel-slide-${slide.id} home-carousel-slide-${layout}${slide.mobileImage ? " home-carousel-has-mobile-art" : ""}${slide.managed ? " home-carousel-slide-managed" : ""} is-${direction}`}
           key={slide.id}
           id="home-carousel-slide"
           role="group"
           aria-roledescription="diapositiva"
-          aria-label={`${active + 1} de ${slides.length}: ${slide.name}`}
+          aria-label={`${shownIndex + 1} de ${slides.length}: ${slide.name}`}
         >
           <div className="hero-copy">
             <p className="eyebrow">{slide.eyebrow}</p>
@@ -167,7 +185,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           </div>
           <div className="hero-visual">
             <picture>
-              {"mobileImage" in slide && (
+              {slide.mobileImage && (
                 <source
                   media="(max-width: 900px)"
                   srcSet={slide.mobileImage}
@@ -218,7 +236,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           aria-live={rotating ? "off" : "polite"}
           aria-atomic="true"
         >
-          {String(active + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
+          {String(shownIndex + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
           <span aria-hidden="true"> · </span>
           {slide.name}
         </span>
@@ -237,12 +255,12 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           <div className="home-carousel-dots" aria-label="Elegir banner">
             {slides.map((item, index) => (
               <button
-                className={`home-carousel-dot${index === active ? " is-active" : ""}`}
+                className={`home-carousel-dot${index === shownIndex ? " is-active" : ""}`}
                 type="button"
                 key={item.id}
                 aria-label={`Mostrar ${item.name}`}
                 aria-controls="home-carousel-slide"
-                aria-current={index === active ? "true" : undefined}
+                aria-current={index === shownIndex ? "true" : undefined}
                 onClick={() => show(index)}
                 // La barra de progreso del punto activo (motion.css) marca el
                 // tiempo: al terminar pasa al siguiente banner.

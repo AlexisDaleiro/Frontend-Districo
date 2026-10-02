@@ -42,17 +42,21 @@ async function handle(
   const upstreamUrl = backendApiUrl(path);
   if (!upstreamUrl) return reply({ message: "La API aún no está configurada." }, 503);
   upstreamUrl.search = request.nextUrl.search;
-  const invoiceUpload = request.method === "POST" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices$/.test(path);
-  const invoiceDownload = request.method === "GET" && /^admin\/orders\/[a-zA-Z0-9_-]+\/invoices\/[a-zA-Z0-9_-]+$/.test(path);
+  const invoiceUpload = request.method === "POST" && /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)$/.test(path);
+  const bannerUpload = (request.method === "POST" && path === "admin/banners") ||
+    (request.method === "PATCH" && /^admin\/banners\/[a-zA-Z0-9_-]+$/.test(path));
+  const multipartUpload = invoiceUpload || bannerUpload;
+  const invoiceDownload = request.method === "GET" && /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path);
   let body: BodyInit | undefined;
-  if (invoiceUpload) {
+  if (multipartUpload) {
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))
-      return reply({ message: "Adjuntá una factura válida." }, 415);
-    if (Number(request.headers.get("content-length") ?? 0) > 5_500_000)
-      return reply({ message: "La factura supera el tamaño permitido." }, 413);
+      return reply({ message: "Adjuntá un archivo válido." }, 415);
+    const limit = bannerUpload ? 11_000_000 : 5_500_000;
+    if (Number(request.headers.get("content-length") ?? 0) > limit)
+      return reply({ message: "El archivo supera el tamaño permitido." }, 413);
     const bytes = await request.arrayBuffer();
-    if (bytes.byteLength > 5_500_000)
-      return reply({ message: "La factura supera el tamaño permitido." }, 413);
+    if (bytes.byteLength > limit)
+      return reply({ message: "El archivo supera el tamaño permitido." }, 413);
     body = bytes;
   } else if (request.method !== "GET" && request.method !== "DELETE") {
     if (Number(request.headers.get("content-length") ?? 0) > 150000)
@@ -83,7 +87,7 @@ async function handle(
       {
         method: request.method,
         headers: {
-          "Content-Type": invoiceUpload ? request.headers.get("content-type")! : "application/json",
+          "Content-Type": multipartUpload ? request.headers.get("content-type")! : "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body,

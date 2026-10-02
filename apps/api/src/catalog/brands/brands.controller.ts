@@ -21,7 +21,7 @@ export class BrandsController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   create(@Body() dto: CreateBrandDto) {
     return this.brandsService.create(dto);
   }
@@ -29,7 +29,7 @@ export class BrandsController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   update(@Param('id') id: string, @Body() dto: UpdateBrandDto) {
     return this.brandsService.update(id, dto);
   }

@@ -17,9 +17,11 @@ export const storeRoutes = {
   order: (id: string) => `${root}/cuenta/pedidos/${encodeURIComponent(id)}`,
   login: `${root}/ingresar`,
   recoverAccess: `${root}/recuperar-acceso`,
+  staffInvitation: `${root}/activar-personal`,
   requestAccount: `${root}/solicitar-cuenta`,
   admin: `${root}/admin`,
   adminSection: (section: string) => `${root}/admin/${encodeURIComponent(section)}`,
+  adminProduct: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}`,
 } as const;
 
 export function withSearch(path: string, params: URLSearchParams) {

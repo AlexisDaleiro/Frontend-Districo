@@ -13,6 +13,7 @@ const publicAccessPaths = new Set<string>([
   storeRoutes.login,
   storeRoutes.requestAccount,
   storeRoutes.recoverAccess,
+  storeRoutes.staffInvitation,
 ]);
 
 export function StoreFrame({ children }: { children: React.ReactNode }) {

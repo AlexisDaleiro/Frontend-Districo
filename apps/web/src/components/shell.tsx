@@ -21,6 +21,7 @@ import type { Cart } from "@/lib/types";
 import { can } from "@/lib/commerce";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
+import { isStaff } from "@/lib/staff-access";
 const links = [
   [storeRoutes.products, "Catálogo"],
   [storeRoutes.brands, "Marcas y laboratorios"],
@@ -140,20 +141,20 @@ export function Header() {
           </form>
           <div className="header-actions">
             <Link
-              href={user ? storeRoutes.account : storeRoutes.login}
+              href={user ? (isStaff(user) ? storeRoutes.admin : storeRoutes.account) : storeRoutes.login}
               className="account-link"
-              aria-label={user ? "Mi cuenta" : "Ingresar al portal mayorista"}
+              aria-label={user ? (isStaff(user) ? "Administración" : "Mi cuenta") : "Ingresar al portal mayorista"}
             >
               <UserRound size={22} />
               <span>
-                {user ? "Mi cuenta" : "Ingresar"}
+                {user ? (isStaff(user) ? "Administración" : "Mi cuenta") : "Ingresar"}
                 <small>
                   {user?.customerAccount?.businessName ?? "Acceso mayorista"}
                 </small>
               </span>
             </Link>
             {/* Sin permiso para pedir, el ícono lleva a /carrito (pide ingresar). */}
-            {canOrder ? (
+            {isStaff(user) ? null : canOrder ? (
               <button
                 className="cart-link icon-button"
                 aria-label={`Carrito, ${cartCount ?? 0} productos`}
@@ -190,7 +191,7 @@ export function Header() {
           <nav aria-label="Navegación principal" className="container">
             {nav}
             {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
-            {(!user || user.role === "ADMIN") && (
+            {(!user || isStaff(user)) && (
               <Link
                 className="be-client"
                 href={user ? storeRoutes.admin : storeRoutes.requestAccount}
@@ -209,7 +210,7 @@ export function Header() {
       >
         <nav className="mobile-nav">
           {nav}
-          {user?.role === "ADMIN" ? (
+          {isStaff(user) ? (
             <Link href={storeRoutes.admin} onClick={() => setOpen(false)}>
               Administración
             </Link>

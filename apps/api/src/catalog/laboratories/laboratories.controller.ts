@@ -21,7 +21,7 @@ export class LaboratoriesController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   create(@Body() dto: CreateLaboratoryDto) {
     return this.laboratoriesService.create(dto);
   }
@@ -29,7 +29,7 @@ export class LaboratoriesController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   update(@Param('id') id: string, @Body() dto: UpdateLaboratoryDto) {
     return this.laboratoriesService.update(id, dto);
   }

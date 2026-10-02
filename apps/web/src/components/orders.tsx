@@ -151,6 +151,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   );
   const [accept, setAccept] = useState(false),
     [uncertain, setUncertain] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [pendingLines, setPendingLines] = useState<string[]>([]);
   const onPendingChange = useCallback((id: string, pending: boolean) => {
     setPendingLines((current) => {
@@ -162,13 +163,17 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   const router = useRouter();
   const client = useQueryClient();
   const manual = reviewRequired(user?.customerAccount?.creditStatus);
+  const addresses = user?.customerAccount?.addresses ?? [];
+  const addressId = addresses.some((address) => address.id === selectedAddressId)
+    ? selectedAddressId : addresses[0]?.id;
+  const hasDeliveryAddress = user?.role === "ADMIN" || !!addressId || !!user?.customerAccount?.address;
   // Líneas guardadas que la API rechazaría al confirmar (precio o cantidad).
   const blocked = !!q.data?.items.some(
     (i) => !i.unitPrice || quantityError(i.variant, i.quantity),
   );
   const checkout = useMutation({
     mutationFn: () =>
-      request<Order>("checkout", "POST", { acceptManualReview: accept }),
+      request<Order>("checkout", "POST", { acceptManualReview: accept, deliveryAddressId: addressId }),
     onSuccess: (order) => {
       router.replace(`${storeRoutes.order(order.id)}?confirmado=1`);
       void client.invalidateQueries();
@@ -265,6 +270,28 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
           Los descuentos aplicables se confirman al enviar el pedido. No se
           realizará ningún cobro en línea. La entrega se coordina con DISTRICO.
         </p>
+        {checkoutMode && user?.role === "CLIENT" && (
+          <div className="checkout-address">
+            <h3>Dirección de entrega</h3>
+            {addresses.length ? (
+              <label className="field">
+                Seleccionar dirección
+                <select className="form-input" value={addressId} onChange={(event) => setSelectedAddressId(event.target.value)}>
+                  {addresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {address.label} · {[address.address, address.city, address.department].filter(Boolean).join(", ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : user.customerAccount?.address ? (
+              <p>{[user.customerAccount.address, user.customerAccount.city, user.customerAccount.department].filter(Boolean).join(", ")}</p>
+            ) : (
+              <p className="field-error">Agregá una dirección en Mi cuenta antes de enviar el pedido.</p>
+            )}
+            <Link className="text-link" href={storeRoutes.account}>Gestionar direcciones</Link>
+          </div>
+        )}
         {checkoutMode && manual && (
           <label className="check-field" style={{ marginTop: 20 }}>
             <input
@@ -284,7 +311,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
         {checkoutMode ? (
           <button
             className="button"
-            disabled={checkout.isPending || (manual && !accept) || q.isFetching || blocked || pendingLines.length > 0}
+            disabled={checkout.isPending || (manual && !accept) || q.isFetching || blocked || pendingLines.length > 0 || !hasDeliveryAddress}
             onClick={() => checkout.mutate()}
           >
             {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
@@ -545,12 +572,20 @@ function OrdersContent({ id }: { id?: string }) {
           {id ? (
             <>
               <p className="small-copy muted" style={{ marginBottom: 20 }}>
-                {order.requiresManualReview
+                {order.reviewReason === "CREDIT_LIMIT_EXCEEDED"
+                  ? "El pedido supera el crédito disponible y quedó para revisión comercial."
+                  : order.requiresManualReview
                   ? "Tu pedido está sujeto a revisión comercial."
                   : "Podés consultar aquí la evolución de tu pedido."}{" "}
                 Pago y entrega se coordinan con DISTRICO.
               </p>
               <OrderItems order={order} />
+              {order.deliveryAddress && (
+                <p className="small-copy order-delivery-address">
+                  <strong>Entrega:</strong> {order.deliveryLabel ? `${order.deliveryLabel} · ` : ""}
+                  {[order.deliveryAddress, order.deliveryCity, order.deliveryDepartment].filter(Boolean).join(", ")}
+                </p>
+              )}
               <div className="actions">
                 <RepeatOrderButton order={order} />
               </div>

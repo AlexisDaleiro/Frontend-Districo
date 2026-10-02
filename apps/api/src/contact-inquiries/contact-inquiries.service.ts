@@ -40,6 +40,24 @@ export class ContactInquiriesService {
   }
 
   findMany(query: ContactInquiryQueryDto) {
+    const where = this.where(query);
+    return this.prisma.contactInquiry.findMany({
+      where,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      include: { handledBy: { select: { id: true, email: true } } },
+    });
+  }
+
+  async findPage(query: ContactInquiryQueryDto) {
+    const where = this.where(query);
+    const [items, total] = await Promise.all([
+      this.prisma.contactInquiry.findMany({ where, orderBy: [{ status: 'asc' }, { createdAt: 'desc' }], skip: (query.page - 1) * query.limit, take: query.limit, include: { handledBy: { select: { id: true, email: true } } } }),
+      this.prisma.contactInquiry.count({ where }),
+    ]);
+    return { items, meta: { total, page: query.page, limit: query.limit } };
+  }
+
+  private where(query: ContactInquiryQueryDto): Prisma.ContactInquiryWhereInput {
     const search = clean(query.search);
     const where: Prisma.ContactInquiryWhereInput = {
       status: query.status,
@@ -55,11 +73,7 @@ export class ContactInquiriesService {
           }
         : {}),
     };
-    return this.prisma.contactInquiry.findMany({
-      where,
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-      include: { handledBy: { select: { id: true, email: true } } },
-    });
+    return where;
   }
 
   async update(id: string, dto: UpdateContactInquiryDto, userId: string) {

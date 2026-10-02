@@ -21,7 +21,7 @@ export default defineConfig({
     },
   }],
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `npx next dev --hostname 127.0.0.1 --port ${port}`,
     env: { NEXT_PUBLIC_DATA_MODE: "demo", E2E_DIST_DIR: ".next-e2e" },
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: process.env.E2E_USE_EXISTING_SERVER === "1",

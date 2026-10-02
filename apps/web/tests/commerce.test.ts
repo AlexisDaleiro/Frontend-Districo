@@ -9,7 +9,7 @@ import {
 } from "../src/lib/commerce";
 import type { Permission, User, Variant } from "../src/lib/types";
 const user = (permissions: Permission[], role: User["role"] = "CLIENT") =>
-  ({ id: "u", email: "u@example.test", role, permissions }) as User;
+  ({ id: "u", email: "u@example.test", role, permissions, customerAccount: role === "CLIENT" ? { accountStatus: "APPROVED" } : undefined }) as User;
 const client = user(["CAN_VIEW_PRICES", "CAN_PLACE_ORDERS"]);
 const vet = user([
   "CAN_VIEW_PRICES",
@@ -39,11 +39,17 @@ describe("Ficha: precio y compra según permisos", () => {
     expect(canBuy(vet, medication)).toBe(true);
     expect(hiddenPriceText(vet, food)).toBe("Sin precio vigente");
     expect(canBuy(user([], "ADMIN"), medication)).toBe(true);
+    expect(canBuy(user(["CAN_VIEW_PRICES", "CAN_PLACE_ORDERS"], "SALES"), food)).toBe(false);
   });
   it("como la API, comprar exige también ver precios", () => {
     const orderOnly = user(["CAN_PLACE_ORDERS"]);
     expect(canBuy(orderOnly, food)).toBe(false);
     expect(hiddenPriceText(orderOnly, food)).toBe("Precio no habilitado");
+  });
+  it("un cliente suspendido puede ver precios pero no comprar", () => {
+    const suspended = { ...client, customerAccount: { ...client.customerAccount!, accountStatus: "SUSPENDED" as const } };
+    expect(hiddenPriceText(suspended, food)).toBe("Sin precio vigente");
+    expect(canBuy(suspended, food)).toBe(false);
   });
   it("stock insuficiente para el mínimo y el múltiplo", () => {
     expect(purchasable(variant({ availableStock: 0 }))).toBe(false);

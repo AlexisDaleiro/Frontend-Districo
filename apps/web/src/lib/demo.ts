@@ -29,6 +29,8 @@ type State = {
   categories: Entity[];
   brands: Entity[];
   laboratories: Entity[];
+  banners?: { id: string; title: string; subtitle?: string; actionLabel: string; href: string; alt: string; imageUrl: string; position: number; active: boolean; startsAt?: string; endsAt?: string }[];
+  staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -52,6 +54,8 @@ export const blankState = (): State => ({
     ).values(),
   ),
   laboratories: [],
+  banners: [],
+  staffInvitations: [],
 });
 let memory: State | undefined;
 export function resetDemo() {
@@ -71,6 +75,8 @@ function read() {
     )
       throw Error();
     data.contactInquiries ??= [];
+    data.banners ??= [];
+    data.staffInvitations ??= [];
     return data;
   } catch {
     throw new ApiError(
@@ -91,6 +97,21 @@ function write(state: State) {
   }
 }
 const id = () => crypto.randomUUID();
+async function demoHash(value: string) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+async function demoImage(file: File) {
+  if (!file.size || file.size > 300_000 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    throw new ApiError("En la demo, usá un PNG, JPG o WebP de hasta 300 KB.", 400);
+  }
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new ApiError("No se pudo leer la imagen.", 400));
+    reader.readAsDataURL(file);
+  });
+}
 function descendants(categories: Entity[], rootId: string) {
   const ids = new Set([rootId]);
   for (let added = true; added;) {
@@ -249,10 +270,10 @@ export async function demoRequest<T>(
   const s = read();
   const [route, search = ""] = path.split("?");
   const query = new URLSearchParams(search);
-  const b = (body ?? {}) as Record<string, unknown>;
+  const b = body instanceof FormData ? Object.fromEntries(body.entries()) : (body ?? {}) as Record<string, unknown>;
   const user = s.users.find((u) => u.id === s.session);
   const needUser = () => {
-    if (!user) throw new ApiError("Ingresá para continuar.", 401);
+    if (!user || user.active === false) throw new ApiError("Ingresá para continuar.", 401);
     return user;
   };
   const needAdmin = () => {
@@ -274,7 +295,8 @@ export async function demoRequest<T>(
     const found = s.users.find(
       (u) => u.email.toLowerCase() === String(b.email).toLowerCase(),
     );
-    if (!found || b.password !== "Demo1234!")
+    if (!found || found.active === false ||
+        (found.demoPasswordHash ? await demoHash(String(b.password)) !== found.demoPasswordHash : b.password !== "Demo1234!"))
       throw new ApiError(
         "Credenciales demo inválidas. Usá Demo1234! en las cuentas de prueba.",
         401,
@@ -282,6 +304,18 @@ export async function demoRequest<T>(
     s.session = found.id;
     result = { user: found };
   } else if (route === "auth/me") result = needUser();
+  else if (route === "auth/staff-invitations/accept" && method === "POST") {
+    const tokenHash = await demoHash(String(b.token ?? ""));
+    const invitation = s.staffInvitations?.find((item) => item.tokenHash === tokenHash && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString());
+    const member = s.users.find((item) => item.id === invitation?.userId && !item.customerAccount);
+    if (!invitation || !member || member.active || member.emailVerified || String(b.password ?? "").length < 12)
+      throw new ApiError("Invitación inválida o vencida.", 401);
+    member.demoPasswordHash = await demoHash(String(b.password));
+    member.active = true;
+    member.emailVerified = true;
+    invitation.accepted = true;
+    result = { success: true };
+  }
   else if (route === "account/me" || route.startsWith("account/me/addresses")) {
     const account = needUser().customerAccount;
     if (!account) throw new ApiError("No hay una cuenta de cliente activa.", 403);
@@ -380,8 +414,11 @@ export async function demoRequest<T>(
       s.contactInquiries.unshift(inquiry);
       result = { received: true, id: inquiry.id, createdAt: now };
     }
-  } else if ((route === "products" || route === "products/cards") && method === "GET") {
-    let items = s.products.filter((p) => p.active !== false);
+  } else if (["products", "products/cards", "products/admin/list"].includes(route) && method === "GET") {
+    if (route === "products/admin/list") needAdmin();
+    let items = route === "products/admin/list" ? [...s.products] : s.products.filter((p) => p.active !== false);
+    const active = query.get("active");
+    if (active !== null && route === "products/admin/list") items = items.filter((p) => (p.active !== false) === (active === "true"));
     const term = (query.get("search") ?? "").toLowerCase();
     if (term)
       items = items.filter((p) =>
@@ -438,8 +475,10 @@ export async function demoRequest<T>(
         ? []
         : s[route === "categories/catalog" ? "categories" : route as "categories" | "brands" | "laboratories"];
   else if (route.startsWith("products/") && method === "GET") {
+    if (route.startsWith("products/admin/")) needAdmin();
+    const slug = route.startsWith("products/admin/") ? route.split("/")[2] : route.split("/")[1];
     const p = s.products.find(
-      (p) => p.slug === route.split("/")[1] && p.active !== false,
+      (p) => p.slug === slug && (route.startsWith("products/admin/") || p.active !== false),
     );
     if (!p) throw new ApiError("Producto no encontrado.", 404);
     result = publicProduct(p, user);
@@ -522,6 +561,11 @@ export async function demoRequest<T>(
     const review = reviewRequired(u.customerAccount?.creditStatus);
     if (review && !b.acceptManualReview)
       throw new ApiError("Aceptá la revisión manual del pedido.", 400);
+    const addresses = u.customerAccount?.addresses ?? [];
+    const selectedAddress = addresses.find((address) => address.id === b.deliveryAddressId);
+    if (b.deliveryAddressId && !selectedAddress) throw new ApiError("Dirección de entrega no encontrada.", 400);
+    if (addresses.length > 1 && !selectedAddress) throw new ApiError("Elegí una dirección de entrega.", 400);
+    const delivery = selectedAddress ?? addresses[0];
     for (const item of cart.items) {
       const error = quantityError(item.variant, item.quantity);
       if (error) throw new ApiError(error, 400);
@@ -540,6 +584,11 @@ export async function demoRequest<T>(
       orderNumber: `DEMO-${Date.now()}`,
       userId: u.id,
       customerAccount: u.customerAccount,
+      deliveryAddressId: delivery?.id ?? null,
+      deliveryLabel: delivery?.label ?? null,
+      deliveryAddress: delivery?.address ?? u.customerAccount?.address ?? null,
+      deliveryCity: delivery?.city ?? u.customerAccount?.city ?? null,
+      deliveryDepartment: delivery?.department ?? u.customerAccount?.department ?? null,
       status: review ? "PENDING_REVIEW" : "SUBMITTED",
       requiresManualReview: review,
       acceptedManualReview: !!b.acceptManualReview,
@@ -577,6 +626,9 @@ export async function demoRequest<T>(
         ? orders
         : orders.find((o) => o.id === route.split("/")[2]);
     if (!result) throw new ApiError("Pedido no encontrado.", 404);
+  } else if (route === "banners" && method === "GET") {
+    const now = new Date().toISOString();
+    result = (s.banners ?? []).filter((banner) => banner.active && (!banner.startsAt || banner.startsAt <= now) && (!banner.endsAt || banner.endsAt >= now)).sort((a, b) => a.position - b.position);
   } else if (
     route.startsWith("admin/") ||
     route.startsWith("inventory/") ||
@@ -599,10 +651,60 @@ export async function demoRequest<T>(
           (inquiry) => inquiry.status === "NEW",
         ).length,
       };
-    else if (route === "admin/contact-inquiries") {
+    else if (route === "admin/sales") {
+      const period = query.get("period") ?? "7d";
+      const days = period === "today" ? 1 : period === "7d" ? 7 : period === "30d" ? 30 : 90;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const start = new Date(todayStart.getTime() - (days - 1) * 86400000);
+      const previousStart = new Date(start.getTime() - days * 86400000);
+      const valid = s.orders.filter((order) => !["DRAFT", "REJECTED", "CANCELLED"].includes(order.status));
+      const current = valid.filter((order) => new Date(order.createdAt) >= start);
+      const previous = valid.filter((order) => new Date(order.createdAt) >= previousStart && new Date(order.createdAt) < start);
+      const today = valid.filter((order) => new Date(order.createdAt) >= todayStart);
+      const amount = (orders: Order[]) => orders.reduce((sum, order) => sum + order.total, 0);
+      const top = new Map<string, { id: string; name: string; units: number; amount: number }>();
+      const series = new Map<string, { bucket: string; orders: number; amount: number }>();
+      for (const order of current) {
+        const bucket = period === "today" ? new Date(order.createdAt).toLocaleString("en-GB", { hour: "2-digit", hour12: false, timeZone: "America/Montevideo" }) : new Date(order.createdAt).toLocaleDateString("sv-SE", { timeZone: "America/Montevideo" });
+        const point = series.get(bucket) ?? { bucket, orders: 0, amount: 0 };
+        point.orders++;
+        point.amount += order.total;
+        series.set(bucket, point);
+        for (const item of order.items) {
+          const key = item.variantId;
+          const entry = top.get(key) ?? { id: key, name: item.productName, units: 0, amount: 0 };
+          entry.units += item.quantity;
+          entry.amount += item.subtotal;
+          top.set(key, entry);
+        }
+      }
+      const currentAmount = amount(current), previousAmount = amount(previous);
+      result = { period, timezone: "America/Montevideo", startAt: start.toISOString(), today: { orders: today.length, amount: amount(today) }, current: { orders: current.length, amount: currentAmount, units: current.flatMap((order) => order.items).reduce((sum, item) => sum + item.quantity, 0), collected: current.reduce((sum, order) => sum + (order.payments ?? []).filter((payment) => !payment.voidedAt).reduce((subtotal, payment) => subtotal + Number(payment.amount), 0), 0) }, previous: { orders: previous.length, amount: previousAmount }, changePercent: previousAmount ? Math.round((currentAmount - previousAmount) / previousAmount * 1000) / 10 : null, series: [...series.values()].sort((a, b) => a.bucket.localeCompare(b.bucket)), topProducts: [...top.values()].sort((a, b) => b.units - a.units).slice(0, 8) };
+    } else if (route === "admin/banners") {
+      if (method === "GET") result = [...(s.banners ?? [])].sort((a, b) => a.position - b.position);
+      else if (method === "POST") {
+        const desktop = b.desktop;
+        if (!(desktop instanceof File)) throw new ApiError("Adjuntá una imagen de escritorio.", 400);
+        const banner = { id: id(), title: String(b.title), subtitle: String(b.subtitle ?? ""), actionLabel: String(b.actionLabel), href: String(b.href), alt: String(b.alt), imageUrl: await demoImage(desktop), position: Number(b.position ?? 0), active: b.active === "true", startsAt: String(b.startsAt ?? ""), endsAt: String(b.endsAt ?? "") };
+        (s.banners ??= []).push(banner);
+        result = banner;
+      }
+    } else if (route.startsWith("admin/banners/")) {
+      const index = (s.banners ?? []).findIndex((banner) => banner.id === parts[2]);
+      if (index < 0) throw new ApiError("Banner no encontrado.", 404);
+      if (method === "DELETE") { (s.banners ?? []).splice(index, 1); result = { success: true }; }
+      else {
+        const banner = s.banners![index];
+        Object.assign(banner, { title: String(b.title), subtitle: String(b.subtitle ?? ""), actionLabel: String(b.actionLabel), href: String(b.href), alt: String(b.alt), position: Number(b.position ?? 0), active: b.active === "true", startsAt: String(b.startsAt ?? ""), endsAt: String(b.endsAt ?? "") });
+        if (b.desktop instanceof File) banner.imageUrl = await demoImage(b.desktop);
+        result = banner;
+      }
+    }
+    else if (route === "admin/contact-inquiries" || route === "admin/contact-inquiries/page") {
       const status = query.get("status");
       const term = (query.get("search") ?? "").trim().toLowerCase();
-      result = s.contactInquiries.filter(
+      const all = s.contactInquiries.filter(
         (inquiry) =>
           (!status || inquiry.status === status) &&
           (!term ||
@@ -614,6 +716,8 @@ export async function demoRequest<T>(
               inquiry.message,
             ].some((value) => value?.toLowerCase().includes(term))),
       );
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
+      result = route.endsWith("/page") ? { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } } : all;
     } else if (
       route.startsWith("admin/contact-inquiries/") &&
       method === "PATCH"
@@ -634,6 +738,52 @@ export async function demoRequest<T>(
       result = inquiry;
     }
     else if (route === "admin/applications") result = s.applications;
+    else if (route === "admin/applications/page") {
+      const term = (query.get("search") ?? "").toLowerCase();
+      const status = query.get("status");
+      const all = s.applications.filter((a) => (!status || a.status === status) && (!term || [a.businessName, a.legalName, a.rut, a.email, a.contactName].some((value) => value?.toLowerCase().includes(term))));
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
+      result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
+    }
+    else if (route === "admin/staff") result = s.users.filter((u) => !u.customerAccount).map(({ id, email, role, active, emailVerified }) => ({
+      id, email, role, active: active !== false, emailVerified: emailVerified !== false,
+      invitationPending: emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString()),
+    }));
+    else if (route === "admin/staff/invitations" && method === "POST") {
+      const email = String(b.email ?? "").trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email) || !["ADMIN", "SALES", "CATALOG", "FINANCE"].includes(String(b.role))) throw new ApiError("Datos inválidos.", 400);
+      let member = s.users.find((item) => item.email.toLowerCase() === email);
+      if (member && (member.customerAccount || member.active !== false || member.emailVerified !== false || member.role === "CLIENT")) throw new ApiError("Ese correo ya pertenece a una cuenta activa o de cliente.", 409);
+      if (!member) {
+        member = { id: id(), email, role: b.role as User["role"], permissions: [], active: false, emailVerified: false };
+        s.users.push(member);
+      }
+      member.role = b.role as User["role"];
+      for (const item of s.staffInvitations ?? []) if (item.userId === member.id && !item.accepted) item.revoked = true;
+      const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      s.staffInvitations!.push({ userId: member.id, tokenHash: await demoHash(token), expiresAt, accepted: false, revoked: false });
+      result = { id: member.id, email, role: member.role, token, expiresAt };
+    }
+    else if (route.startsWith("admin/staff/") && parts[3] === "active" && method === "PATCH") {
+      const member = s.users.find((item) => item.id === parts[2] && !item.customerAccount);
+      if (!member) throw new ApiError("Usuario interno no encontrado.", 404);
+      if (member.id === user!.id && b.active === false) throw new ApiError("No podés desactivar tu cuenta.", 403);
+      if (b.active === true && member.emailVerified === false) throw new ApiError("Debe aceptar la invitación.", 400);
+      if (b.active === false && member.role === "ADMIN" && s.users.filter((item) => item.role === "ADMIN" && item.active !== false && !item.customerAccount).length <= 1) throw new ApiError("Debe quedar al menos un administrador activo.", 400);
+      member.active = b.active === true;
+      if (!member.active) for (const item of s.staffInvitations ?? []) if (item.userId === member.id && !item.accepted) item.revoked = true;
+      result = { id: member.id, email: member.email, role: member.role, active: member.active };
+    }
+    else if (route.startsWith("admin/staff/") && parts[3] === "role" && method === "PATCH") {
+      const member = s.users.find((u) => u.id === parts[2] && !u.customerAccount);
+      if (!member) throw new ApiError("Usuario interno no encontrado.", 404);
+      if (member.id === user!.id && b.role !== "ADMIN") throw new ApiError("No podés quitarte tu acceso de administrador.", 403);
+      if (!["ADMIN", "SALES", "CATALOG", "FINANCE"].includes(String(b.role))) throw new ApiError("Rol inválido.", 400);
+      member.role = b.role as typeof member.role;
+      member.permissions = [];
+      result = { id: member.id, email: member.email, role: member.role, active: member.active };
+    }
     else if (route.startsWith("admin/applications/")) {
       const a = s.applications.find((a) => a.id === parts[2]);
       if (!a || a.status !== "PENDING")
@@ -665,6 +815,11 @@ export async function demoRequest<T>(
         });
       }
       result = a;
+    } else if (route === "admin/customers/page") {
+      const term = (query.get("search") ?? "").toLowerCase();
+      const all = s.users.filter((u) => u.customerAccount).filter((u) => !term || [u.email, u.customerAccount?.businessName, u.customerAccount?.legalName, u.customerAccount?.rut, u.customerAccount?.phone].some((value) => value?.toLowerCase().includes(term))).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }] }));
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
+      result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/customers")
       result = s.users
         .filter((u) => u.customerAccount)
@@ -683,12 +838,71 @@ export async function demoRequest<T>(
         if (b.medicationPermission) u.permissions.push("CAN_BUY_MEDICATIONS");
       }
       result = u.customerAccount;
+    } else if (route === "admin/orders/page") {
+      const term = (query.get("search") ?? "").toLowerCase();
+      const status = query.get("status");
+      const all = s.orders.filter((o) => (!status || o.status === status) && (!term || [o.id, o.orderNumber, o.customerAccount?.businessName, s.users.find((u) => u.id === o.userId)?.email].some((value) => value?.toLowerCase().includes(term)))).map((o) => ({ ...o, user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" } }));
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
+      result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/orders")
       result = s.orders.map((o) => ({
         ...o,
         user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" },
       }));
-    else if (route.startsWith("admin/orders/")) {
+    else if (route.startsWith("admin/orders/") && ["credit-notes", "refunds"].includes(parts[3]) && method === "POST") {
+      const order = s.orders.find((item) => item.id === parts[2]);
+      if (!order) throw new ApiError("Pedido no encontrado.", 404);
+      const amount = Number(b.amount);
+      const reason = String(b.reason ?? "").trim();
+      if (!Number.isFinite(amount) || amount <= 0 || reason.length < 3) throw new ApiError("Indicá un importe y motivo válidos.", 400);
+      if (parts[3] === "credit-notes") {
+        const noteNumber = String(b.noteNumber ?? "").trim() || null;
+        const file = b.file instanceof File ? b.file : null;
+        if ((!noteNumber && !file) || amount > order.total - Number(order.creditedTotal ?? 0)) throw new ApiError("El crédito supera el importe restante o falta la nota.", 400);
+        const note = { id: id(), amount, noteNumber, reason, originalName: file?.name ?? null, createdAt: new Date().toISOString(), recordedByEmail: user!.email };
+        (order.creditNotes ??= []).unshift(note);
+        order.creditedTotal = Number(order.creditedTotal ?? 0) + amount;
+        result = note;
+      } else {
+        if (amount > Math.min(Number(order.paidTotal ?? 0), Number(order.creditedTotal ?? 0)) - Number(order.refundedTotal ?? 0)) throw new ApiError("El reintegro supera el saldo respaldado por pagos y notas de crédito.", 400);
+        const refund = { id: id(), amount, reason, reference: String(b.reference ?? "").trim() || null, createdAt: new Date().toISOString(), recordedByEmail: user!.email };
+        (order.refunds ??= []).unshift(refund);
+        order.refundedTotal = Number(order.refundedTotal ?? 0) + amount;
+        result = refund;
+      }
+    }
+    else if (route.startsWith("admin/orders/") && ["payments", "invoices"].includes(parts[3])) {
+      const order = s.orders.find((item) => item.id === parts[2]);
+      if (!order) throw new ApiError("Pedido no encontrado.", 404);
+      const collection = parts[3] === "payments" ? (order.payments ??= []) : (order.invoices ??= []);
+      if (parts[5] === "void" && method === "POST") {
+        const record = collection.find((item) => item.id === parts[4]);
+        if (!record) throw new ApiError("Registro no encontrado.", 404);
+        if (record.voidedAt) throw new ApiError("El registro ya fue anulado.", 409);
+        if (String(b.reason ?? "").trim().length < 3) throw new ApiError("Indicá el motivo de anulación.", 400);
+        record.voidedAt = new Date().toISOString();
+        record.voidReason = String(b.reason).trim();
+        if (parts[3] === "payments") order.paidTotal = Math.max(0, Number(order.paidTotal ?? 0) - Number((record as NonNullable<Order["payments"]>[number]).amount));
+        result = record;
+      } else if (parts[3] === "payments" && method === "POST") {
+        const amount = Number(b.amount);
+        if (!Number.isFinite(amount) || amount <= 0 || amount > order.total - Number(order.paidTotal ?? 0)) throw new ApiError("El importe supera el saldo pendiente.", 400);
+        const payment = { id: id(), amount, createdAt: new Date().toISOString() };
+        order.payments!.unshift(payment);
+        order.paidTotal = Number(order.paidTotal ?? 0) + amount;
+        result = payment;
+      } else if (parts[3] === "invoices" && method === "POST") {
+        const number = String(b.invoiceNumber ?? "").trim();
+        const file = b.file;
+        if (!number && !(file instanceof File)) throw new ApiError("Ingresá un número o archivo de factura.", 400);
+        const replaced = b.replacesInvoiceId ? order.invoices!.find((item) => item.id === b.replacesInvoiceId) : undefined;
+        if (b.replacesInvoiceId && (!replaced || replaced.voidedAt || String(b.replacementReason ?? "").trim().length < 3)) throw new ApiError("Factura a reemplazar o motivo inválido.", 400);
+        if (replaced) { replaced.voidedAt = new Date().toISOString(); replaced.voidReason = String(b.replacementReason).trim(); }
+        const invoice = { id: id(), invoiceNumber: number || null, originalName: file instanceof File ? file.name : null, createdAt: new Date().toISOString(), replacesInvoiceId: replaced?.id ?? null, replacementReason: replaced ? String(b.replacementReason).trim() : null };
+        order.invoices!.unshift(invoice);
+        result = invoice;
+      } else throw new ApiError("Acción no disponible en la demo.", 400);
+    } else if (route.startsWith("admin/orders/")) {
       const o = s.orders.find((o) => o.id === parts[2]);
       if (!o) throw new ApiError("Pedido no encontrado.", 404);
       const status =

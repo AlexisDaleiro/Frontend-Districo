@@ -111,6 +111,9 @@ export function seedUsers(): User[] {
       accountStatus: "APPROVED",
       creditStatus,
       medicationPermission,
+      address: "Av. Italia 1234",
+      city: "Montevideo",
+      department: "Montevideo",
     };
     return {
       id,

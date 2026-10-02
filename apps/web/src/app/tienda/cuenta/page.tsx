@@ -43,7 +43,7 @@ export default function Page() {
         {user?.customerAccount && (
           <AccountDetails customer={user.customerAccount} email={user.email} />
         )}
-        <div className="account-panels">
+        {user?.role === "CLIENT" && <div className="account-panels">
           <div className="card stack">
             <h2>Mis pedidos</h2>
             <p className="muted">
@@ -56,9 +56,9 @@ export default function Page() {
             <p className="muted">Explorá productos y revisá tu carrito.</p>
             <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
           </div>
-        </div>
+        </div>}
         <div className="actions">
-          {user?.role === "ADMIN" && (
+          {user && user.role !== "CLIENT" && (
             <ActionLink href={storeRoutes.admin}>Administración</ActionLink>
           )}
           <button

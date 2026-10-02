@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductFilterDto } from './dto/product-filter.dto';
+import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CategoryHierarchyService } from '../categories/category-hierarchy.service';
 
 const productInclude = () =>
@@ -40,8 +41,8 @@ export class ProductsRepository {
     private readonly hierarchy: CategoryHierarchyService,
   ) {}
 
-  async findMany(filters: ProductFilterDto) {
-    const where = await this.productWhere(filters);
+  async findMany(filters: ProductFilterDto | AdminProductFilterDto, admin = false) {
+    const where = await this.productWhere(filters, admin);
     const skip = (filters.page - 1) * filters.limit;
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -109,11 +110,11 @@ export class ProductsRepository {
     return { items, meta: { total, page: filters.page, limit: filters.limit } };
   }
 
-  private async productWhere(filters: ProductFilterDto): Promise<Prisma.ProductWhereInput> {
+  private async productWhere(filters: ProductFilterDto | AdminProductFilterDto, admin = false): Promise<Prisma.ProductWhereInput> {
     const categoryIds = filters.categoryId?.length ? await this.hierarchy.descendantIds(filters.categoryId) : undefined;
     return {
       deletedAt: null,
-      active: true,
+      active: admin ? (filters as AdminProductFilterDto).active : true,
       brandId: filters.brandId,
       laboratoryId: filters.laboratoryId,
       productType: filters.productType,
@@ -135,9 +136,9 @@ export class ProductsRepository {
     };
   }
 
-  findBySlug(slug: string) {
+  findBySlug(slug: string, admin = false) {
     return this.prisma.product.findFirst({
-      where: { slug, deletedAt: null, active: true },
+      where: { slug, deletedAt: null, active: admin ? undefined : true },
       relationLoadStrategy: 'join',
       include: productInclude(),
     });

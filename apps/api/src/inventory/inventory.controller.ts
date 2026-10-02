@@ -11,7 +11,7 @@ import { InventoryService } from './inventory.service';
 @ApiBearerAuth()
 @Controller('inventory')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.CATALOG)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 

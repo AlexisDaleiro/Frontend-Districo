@@ -235,7 +235,7 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
     .fill("BIOFRESH para cachorros");
   await page.getByLabel("Buscar producto para administrar").press("Enter");
   await page
-    .getByRole("button", { name: "Presentaciones e imágenes" })
+    .getByRole("link", { name: "Editar producto" })
     .first()
     .click();
   await page.getByRole("button", { name: "Existencias", exact: true }).click();
@@ -422,19 +422,19 @@ test("administración modifica precio y stock y crea recomendación", async ({
   await login(page, "Administración");
   await page.goto("/tienda/admin/catalogo");
   await page
-    .getByRole("button", { name: "Presentaciones e imágenes" })
+    .getByRole("link", { name: "Editar producto" })
     .first()
     .click();
   await page.getByRole("button", { name: "Precio", exact: true }).click();
   await page.getByLabel("Precio *", { exact: true }).fill("750");
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Existencias", exact: true }).click();
   await page.getByRole("button", { name: "Actualizar", exact: true }).click();
   await page
     .getByRole("spinbutton", { name: "Stock físico *", exact: true })
     .fill("50");
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Guardar cambios" }).click();
   await expect(
     page.getByText("Stock físico: 50", { exact: false }),
   ).toBeVisible();

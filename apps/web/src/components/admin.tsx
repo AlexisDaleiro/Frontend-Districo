@@ -10,31 +10,41 @@ import {
 import {
   ArrowUpRight,
   BadgePercent,
+  Images,
   ClipboardList,
   Inbox,
   LayoutDashboard,
+  Menu,
   Package,
   Pencil,
   Plus,
   Save,
   Sparkles,
   Tags,
+  FolderTree,
   Trash2,
   UserPlus,
   Users,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
-import { DEMO, request, useApi, useSession } from "./providers";
+import { request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { CountUp } from "./count-up";
 import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
+import { AdminSales } from "./admin-sales";
+import { AdminBanners } from "./admin-banners";
+import { AdminStaff } from "./admin-staff";
+import { AdminBrandsLabs, AdminCategories } from "./admin-organization";
 import { orderBalance } from "@/lib/order-billing";
 import { orderProgressChoices, orderProgressOptionLabel } from "@/lib/order-progress";
 import { storeRoutes } from "@/lib/store-routes";
+import { adminProductEditor } from "@/lib/admin-product-editor";
+import { canSeeAdminSection } from "@/lib/staff-access";
 import {
   label,
   money,
@@ -61,9 +71,12 @@ const sections: [string, string, string, LucideIcon, string?][] = [
   ["Operación", "clientes", "Clientes", Users],
   ["Operación", "pedidos", "Pedidos", ClipboardList, "pendingReviewOrders"],
   ["Catálogo", "catalogo", "Catálogo", Package],
-  ["Catálogo", "organizacion", "Marcas y categorías", Tags],
+  ["Catálogo", "marcas", "Marcas y laboratorios", Tags],
+  ["Catálogo", "categorias", "Categorías", FolderTree],
   ["Marketing", "promociones", "Promociones", BadgePercent],
+  ["Marketing", "banners", "Banners", Images],
   ["Marketing", "recomendaciones", "Recomendaciones", Sparkles],
+  ["Acceso", "personal", "Personal", ShieldCheck],
 ];
 const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
@@ -102,12 +115,14 @@ const date = (key: string, title: string, required = true): Field => ({
 });
 type OpenEditor = (editor: Editor) => void;
 function Dashboard() {
+  const { user } = useSession();
   const q = useApi<Record<string, number>>("admin/dashboard");
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   return (
     <>
+      {user?.role !== "CATALOG" && <AdminSales />}
       <div className="stats">
         {(
           [
@@ -132,7 +147,7 @@ function Dashboard() {
             ],
             ["newContactInquiries", "Consultas nuevas", "consultas", Inbox],
           ] as const
-        ).map(([key, title, path, Icon]) => (
+        ).filter(([, , path]) => canSeeAdminSection(user?.role, path)).map(([key, title, path, Icon]) => (
           <Link className="card stat" href={storeRoutes.adminSection(path)} key={key}>
             <span className="stat-icon" aria-hidden="true">
               <Icon size={18} />
@@ -144,61 +159,67 @@ function Dashboard() {
           </Link>
         ))}
       </div>
-      <div className="panel" style={{ marginTop: 30 }}>
+      {(user?.role === "ADMIN" || user?.role === "SALES") && <div className="panel" style={{ marginTop: 30 }}>
         <h2>Un buen día empieza por lo importante.</h2>
         <p className="muted" style={{ marginTop: 14 }}>
           Revisá las solicitudes de nuevos comercios y los pedidos que necesitan
           tu atención.
         </p>
         <div className="actions">
-          <Link className="button" href={storeRoutes.adminSection("solicitudes")}>
+          {canSeeAdminSection(user?.role, "solicitudes") && <Link className="button" href={storeRoutes.adminSection("solicitudes")}>
             Revisar solicitudes <ArrowUpRight size={16} />
-          </Link>
-          <Link className="button secondary" href={storeRoutes.adminSection("pedidos")}>
+          </Link>}
+          {canSeeAdminSection(user?.role, "pedidos") && <Link className="button secondary" href={storeRoutes.adminSection("pedidos")}>
             Gestionar pedidos
-          </Link>
-          <Link className="button secondary" href={storeRoutes.adminSection("consultas")}>
+          </Link>}
+          {canSeeAdminSection(user?.role, "consultas") && <Link className="button secondary" href={storeRoutes.adminSection("consultas")}>
             Ver consultas
-          </Link>
+          </Link>}
         </div>
-      </div>
+      </div>}
     </>
   );
 }
 function ContactInquiries({ edit }: { edit: OpenEditor }) {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
   const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", "20");
   if (status) params.set("status", status);
-  if (search.trim()) params.set("search", search.trim());
-  const path = `admin/contact-inquiries${params.size ? `?${params}` : ""}`;
-  const q = useApi<ContactInquiry[]>(path);
+  if (debouncedSearch) params.set("search", debouncedSearch);
+  const q = useApi<{ items: ContactInquiry[]; meta: { total: number; page: number; limit: number } }>(`admin/contact-inquiries/page?${params}`);
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  const newCount = q.data.filter((item) => item.status === "NEW").length;
+  const newCount = q.data.items.filter((item) => item.status === "NEW").length;
   return (
     <>
       <div className="admin-toolbar contact-admin-toolbar">
         <div>
           <h2>Consultas comerciales</h2>
           <span className="muted small-copy">
-            {newCount} {newCount === 1 ? "nueva" : "nuevas"} · {q.data.length}{" "}
-            en esta vista
+            {newCount} {newCount === 1 ? "nueva" : "nuevas"} en esta página · {q.data.meta.total} en total
           </span>
         </div>
         <div className="contact-admin-filters">
           <input
             className="form-input"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             placeholder="Buscar nombre, comercio o mensaje"
             aria-label="Buscar consultas"
           />
           <select
             className="form-input"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => { setStatus(event.target.value); setPage(1); }}
             aria-label="Filtrar consultas por estado"
           >
             <option value="">Todos los estados</option>
@@ -208,11 +229,11 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
           </select>
         </div>
       </div>
-      {!q.data.length ? (
+      {!q.data.items.length ? (
         <Empty title="No hay consultas con estos filtros" />
       ) : (
         <div className="admin-cards contact-admin-list">
-          {q.data.map((inquiry) => (
+          {q.data.items.map((inquiry) => (
             <article className="card" key={inquiry.id}>
               <div className="row between">
                 <div>
@@ -278,28 +299,42 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
           ))}
         </div>
       )}
+      <AdminPagination meta={q.data.meta} onPage={setPage} />
     </>
   );
 }
 function Applications({ edit }: { edit: OpenEditor }) {
-  const q = useApi<Application[]>("admin/applications");
+  const { user } = useSession();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const q = useApi<{ items: Application[]; meta: { total: number; page: number; limit: number } }>(`admin/applications/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}${status ? `&status=${status}` : ""}`);
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  // Pendientes primero; el resto conserva el orden de la API.
-  const list = [
-    ...q.data.filter((a) => a.status === "PENDING"),
-    ...q.data.filter((a) => a.status !== "PENDING"),
-  ];
+  const list = q.data.items;
   const pending = list.filter((a) => a.status === "PENDING").length;
   return (
     <>
       <div className="admin-toolbar">
         <h2>Solicitudes de acceso</h2>
         <span className="muted small-copy">
-          {pending} {pending === 1 ? "pendiente" : "pendientes"} · {list.length}{" "}
-          en total
+          {pending} {pending === 1 ? "pendiente" : "pendientes"} en esta página · {q.data.meta.total} en total
         </span>
+        <div className="admin-order-filters">
+          <input className="form-input" type="search" aria-label="Buscar solicitudes" placeholder="Comercio, RUT o correo" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
+          <select className="form-input" aria-label="Filtrar solicitudes" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
+            <option value="">Todos los estados</option>
+            <option value="PENDING">Pendientes</option>
+            <option value="APPROVED">Aprobadas</option>
+            <option value="REJECTED">Rechazadas</option>
+          </select>
+        </div>
       </div>
       {!list.length ? (
         <Empty title="No hay solicitudes" />
@@ -342,7 +377,7 @@ function Applications({ edit }: { edit: OpenEditor }) {
                   )}
                 </p>
               ))}
-              {a.status === "PENDING" && (
+              {a.status === "PENDING" && user?.role === "ADMIN" && (
                 <div className="actions">
                   <button
                     className="button small"
@@ -382,18 +417,26 @@ function Applications({ edit }: { edit: OpenEditor }) {
           ))}
         </div>
       )}
+      <AdminPagination meta={q.data.meta} onPage={setPage} />
     </>
   );
 }
 function Customers({ edit }: { edit: OpenEditor }) {
-  const q = useApi<Customer[]>("admin/customers");
+  const { user } = useSession();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const q = useApi<{ items: Customer[]; meta: { total: number; page: number; limit: number } }>(
+    `admin/customers/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}`,
+  );
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  const rows = q.data.filter((c) =>
-    `${c.businessName} ${c.rut} ${c.phone ?? ""}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const rows = q.data.items;
   return (
     <>
       <div className="admin-toolbar">
@@ -401,29 +444,22 @@ function Customers({ edit }: { edit: OpenEditor }) {
         <input
           className="form-input"
           aria-label="Buscar clientes"
-          placeholder="Buscar comercio o RUT"
+          placeholder="Buscar comercio, RUT, correo o teléfono"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
       </div>
-      <div className="admin-cards">
-        {rows.map((c) => (
-          <article className="card" key={c.id}>
-            <h3>{c.businessName}</h3>
-            <p>
-              {c.legalName} · {c.rut}
-            </p>
-            <p>{c.users?.map((u) => u.email).join(", ")}</p>
-            <p>Teléfono: {c.phone || "Sin registrar"}</p>
-            <p>
-              <span className="status-pill">{label(c.accountStatus)}</span> ·{" "}
-              {label(c.creditStatus)}
-            </p>
-            <p>
-              Medicamentos:{" "}
-              {c.medicationPermission ? "Habilitado" : "No habilitado"}
-            </p>
-            <div className="actions">
+      {!!rows.length && <div className="table-wrap">
+        <table className="admin-customers-table">
+          <thead><tr><th>CLIENTE</th><th>CONTACTO</th><th>CUENTA</th><th>CRÉDITO</th><th>MEDICAMENTOS</th><th>ACCIÓN</th></tr></thead>
+          <tbody>{rows.map((c) => (
+          <tr key={c.id}>
+            <td><strong>{c.businessName}</strong><br /><span className="muted">{c.legalName} · {c.rut}</span></td>
+            <td>{c.users?.map((u) => u.email).join(", ") || "Sin correo"}<br /><span className="muted">{c.phone || "Sin teléfono"}</span></td>
+            <td><span className="status-pill">{label(c.accountStatus)}</span></td>
+            <td>{label(c.creditStatus)}</td>
+            <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
+            <td>{user?.role === "ADMIN" && (
               <button
                 className="button secondary small"
                 onClick={() =>
@@ -468,28 +504,38 @@ function Customers({ edit }: { edit: OpenEditor }) {
                         "Habilitar compra de medicamentos",
                       ),
                     ],
-                    // Límite del backend actual: la API relee permisos en cada
-                    // solicitud, pero no consulta accountStatus (docs/API.md).
-                    description: `El permiso de medicamentos se aplica desde la siguiente solicitud del cliente. Suspender la cuenta no bloquea su sesión ni sus pedidos en la API actual, que no verifica el estado de cuenta; para cortar el acceso hace falta un cambio en el backend.${DEMO ? " En esta demo, una cuenta suspendida no puede comprar." : ""}`,
+                    description: "Una cuenta suspendida puede ingresar y consultar su historial, pero no enviar pedidos nuevos.",
                   })
                 }
               >
                 <Pencil size={14} />
-                Editar cuenta
+                Editar
               </button>
-            </div>
-          </article>
-        ))}
-      </div>
+            )}</td>
+          </tr>
+        ))}</tbody></table>
+      </div>}
       {!rows.length && <Empty title="No encontramos clientes" />}
+      <AdminPagination meta={q.data.meta} onPage={setPage} />
     </>
+  );
+}
+function AdminPagination({ meta, onPage }: { meta: { total: number; page: number; limit: number }; onPage: (page: number) => void }) {
+  const pages = Math.max(1, Math.ceil(meta.total / meta.limit));
+  if (pages <= 1) return null;
+  return (
+    <div className="pagination">
+      <button className="button small secondary" disabled={meta.page <= 1} onClick={() => onPage(meta.page - 1)}>Anterior</button>
+      <span>Página {meta.page} de {pages} · {meta.total} registros</span>
+      <button className="button small secondary" disabled={meta.page >= pages} onClick={() => onPage(meta.page + 1)}>Siguiente</button>
+    </div>
   );
 }
 function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
   const { notify } = useSession();
   const [selected, setSelected] = useState(order.status);
   const [reviewReason, setReviewReason] = useState("");
-  const choices = orderProgressChoices(order.status, Number(order.paidTotal ?? 0));
+  const choices = orderProgressChoices(order.status, orderBalance(order).paid);
   const mutation = useMutation({
     mutationFn: () => request(`admin/orders/${order.id}/status`, "PATCH", {
       status: selected,
@@ -552,30 +598,34 @@ function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: (
   );
 }
 function AdminOrders() {
-  const q = useApi<Order[]>("admin/orders");
+  const { user } = useSession();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const q = useApi<{ items: Order[]; meta: { total: number; page: number; limit: number } }>(
+    `admin/orders/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}${status ? `&status=${status}` : ""}`,
+  );
+  const detailQuery = useApi<{ items: Order[]; meta: { total: number; page: number; limit: number } }>(
+    `admin/orders/page?page=1&limit=20&search=${encodeURIComponent(detailId ?? "")}`,
+    !!detailId,
+  );
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  const query = search.trim().toLowerCase();
-  const rows = q.data.filter((o) =>
-    (!status || o.status === status) &&
-    (!query || [o.id, o.orderNumber, o.customerAccount?.businessName,
-      o.customerAccount?.legalName, o.user?.email]
-      .some((value) => value?.toLowerCase().includes(query))),
-  );
-  // El detalle se lee de la lista vigente: tras un cambio muestra el estado nuevo.
-  const detail = q.data.find((o) => o.id === detailId);
-  const count = (key: string) => q.data.filter((o) => o.status === key).length;
+  const rows = q.data.items;
+  const detail = detailQuery.data?.items.find((order) => order.id === detailId) ?? rows.find((order) => order.id === detailId);
   return (
     <>
       <div className="admin-toolbar">
         <h2>Pedidos</h2>
         <span className="muted small-copy">
-          {rows.length} {rows.length === 1 ? "pedido" : "pedidos"}
-          {status || query ? ` · ${q.data.length} en total` : ""}
+          {q.data.meta.total} {q.data.meta.total === 1 ? "pedido" : "pedidos"}
         </span>
         <div className="admin-order-filters">
           <input
@@ -584,20 +634,18 @@ function AdminOrders() {
             aria-label="Buscar pedidos"
             placeholder="ID, cliente o correo"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
           <select
             className="form-input"
             aria-label="Filtrar estado de pedidos"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
           >
             <option value="">Todos los estados</option>
-            {orderStatuses
-              .filter((key) => key !== "DRAFT" || count(key))
-              .map((key) => (
+            {orderStatuses.map((key) => (
                 <option value={key} key={key}>
-                  {label(key)} ({count(key)})
+                  {label(key)}
                 </option>
               ))}
           </select>
@@ -651,17 +699,14 @@ function AdminOrders() {
         </div>
       ) : (
         <Empty
-          title={
-            q.data.length
-              ? query
-                ? "No hay pedidos que coincidan con la búsqueda"
-                : "No hay pedidos en este estado"
-              : "Todavía no hay pedidos"
-          }
+          title={debouncedSearch
+            ? "No hay pedidos que coincidan con la búsqueda"
+            : status ? "No hay pedidos en este estado" : "Todavía no hay pedidos"}
         />
       )}
+      <AdminPagination meta={q.data.meta} onPage={setPage} />
       <Modal
-        open={!!detail}
+        open={!!detailId}
         onClose={() => setDetailId(null)}
         title={detail ? `Gestionar ${detail.orderNumber}` : "Gestionar pedido"}
       >
@@ -699,19 +744,25 @@ function AdminOrders() {
                   <dd>{label(detail.reviewReason)}</dd>
                 </div>
               )}
+              {detail.deliveryAddress && (
+                <div>
+                  <dt>Entrega{detail.deliveryLabel ? ` · ${detail.deliveryLabel}` : ""}</dt>
+                  <dd>{[detail.deliveryAddress, detail.deliveryCity, detail.deliveryDepartment].filter(Boolean).join(", ")}</dd>
+                </div>
+              )}
             </dl>
-            <OrderProgressControl
+            {(user?.role === "ADMIN" || user?.role === "SALES") && <OrderProgressControl
               key={`${detail.id}-${detail.status}`}
               order={detail}
-              onUpdated={async () => { await q.refetch(); }}
-            />
-            <OrderBilling
+              onUpdated={async () => { await Promise.all([q.refetch(), detailQuery.refetch()]); }}
+            />}
+            {(user?.role === "ADMIN" || user?.role === "FINANCE") && <OrderBilling
               key={detail.id}
               order={detail}
               onUpdated={async () => {
-                await q.refetch();
+                await Promise.all([q.refetch(), detailQuery.refetch()]);
               }}
-            />
+            />}
             <p className="muted small-copy" style={{ marginTop: 12 }}>
               Importes registrados al confirmar el pedido; no cambian con
               precios posteriores.
@@ -729,71 +780,13 @@ function AdminOrders() {
 function ProductManagement({ edit }: { edit: OpenEditor }) {
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
-    [selectedSlug, setSelectedSlug] = useState("");
+    [activity, setActivity] = useState("");
   const q = useApi<ProductList>(
-    `products?limit=12&page=${page}&search=${encodeURIComponent(search)}`,
+    `products/admin/list?limit=12&page=${page}&search=${encodeURIComponent(search)}${activity ? `&active=${activity}` : ""}`,
   );
-  const detail = useApi<Product>(`products/${selectedSlug}`, !!selectedSlug);
   const brands = useApi<Entity[]>("brands"),
-    categories = useApi<Entity[]>("categories"),
+    categories = useApi<Entity[]>("categories/catalog"),
     labs = useApi<Entity[]>("laboratories");
-  const productFields: Field[] = [
-    text("name", "Nombre"),
-    text("slug", "Identificador en la URL", false),
-    { key: "shortDescription", label: "Descripción breve", type: "textarea" },
-    { key: "description", label: "Descripción", type: "textarea" },
-    select(
-      "productType",
-      "Tipo de producto",
-      options([
-        "FOOD",
-        "HYGIENE",
-        "ACCESSORY",
-        "MEDICATION",
-        "SUPPLEMENT",
-        "OTHER",
-      ]),
-    ),
-    select(
-      "source",
-      "Proveedor de origen",
-      options(["DISTRICO", "RAICOR", "MAGNIS"]),
-      false,
-    ),
-    select("brandId", "Marca", entities(brands.data), false),
-    select("laboratoryId", "Laboratorio", entities(labs.data), false),
-    select("categoryId", "Categoría principal", entities(categories.data)),
-    bool("requiresMedicationPermission", "Requiere permiso para medicamentos"),
-    bool("featured", "Mostrar entre destacados"),
-    bool("active", "Producto activo"),
-  ];
-  function productEditor(p?: Product) {
-    edit({
-      title: p ? "Editar producto" : "Crear producto",
-      path: p ? `products/${p.id}` : "products",
-      method: p ? "PATCH" : "POST",
-      fields: productFields,
-      initial: p
-        ? {
-            ...p,
-            brandId: p.brand?.id,
-            laboratoryId: p.laboratory?.id,
-            categoryId: p.categories[0]?.categoryId,
-          }
-        : { active: true, productType: "OTHER", source: "DISTRICO" },
-      transform: ({ categoryId, ...data }) => ({
-        ...data,
-        categoryIds: categoryId
-          ? [
-              String(categoryId),
-              ...(p?.categories.slice(1).map((c) => c.categoryId) ?? []),
-            ]
-          : (p?.categories.map((c) => c.categoryId) ?? []),
-      }),
-      description:
-        "La API pública lista productos activos. Conservá activo el producto para poder volver a encontrarlo en esta versión.",
-    });
-  }
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
@@ -801,7 +794,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
     <>
       <div className="admin-toolbar">
         <h2>Catálogo y existencias</h2>
-        <button className="button small" onClick={() => productEditor()}>
+        <button className="button small" onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data))}>
           <Plus size={16} />
           Crear producto
         </button>
@@ -823,6 +816,14 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
         />
         <button className="button small">Buscar</button>
       </form>
+      <div className="admin-status-filter" role="group" aria-label="Estado de productos">
+        {[["", "Todos"], ["true", "Activos"], ["false", "Inactivos"]].map(([value, title]) => (
+          <button key={title} className={activity === value ? "button small" : "button small secondary"} type="button"
+            onClick={() => { setActivity(value); setPage(1); }}>
+            {title}
+          </button>
+        ))}
+      </div>
       <div className="table-wrap">
         <table>
           <thead>
@@ -830,12 +831,16 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
               <th>PRODUCTO</th>
               <th>MARCA</th>
               <th>PRESENTACIONES</th>
+              <th>STOCK</th>
               <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody>
-            {q.data.items.map((p) => (
-              <tr key={p.id}>
+            {q.data.items.map((p) => {
+              const availableStock = p.variants
+                .filter((variant) => variant.active !== false)
+                .reduce((total, variant) => total + variant.availableStock, 0);
+              return <tr key={p.id}>
                 <td>
                   <div className="row">
                     <Picture
@@ -848,28 +853,19 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                       style={{ width: 42, height: 42, objectFit: "contain" }}
                     />
                     <strong>{p.name}</strong>
+                    <span className="status-pill">{p.active === false ? "Inactivo" : "Activo"}</span>
                   </div>
                 </td>
                 <td>{p.brand?.name ?? p.laboratory?.name ?? "—"}</td>
                 <td>{p.variants.length}</td>
+                <td><strong>{availableStock}</strong> uds.</td>
                 <td>
-                  <div className="row">
-                    <button
-                      className="button small secondary"
-                      onClick={() => productEditor(p)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="button small secondary"
-                      onClick={() => setSelectedSlug(p.slug)}
-                    >
-                      Presentaciones e imágenes
-                    </button>
-                  </div>
+                  <Link className="button small secondary" href={storeRoutes.adminProduct(p.slug)}>
+                    <Pencil size={15} /> Editar producto
+                  </Link>
                 </td>
               </tr>
-            ))}
+            })}
           </tbody>
         </table>
       </div>
@@ -890,30 +886,10 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
           Siguiente
         </button>
       </div>
-      {selectedSlug && (
-        <div className="panel" style={{ marginTop: 30 }}>
-          <div className="row between">
-            <h2>Presentaciones e imágenes</h2>
-            <button
-              className="button secondary small"
-              onClick={() => setSelectedSlug("")}
-            >
-              Cerrar detalle
-            </button>
-          </div>
-          {detail.isPending ? (
-            <Loading />
-          ) : detail.error ? (
-            <ErrorBox error={detail.error} />
-          ) : (
-            <VariantManagement product={detail.data} edit={edit} />
-          )}
-        </div>
-      )}
     </>
   );
 }
-function VariantManagement({
+export function VariantManagement({
   product,
   edit,
 }: {
@@ -1138,81 +1114,6 @@ function VariantManagement({
     </>
   );
 }
-function Organization({ edit }: { edit: OpenEditor }) {
-  const brands = useApi<Entity[]>("brands"),
-    labs = useApi<Entity[]>("laboratories"),
-    categories = useApi<Entity[]>("categories");
-  return (
-    <div className="stack">
-      {[
-        ["brands", "Marcas", brands],
-        ["laboratories", "Laboratorios", labs],
-        ["categories", "Categorías", categories],
-      ].map(([path, title, query]) => {
-        const q = query as typeof brands;
-        const fields = [
-          text("name", "Nombre"),
-          text("slug", "Identificador en la URL", false),
-          ...(path === "categories"
-            ? [
-                select(
-                  "parentId",
-                  "Categoría superior",
-                  entities(categories.data),
-                  false,
-                ),
-              ]
-            : []),
-        ];
-        return (
-          <div key={String(path)} className="card">
-            <div className="admin-toolbar">
-              <h2>{String(title)}</h2>
-              <button
-                className="button small"
-                onClick={() =>
-                  edit({
-                    title: `Crear · ${title}`,
-                    path: String(path),
-                    fields,
-                  })
-                }
-              >
-                Crear
-              </button>
-            </div>
-            {q.isPending ? (
-              <Loading />
-            ) : q.error ? (
-              <ErrorBox error={q.error} />
-            ) : (
-              <div className="row">
-                {q.data.map((item) => (
-                  <button
-                    className="chip"
-                    key={item.id}
-                    onClick={() =>
-                      edit({
-                        title: `Editar ${item.name}`,
-                        path: `${path}/${item.id}`,
-                        method: "PATCH",
-                        fields,
-                        initial: { ...item },
-                      })
-                    }
-                  >
-                    {item.name}
-                    <Pencil size={12} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 function Marketing({
   edit,
   recommendations = false,
@@ -1224,7 +1125,7 @@ function Marketing({
   const q = useApi<Rule[]>(path);
   const products = useApi<ProductList>("products?limit=100");
   const brands = useApi<Entity[]>("brands"),
-    categories = useApi<Entity[]>("categories"),
+    categories = useApi<Entity[]>("categories/catalog"),
     labs = useApi<Entity[]>("laboratories");
   const expiration = useApi<Expiration[]>(
     "promotions/expiration",
@@ -1498,11 +1399,25 @@ function Marketing({
     </>
   );
 }
-function AdminNav({ section, email }: { section: string; email?: string }) {
+export function AdminNav({ section, email, role }: { section: string; email?: string; role?: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CLIENT" }) {
   // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
   const counts = useApi<Record<string, number>>("admin/dashboard");
+  const [collapsed, setCollapsed] = useState(false);
   const nav = useRef<HTMLElement>(null);
   const indicator = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try { setCollapsed(window.localStorage.getItem("districo-admin-nav-collapsed") === "true"); }
+      catch { /* El menú sigue funcionando si el almacenamiento está deshabilitado. */ }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { window.localStorage.setItem("districo-admin-nav-collapsed", String(next)); }
+    catch { /* La preferencia es opcional. */ }
+  };
   // En móvil la navegación es una franja con scroll: centra la sección activa
   // moviendo solo la franja, no la página.
   useEffect(() => {
@@ -1537,26 +1452,39 @@ function AdminNav({ section, email }: { section: string; email?: string }) {
       cancelAnimationFrame(ready);
       resize.disconnect();
     };
-  }, [section, counts.data]);
+  }, [section, counts.data, collapsed]);
   return (
-    <aside className="admin-sidebar">
+    <aside className="admin-sidebar" data-collapsed={collapsed}>
       <div className="admin-sidebar-head">
-        <strong>Administración</strong>
-        {email && <span>{email}</span>}
+        <div className="admin-sidebar-identity">
+          <strong>Administración</strong>
+          {email && <span>{email}</span>}
+        </div>
+        <button
+          type="button"
+          className="admin-sidebar-toggle"
+          aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+          title={collapsed ? "Expandir menú" : "Contraer menú"}
+          aria-expanded={!collapsed}
+          aria-controls="admin-navigation"
+          onClick={toggleCollapsed}
+        ><Menu size={20} /></button>
       </div>
-      <nav className="admin-nav" aria-label="Administración" ref={nav}>
+      <nav className="admin-nav" aria-label="Administración" id="admin-navigation" ref={nav}>
         <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
-        {groups.map((group) => (
+        {groups.filter((group) => sections.some(([g, path]) => g === group && canSeeAdminSection(role, path))).map((group) => (
           <div className="admin-nav-group" key={group}>
             <p>{group}</p>
             {sections
-              .filter(([g]) => g === group)
+              .filter(([g, path]) => g === group && canSeeAdminSection(role, path))
               .map(([, path, title, Icon, countKey]) => {
                 const count = countKey ? (counts.data?.[countKey] ?? 0) : 0;
                 return (
                   <Link
                     className={section === path ? "active" : ""}
                     aria-current={section === path ? "page" : undefined}
+                    aria-label={title}
+                    title={collapsed ? title : undefined}
                     href={path ? storeRoutes.adminSection(path) : storeRoutes.admin}
                     key={path}
                   >
@@ -1592,12 +1520,18 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
     <AdminOrders />
   ) : section === "catalogo" ? (
     <ProductManagement edit={edit} />
-  ) : section === "organizacion" ? (
-    <Organization edit={edit} />
+  ) : section === "marcas" ? (
+    <AdminBrandsLabs edit={edit} />
+  ) : section === "categorias" ? (
+    <AdminCategories edit={edit} />
   ) : section === "promociones" ? (
     <Marketing edit={edit} />
+  ) : section === "banners" ? (
+    <AdminBanners />
   ) : section === "recomendaciones" ? (
     <Marketing edit={edit} recommendations />
+  ) : section === "personal" ? (
+    <AdminStaff />
   ) : (
     <Empty title="Sección no disponible" />
   );
@@ -1610,7 +1544,7 @@ export function Admin({ section = "" }: { section?: string }) {
     <div className="container admin-page section">
       <AccessGate admin>
         <div className="admin-shell">
-          <AdminNav section={section} email={user?.email} />
+          <AdminNav section={section} email={user?.email} role={user?.role} />
           <div className="admin-main">
             {/* Cada sección entra con su propia transición (motion.css); la
                 barra lateral queda fija. */}
@@ -1629,7 +1563,7 @@ export function Admin({ section = "" }: { section?: string }) {
                       : "Tu operación, en un solo lugar."
                   }
                 />
-                <AdminSection section={section} edit={setEditor} />
+                {canSeeAdminSection(user?.role, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
               </div>
             </ViewTransition>
           </div>

@@ -4,7 +4,10 @@ export const money = (value: number | string, currency = "UYU") =>
     Number(value),
   );
 export const can = (user: User | null | undefined, permission: Permission) =>
-  !!user && (user.role === "ADMIN" || user.permissions.includes(permission));
+  !!user &&
+  (user.role === "ADMIN" ||
+    (user.role === "CLIENT" && user.permissions.includes(permission) &&
+      (permission !== "CAN_PLACE_ORDERS" || user.customerAccount?.accountStatus === "APPROVED")));
 // Igual que la API: el carrito exige ver precios y comprar, y los productos de
 // uso profesional, además, el permiso de medicamentos.
 export const canBuy = (
@@ -59,6 +62,7 @@ export const labels: Record<string, string> = {
   PAYMENT_DELAY: "Pago atrasado",
   PAYMENT_PENDING: "Pago pendiente",
   RESTRICTED: "Restringido",
+  CREDIT_LIMIT_EXCEEDED: "Supera el límite de crédito; requiere revisión",
   NEW: "Nueva",
   IN_PROGRESS: "En seguimiento",
   RESOLVED: "Resuelta",

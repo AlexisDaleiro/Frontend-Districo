@@ -28,13 +28,18 @@ export class ContactInquiriesController {
 @ApiBearerAuth()
 @Controller('admin/contact-inquiries')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.SALES)
 export class AdminContactInquiriesController {
   constructor(private readonly inquiries: ContactInquiriesService) {}
 
   @Get()
   findMany(@Query() query: ContactInquiryQueryDto) {
     return this.inquiries.findMany(query);
+  }
+
+  @Get('page')
+  findPage(@Query() query: ContactInquiryQueryDto) {
+    return this.inquiries.findPage(query);
   }
 
   @Patch(':id')

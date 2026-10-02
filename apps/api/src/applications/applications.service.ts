@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CustomerApplicationStatus, Permission, Role } from '@prisma/client';
+import { CustomerApplicationStatus, Permission, Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
+import { ApplicationListQueryDto } from '../admin/dto/application-list-query.dto';
 
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']);
 
@@ -65,6 +66,31 @@ export class ApplicationsService {
       orderBy: { createdAt: 'desc' },
       include: { documents: true },
     });
+  }
+
+  async findPage(query: ApplicationListQueryDto) {
+    const search = query.search?.trim();
+    const where: Prisma.CustomerApplicationWhereInput = {
+      status: query.status,
+      OR: search ? [
+        { businessName: { contains: search, mode: 'insensitive' } },
+        { legalName: { contains: search, mode: 'insensitive' } },
+        { rut: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { contactName: { contains: search, mode: 'insensitive' } },
+      ] : undefined,
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.customerApplication.findMany({
+        where,
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        select: { id: true, businessName: true, legalName: true, rut: true, email: true, contactName: true, phone: true, address: true, city: true, department: true, businessType: true, requestedMedicationPermission: true, status: true, rejectionReason: true, createdAt: true, documents: { select: { type: true, fileUrl: true, originalName: true } } },
+      }),
+      this.prisma.customerApplication.count({ where }),
+    ]);
+    return { items, meta: { total, page: query.page, limit: query.limit } };
   }
 
   async approve(id: string, reviewedById: string, medicationPermission = false) {

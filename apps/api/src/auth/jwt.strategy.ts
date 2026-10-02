@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../users/users.service';
 import { JwtUser } from '../common/types/jwt-user.type';
+import { effectivePermissions } from '../common/business/account-access';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -27,7 +28,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sub: user.id,
       email: user.email,
       role: user.role,
-      permissions: user.permissions.map((permission) => permission.permission),
+      permissions: effectivePermissions(
+        user.role,
+        user.customerAccount?.accountStatus,
+        user.permissions.map((permission) => permission.permission),
+      ),
       customerAccountId: user.customerAccountId,
     };
   }

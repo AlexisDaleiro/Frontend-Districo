@@ -13,7 +13,7 @@ import { RecommendationsService } from './recommendations.service';
 @ApiBearerAuth()
 @Controller('recommendations')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.CATALOG)
 export class RecommendationsController {
   constructor(private readonly recommendationsService: RecommendationsService) {}
 

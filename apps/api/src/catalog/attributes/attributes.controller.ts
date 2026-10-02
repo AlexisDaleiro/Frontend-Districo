@@ -21,7 +21,7 @@ export class AttributesController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   createDefinition(@Body() dto: CreateAttributeDefinitionDto) {
     return this.attributesService.createDefinition(dto);
   }
@@ -29,7 +29,7 @@ export class AttributesController {
   @Post(':attributeId/values')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   createValue(@Param('attributeId') attributeId: string, @Body() dto: CreateAttributeValueDto) {
     return this.attributesService.createValue(attributeId, dto);
   }

@@ -8,6 +8,7 @@ import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guar
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtUser } from '../../common/types/jwt-user.type';
 import { CreateProductMediaDto } from './dto/create-product-media.dto';
+import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { ProductFilterDto } from './dto/product-filter.dto';
@@ -33,10 +34,26 @@ export class ProductsController {
     return this.productsService.findCards(filters, user);
   }
 
+  @Get('admin/list')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  findAdminMany(@Query() filters: AdminProductFilterDto) {
+    return this.productsService.findAdminMany(filters);
+  }
+
+  @Get('admin/:slug')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  findAdminBySlug(@Param('slug') slug: string) {
+    return this.productsService.findAdminBySlug(slug);
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
@@ -44,7 +61,7 @@ export class ProductsController {
   @Post(':id/variants')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   createVariant(@Param('id') id: string, @Body() dto: CreateVariantDto) {
     return this.productsService.createVariant(id, dto);
   }
@@ -52,7 +69,7 @@ export class ProductsController {
   @Patch('variants/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   updateVariant(@Param('id') id: string, @Body() dto: UpdateVariantDto) {
     return this.productsService.updateVariant(id, dto);
   }
@@ -60,7 +77,7 @@ export class ProductsController {
   @Post(':id/media')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   createMedia(@Param('id') id: string, @Body() dto: CreateProductMediaDto) {
     return this.productsService.createMedia(id, dto);
   }
@@ -68,7 +85,7 @@ export class ProductsController {
   @Patch('media/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   updateMedia(@Param('id') id: string, @Body() dto: UpdateProductMediaDto) {
     return this.productsService.updateMedia(id, dto);
   }
@@ -76,7 +93,7 @@ export class ProductsController {
   @Delete('media/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   deleteMedia(@Param('id') id: string) {
     return this.productsService.deleteMedia(id);
   }
@@ -84,7 +101,7 @@ export class ProductsController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CATALOG)
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }

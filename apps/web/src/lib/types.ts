@@ -34,10 +34,12 @@ export type Customer = {
 export type User = {
   id: string;
   email: string;
-  role: "ADMIN" | "CLIENT";
+  role: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CLIENT";
   permissions: Permission[];
   customerAccount?: Customer;
   active?: boolean;
+  emailVerified?: boolean;
+  demoPasswordHash?: string;
 };
 export type Variant = {
   id: string;
@@ -121,16 +123,25 @@ export type Order = {
   createdAt: string;
   total: number;
   paidTotal?: number | string;
+  creditedTotal?: number | string;
+  refundedTotal?: number | string;
   subtotal: number;
   discountTotal: number;
   currency: string;
   requiresManualReview?: boolean;
   acceptedManualReview?: boolean;
   reviewReason?: string | null;
+  deliveryAddressId?: string | null;
+  deliveryLabel?: string | null;
+  deliveryAddress?: string | null;
+  deliveryCity?: string | null;
+  deliveryDepartment?: string | null;
   customerAccount?: Customer;
   user?: { email: string };
-  payments?: { id: string; amount: number | string; createdAt: string }[];
-  invoices?: { id: string; invoiceNumber?: string | null; originalName?: string | null; mimeType?: string | null; size?: number | null; createdAt: string }[];
+  payments?: { id: string; amount: number | string; createdAt: string; recordedByEmail?: string | null; voidedAt?: string | null; voidedByEmail?: string | null; voidReason?: string | null }[];
+  invoices?: { id: string; invoiceNumber?: string | null; originalName?: string | null; mimeType?: string | null; size?: number | null; createdAt: string; uploadedByEmail?: string | null; voidedAt?: string | null; voidedByEmail?: string | null; voidReason?: string | null; replacesInvoiceId?: string | null; replacementReason?: string | null }[];
+  creditNotes?: { id: string; amount: number | string; noteNumber?: string | null; reason: string; originalName?: string | null; createdAt: string; recordedByEmail?: string | null }[];
+  refunds?: { id: string; amount: number | string; reason: string; reference?: string | null; createdAt: string; recordedByEmail?: string | null }[];
   items: {
     id?: string;
     variantId: string;

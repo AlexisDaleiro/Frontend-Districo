@@ -13,7 +13,7 @@ import { PricingService } from './pricing.service';
 @ApiBearerAuth()
 @Controller('pricing')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.CATALOG)
 export class PricingController {
   constructor(private readonly pricingService: PricingService) {}
 

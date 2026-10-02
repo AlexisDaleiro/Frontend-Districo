@@ -14,7 +14,7 @@ import { PromotionsService } from './promotions.service';
 @ApiBearerAuth()
 @Controller('promotions')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.CATALOG)
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 

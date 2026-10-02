@@ -3,6 +3,7 @@ import { Permission, ProductSource, ProductType, Role, UnitOfMeasure } from '@pr
 import { JwtUser } from '../../common/types/jwt-user.type';
 import { slugify } from '../../common/utils/slugify';
 import { CreateProductMediaDto } from './dto/create-product-media.dto';
+import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { ProductFilterDto } from './dto/product-filter.dto';
@@ -21,6 +22,17 @@ export class ProductsService {
   async findMany(filters: ProductFilterDto, user?: JwtUser | null) {
     const result = await this.productsRepository.findMany(filters);
     return { ...result, items: result.items.map((product) => this.toPublicProduct(product, user)) };
+  }
+
+  async findAdminMany(filters: AdminProductFilterDto) {
+    const result = await this.productsRepository.findMany(filters, true);
+    return { ...result, items: result.items.map((product) => ({ ...this.toPublicProduct(product, { role: Role.ADMIN } as JwtUser), source: product.source })) };
+  }
+
+  async findAdminBySlug(slug: string) {
+    const product = await this.productsRepository.findBySlug(slug, true);
+    if (!product) throw new NotFoundException('Producto no encontrado.');
+    return { ...this.toPublicProduct(product, { role: Role.ADMIN } as JwtUser), source: product.source };
   }
 
   async findCards(filters: ProductFilterDto, user?: JwtUser | null) {

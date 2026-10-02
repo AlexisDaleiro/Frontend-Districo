@@ -1,7 +1,11 @@
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CheckoutDto {
   @IsOptional()
   @IsBoolean()
   acceptManualReview?: boolean;
+
+  @IsOptional()
+  @IsString()
+  deliveryAddressId?: string;
 }

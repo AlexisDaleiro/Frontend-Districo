@@ -9,6 +9,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { AcceptStaffInvitationDto } from './dto/accept-staff-invitation.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -39,6 +40,12 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('staff-invitations/accept')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  acceptStaffInvitation(@Body() dto: AcceptStaffInvitationDto) {
+    return this.authService.acceptStaffInvitation(dto);
   }
 
   @Get('me')

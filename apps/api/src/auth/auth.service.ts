@@ -3,11 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { Permission, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { createHash } from 'node:crypto';
+import { AcceptStaffInvitationDto } from './dto/accept-staff-invitation.dto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { effectivePermissions } from '../common/business/account-access';
 
 export interface TokenPayload {
   sub: string;
@@ -41,7 +45,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      permissions: user.permissions.map((permission) => permission.permission),
+      permissions: effectivePermissions(user.role, user.customerAccount?.accountStatus, user.permissions.map((permission) => permission.permission)),
       customerAccountId: user.customerAccountId,
     });
   }
@@ -83,7 +87,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      permissions: user.permissions.map((permission) => permission.permission),
+      permissions: effectivePermissions(user.role, user.customerAccount?.accountStatus, user.permissions.map((permission) => permission.permission)),
       customerAccountId: user.customerAccountId,
     });
   }
@@ -138,13 +142,45 @@ export class AuthService {
     return { success: true };
   }
 
+  async acceptStaffInvitation(dto: AcceptStaffInvitationDto) {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    const passwordHash = await bcrypt.hash(dto.password, Number(this.config.get<string>('BCRYPT_SALT_ROUNDS') ?? 10));
+    return this.prisma.$transaction(async (tx) => {
+      const invitation = await tx.staffInvitation.findUnique({
+        where: { tokenHash },
+        include: { user: { select: { id: true, email: true, role: true, active: true, emailVerified: true, customerAccountId: true } } },
+      });
+      if (!invitation || invitation.acceptedAt || invitation.revokedAt || invitation.expiresAt <= new Date() ||
+          invitation.user.active || invitation.user.emailVerified || invitation.user.customerAccountId || invitation.user.role === Role.CLIENT) {
+        throw new UnauthorizedException('Invitación inválida o vencida. Solicitá un enlace nuevo.');
+      }
+      const consumed = await tx.staffInvitation.updateMany({
+        where: { id: invitation.id, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+        data: { acceptedAt: new Date() },
+      });
+      if (consumed.count !== 1) throw new UnauthorizedException('Invitación ya utilizada.');
+      await tx.user.update({ where: { id: invitation.userId }, data: { passwordHash, active: true, emailVerified: true } });
+      await tx.refreshToken.updateMany({ where: { userId: invitation.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await tx.auditLog.create({ data: {
+        action: 'STAFF_INVITATION_ACCEPTED', entityType: 'User', entityId: invitation.userId,
+        userId: invitation.userId, metadata: { email: invitation.user.email, role: invitation.user.role },
+      } });
+      return { success: true };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   async me(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new UnauthorizedException();
     }
     const { passwordHash: _passwordHash, ...safeUser } = user;
-    return safeUser;
+    return {
+      ...safeUser,
+      permissions: safeUser.permissions.filter((permission) =>
+        effectivePermissions(user.role, user.customerAccount?.accountStatus, [permission.permission]).length > 0,
+      ),
+    };
   }
 
   private async issueTokenPair(payload: TokenPayload) {

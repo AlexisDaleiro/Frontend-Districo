@@ -32,9 +32,11 @@ export type Editor = {
 export function AdminForm({
   editor,
   onDone,
+  onCancel,
 }: {
   editor: Editor;
-  onDone: () => void;
+  onDone: (result?: unknown) => void;
+  onCancel?: () => void;
 }) {
   const form = useForm<Record<string, unknown>>({
     defaultValues: editor.initial,
@@ -109,7 +111,7 @@ export function AdminForm({
       );
       await client.invalidateQueries();
       notify(editor.success?.(result) ?? "Cambios guardados.");
-      onDone();
+      onDone(result);
     } catch (e) {
       setError(e);
       // Ante un error (también incierto) se relee lo que quedó en la API.
@@ -174,7 +176,7 @@ export function AdminForm({
           type="button"
           className="button secondary"
           disabled={form.formState.isSubmitting}
-          onClick={onDone}
+          onClick={() => (onCancel ?? onDone)()}
         >
           Cancelar
         </button>
