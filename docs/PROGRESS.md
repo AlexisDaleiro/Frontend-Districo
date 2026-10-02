@@ -10,6 +10,11 @@
 - Verificado: `npm run typecheck -w apps/web`, `npm run lint -w apps/web`, `npm run test -w apps/web` (**55/55**) y build de producción en modo real, correctos. `landing.spec.ts` en modo demo: **12/12**. Capturas revisadas a 390 y 1440 px. En el build de producción, `PerformanceObserver` registró CLS **0** y desborde horizontal **0** a 390 y 1440 px, incluida la llegada de las marcas reales (31 en el entorno consultado). No se hizo commit ni push.
 - Pendiente: aprobación visual del usuario para las fotos decorativas generadas. Si se retoca la sección, siguiente comando: `$env:E2E_PORT='3105'; npm run test:e2e -w apps/web -- landing.spec.ts`.
 
+## Mejora: color por estado en `.status-pill` (01/10)
+
+- Las pills que muestran un código de estado llevan `data-status` (`admin.tsx`: consultas, solicitudes, clientes y pedidos; `orders.tsx`: pedidos del cliente). `globals.css` colorea `APPROVED` en verde (#2f5d0f sobre #d3ecc0), `PROCESSING` en azul (#1f4f7a sobre #dbe9f5) y `REJECTED`/`CANCELLED` en rojo (#9a3535, mismo tono que `.button.danger`, sobre #f6dcdc). Contraste 5,5 a 6,9:1. El resto de estados conserva el estilo anterior.
+- Verificado: typecheck, lint y `npm run test -w apps/web` (58/58) pasaron. Sin revisión visual en admin ni en cuenta.
+
 ## Corrección: carrusel de marcas sin desborde a la derecha; más aire en el header (01/10)
 
 - `site-brands.tsx`: el riel (y su estado de carga) usa `.container`, así que las tarjetas se recortan en el borde del contenido en vez de llegar al borde de la ventana. `site.css`: se quitan los `padding-inline`/`scroll-padding-inline` calculados con `100vw` y las flechas quedan a 8px dentro del riel.

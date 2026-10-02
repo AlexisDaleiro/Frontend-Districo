@@ -565,6 +565,7 @@ function OrdersContent({ id }: { id?: string }) {
             </div>
             <span
               className={`status-pill ${order.status === "PENDING_REVIEW" ? "pending" : ""}`}
+              data-status={order.status}
             >
               {label(order.status)}
             </span>

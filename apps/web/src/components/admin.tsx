@@ -242,7 +242,7 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
                   <h3>{inquiry.businessName || inquiry.name}</h3>
                   {inquiry.businessName && <p>{inquiry.name}</p>}
                 </div>
-                <span className="status-pill">{label(inquiry.status)}</span>
+                <span className="status-pill" data-status={inquiry.status}>{label(inquiry.status)}</span>
               </div>
               <p>
                 <a className="text-link" href={`mailto:${inquiry.email}`}>
@@ -346,7 +346,7 @@ function Applications({ edit }: { edit: OpenEditor }) {
             <article className="card" key={a.id}>
               <div className="row between">
                 <h3>{a.businessName}</h3>
-                <span className="status-pill">{label(a.status)}</span>
+                <span className="status-pill" data-status={a.status}>{label(a.status)}</span>
               </div>
               <p>
                 {a.legalName} · RUT {a.rut}
@@ -458,7 +458,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
           <tr key={c.id}>
             <td><strong>{c.businessName}</strong><br /><span className="muted">{c.legalName} · {c.rut}</span></td>
             <td>{c.users?.map((u) => u.email).join(", ") || "Sin correo"}<br /><span className="muted">{c.phone || "Sin teléfono"}</span></td>
-            <td><span className="status-pill">{label(c.accountStatus)}</span></td>
+            <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
             <td>{label(c.creditStatus)}</td>
             <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
             <td>{user?.role === "ADMIN" && (
@@ -681,7 +681,7 @@ function AdminOrders() {
                   </td>
                   <td>{o.user?.email || o.customerAccount?.businessName || "Sin correo"}</td>
                   <td>
-                    <span className="status-pill">{label(o.status)}</span>
+                    <span className="status-pill" data-status={o.status}>{label(o.status)}</span>
                   </td>
                   <td>{money(o.total, o.currency)}</td>
                   <td>{money(orderBalance(o).paid, o.currency)}</td>

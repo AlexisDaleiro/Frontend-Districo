@@ -1354,6 +1354,19 @@ footer :focus-visible {
   background: #fbefdb;
   color: #826013;
 }
+.status-pill[data-status="APPROVED"] {
+  background: #d3ecc0;
+  color: #2f5d0f;
+}
+.status-pill[data-status="PROCESSING"] {
+  background: #dbe9f5;
+  color: #1f4f7a;
+}
+.status-pill[data-status="REJECTED"],
+.status-pill[data-status="CANCELLED"] {
+  background: #f6dcdc;
+  color: #9a3535;
+}
 .detail-buy {
   background: var(--paper);
   border-radius: 10px;
