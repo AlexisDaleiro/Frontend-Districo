@@ -137,15 +137,35 @@ test("movimiento reducido deja marcas estáticas y sin bucles", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".site-brand-track")).toHaveCSS(
-    "animation-name",
-    "none",
-  );
+  await expect(page.locator(".site-brand-card").first()).toBeVisible();
+  const initialScroll = await page
+    .locator(".site-brands-rail")
+    .evaluate((node) => node.scrollLeft);
+  await page.waitForTimeout(450);
+  expect(
+    await page.locator(".site-brands-rail").evaluate((node) => node.scrollLeft),
+  ).toBe(initialScroll);
   await expect(page.locator(".site-hero-orbit")).toHaveCSS(
     "animation-name",
     "none",
   );
-  await expect(
-    page.locator(".site-brand-track [aria-hidden='true']").first(),
-  ).toBeHidden();
+});
+
+test("marcas públicas: tarjetas, navegación manual y filtro real", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const cards = page.locator(".site-brand-card");
+  await expect(cards.first()).toBeVisible();
+  const count = await cards.count();
+  await expect(page.locator("#brands-title")).toContainText(`${count} marcas`);
+  const rail = page.locator(".site-brands-rail");
+  await page.getByRole("button", { name: "Marcas siguientes" }).click();
+  await expect
+    .poll(() => rail.evaluate((node) => node.scrollLeft))
+    .toBeGreaterThan(0);
+  await cards.first().click();
+  await expect(page).toHaveURL(/\/productos\?brandId=/);
+  await expect(page.locator("#marcas select")).not.toHaveValue("");
 });

@@ -790,15 +790,13 @@ button {
   .site-hero-copy .actions,
   .site-hero-visual,
   .site-hero-orbit,
-  .site-purpose-image img,
-  .site-brand-track {
+  .site-purpose-image img {
     animation: none !important;
     translate: none !important;
     clip-path: none !important;
   }
-  .site-brand-track { transform: none !important; flex-wrap: wrap; width: auto; justify-content: center; }
-  .site-brand-track [aria-hidden="true"] { display: none; }
-  .site-brand-window { overflow: visible; }
+  .site-brand-art > img, .site-brand-art .brand-mark { transition: none !important; }
+  .site-brand-card:hover .site-brand-art > img, .site-brand-card:focus-visible .site-brand-art > img, .site-brand-card:hover .site-brand-art .brand-mark, .site-brand-card:focus-visible .site-brand-art .brand-mark { transform: none !important; }
   .site-timeline::after { transform: scale(1) !important; }
   .site-line-circle img, .site-product-image img, .site-news-image img { scale: 1 !important; }
 

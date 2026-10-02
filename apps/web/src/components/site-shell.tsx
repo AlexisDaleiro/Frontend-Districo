@@ -89,6 +89,13 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
             {nav()}
           </nav>
           <div className="site-header-actions">
+            <Link
+              className="button secondary site-products"
+              href="/productos"
+              aria-current={pathname.startsWith("/productos") ? "page" : undefined}
+            >
+              Ver productos
+            </Link>
             <Link className="site-login" href={storeRoutes.login}>
               Ingresar
             </Link>

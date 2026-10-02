@@ -205,7 +205,7 @@ export function PublicCatalog() {
               ))}
             </select>
           </label>
-          <label>
+          <label id="marcas">
             Marca
             <select
               value={params.get("brandId") ?? ""}

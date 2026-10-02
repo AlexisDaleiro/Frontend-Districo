@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { usePublicApi, useSession } from "./providers";
 import { ActionLink, ErrorBox, Picture } from "./ui";
-import { BrandLogo } from "./brand-logo";
+import { SiteBrands } from "./site-brands";
 import { CountUp } from "./count-up";
 import { FeaturedProducts } from "./public-products";
 import { SiteTimelineMotion } from "./site-timeline-motion";
@@ -83,7 +83,6 @@ export function SiteHome() {
 }
 
 function SiteHomeContent() {
-  const brands = usePublicApi<Entity[]>("brands");
   const categories = usePublicApi<Entity[]>("categories/catalog");
   const mapped = mappedNeeds(categories.data);
   return (
@@ -161,59 +160,7 @@ function SiteHomeContent() {
         </div>
       </section>
 
-      <section
-        className="site-brand-marquee"
-        id="marcas"
-        aria-labelledby="brands-title"
-      >
-        <div className="container site-brand-heading">
-          <p className="eyebrow" id="brands-title">
-            Marcas que distribuimos
-          </p>
-          <Link className="text-link" href="/productos">
-            Ver productos <ArrowUpRight size={16} />
-          </Link>
-        </div>
-        {brands.isPending ? (
-          <div className="site-brand-skeleton" aria-busy="true">
-            {Array.from({ length: 6 }, (_, index) => (
-              <span key={index} />
-            ))}
-          </div>
-        ) : brands.error ? (
-          <div className="container">
-            <ErrorBox
-              error={brands.error}
-              retry={() => void brands.refetch()}
-            />
-          </div>
-        ) : brands.data.length ? (
-          <div className="site-brand-window">
-            <div className="site-brand-track">
-              {[...brands.data, ...brands.data].map((brand, index) => (
-                <Link
-                  className="site-brand-item"
-                  href={withSearch(
-                    "/productos",
-                    new URLSearchParams({ brandId: brand.id }),
-                  )}
-                  key={`${brand.id}-${index}`}
-                  aria-hidden={index >= brands.data.length ? true : undefined}
-                  tabIndex={index >= brands.data.length ? -1 : undefined}
-                >
-                  <BrandLogo brand={brand} />
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="container site-empty">
-            <p>
-              Las marcas estarán disponibles cuando se carguen en el catálogo.
-            </p>
-          </div>
-        )}
-      </section>
+      <SiteBrands />
 
       <section
         className="site-story site-section"

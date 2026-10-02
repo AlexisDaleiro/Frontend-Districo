@@ -2,6 +2,19 @@
 
 Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
 
+## Rediseño de marcas en la landing pública (01/10)
+
+- `src/components/site-home.tsx` reemplaza la marquesina de logos por `src/components/site-brands.tsx`: tarjetas verticales con fotografías tintadas, flechas, paginación, scroll horizontal manual y enlaces al catálogo filtrado. El título usa la cantidad real devuelta por `brands`; las cantidades por tarjeta vienen de `products/cards?brandId=…&limit=1` y se consultan solo al acercarse a la vista. Si fallan, la marca sigue visible sin una cifra inventada. El botón «Ver las N marcas» lleva al filtro de marca de `/productos` (`public-products.tsx`).
+- `site.css`, `site-motion.css` y el bloque reducido de `motion.css` incorporan el nuevo diseño y eliminan el bucle de marquesina. El movimiento reducido conserva el scroll manual, sin autoplay. La carga reserva la forma y el espacio del título, de las tarjetas y de los botones. `tests/e2e/landing.spec.ts` cubre la navegación, el filtro y la ausencia de desplazamiento automático.
+- Ocho fotos decorativas generadas y optimizadas en `public/images/brand-pets-01.webp` a `brand-pets-08.webp`. Se documentó su procedencia y carácter no comercial en `docs/ASSETS.md`; nombres, enlaces y cifras siguen viniendo de la API. No se añadieron dependencias. Se preservó el trabajo previo de «Ver productos» en el header.
+- Verificado: `npm run typecheck -w apps/web`, `npm run lint -w apps/web`, `npm run test -w apps/web` (**55/55**) y build de producción en modo real, correctos. `landing.spec.ts` en modo demo: **12/12**. Capturas revisadas a 390 y 1440 px. En el build de producción, `PerformanceObserver` registró CLS **0** y desborde horizontal **0** a 390 y 1440 px, incluida la llegada de las marcas reales (31 en el entorno consultado). No se hizo commit ni push.
+- Pendiente: aprobación visual del usuario para las fotos decorativas generadas. Si se retoca la sección, siguiente comando: `$env:E2E_PORT='3105'; npm run test:e2e -w apps/web -- landing.spec.ts`.
+
+## Mejora: «Ver productos» en el header de escritorio (01/10)
+
+- En escritorio (≥1120px) el catálogo solo se alcanzaba por botones dentro de secciones. `site-shell.tsx` agrega «Ver productos» (`/productos`) en `.site-header-actions`, antes de Ingresar, con `aria-current="page"` en `/productos` y fichas. `site.css` lo muestra solo desde 1120px (debajo sigue el menú, que ya tenía «Productos»); borde blanco al 50 % y lime en hover/activo.
+- Verificado: `npm run typecheck` y `npm run lint` (apps/web) pasaron; `npm run build` pasó; `landing.spec.ts` 11/11. Medido con Playwright contra `next start`: sin desborde del header a 1120, 1280 y 1440px; oculto a 800 y 390px. Sin revisión visual humana de las capturas.
+
 ## Sitio institucional público y catálogo abierto (01/10)
 
 - `/` ahora presenta la landing institucional; `/productos` y `/productos/[slug]` muestran productos reales de los endpoints públicos existentes, sin precios ni compra. `/tienda/*` conserva la experiencia B2B y exige sesión; ingreso, solicitud y recuperación siguen públicos. Una cuenta activa que entra a `/` es enviada a `/tienda`.
