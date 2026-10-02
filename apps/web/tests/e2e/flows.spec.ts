@@ -139,6 +139,8 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await page.getByLabel("Habilitar compra de medicamentos").check();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
+  // La lista muestra pendientes por defecto: la aprobada se ve en «Aprobadas».
+  await page.getByLabel("Filtrar solicitudes").selectOption("APPROVED");
   await expect(page.locator(".admin-cards")).toContainText("Aprobado");
   await expect(page.locator(".admin-cards")).toContainText("123456789012");
   await page.goto("/tienda/cuenta");

@@ -1402,6 +1402,13 @@ footer :focus-visible {
   text-align: center;
   border: 0;
   padding: 10px 0;
+  /* Sin flechas nativas: reservan espacio a la derecha y descentran el número. */
+  appearance: textfield;
+}
+.quantity input::-webkit-inner-spin-button,
+.quantity input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .info-note {
   font-size: 11px;

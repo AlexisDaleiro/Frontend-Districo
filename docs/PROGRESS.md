@@ -2,6 +2,16 @@
 
 Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
 
+## Pruebas: solicitud aprobada con filtro por estado (01/10)
+
+- Desde `49a0cb85`, Solicitudes en admin muestra solo «Pendientes» por defecto; al aprobar, la solicitud sale de la lista. `flows.spec.ts` («solicitud aprobada habilita nueva cuenta…») elige «Aprobadas» en «Filtrar solicitudes» antes de verificar el estado y el RUT.
+- Verificado: `flows.spec.ts` + `motion.spec.ts` 28/28.
+
+## Corrección: selector de cantidad simétrico (01/10)
+
+- `.quantity` (ficha de producto B2B): los botones − y + ya medían 36px, pero el `input[type=number]` reservaba espacio a la derecha para las flechas nativas y el número quedaba corrido hacia «−». `globals.css` oculta esas flechas (`appearance: textfield` y `::-webkit-inner/outer-spin-button`); los botones −/+ siguen siendo el control.
+- Verificado: lint pasó; `flows.spec.ts` + `motion.spec.ts` 28/28 (con la prueba de solicitudes actualizada, abajo). Sin revisión visual humana.
+
 ## Pruebas: e2e de catálogo, admin y movimiento al día (01/10)
 
 - `flows.spec.ts:26`: Líneas ya no está en la landing; la prueba entra por «Ver productos» del header y filtra con el select «Categoría».
