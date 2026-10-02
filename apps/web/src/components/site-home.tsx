@@ -22,16 +22,14 @@ import {
   UtensilsCrossed,
   WashingMachine,
 } from "lucide-react";
-import { usePublicApi, useSession } from "./providers";
-import { ActionLink, ErrorBox, Picture } from "./ui";
+import { useSession } from "./providers";
+import { ActionLink, Picture } from "./ui";
 import { SiteBrands } from "./site-brands";
 import { CountUp } from "./count-up";
 import { FeaturedProducts } from "./public-products";
 import { SiteTimelineMotion } from "./site-timeline-motion";
-import { mappedNeeds, needs } from "@/lib/needs";
-import { storeRoutes, withSearch } from "@/lib/store-routes";
+import { storeRoutes } from "@/lib/store-routes";
 import { siteNews } from "@/data/site-news";
-import type { Entity } from "@/lib/types";
 
 const steps = [
   {
@@ -83,8 +81,6 @@ export function SiteHome() {
 }
 
 function SiteHomeContent() {
-  const categories = usePublicApi<Entity[]>("categories/catalog");
-  const mapped = mappedNeeds(categories.data);
   return (
     <>
       <SiteTimelineMotion />
@@ -159,8 +155,6 @@ function SiteHomeContent() {
           <span>Montevideo · Maldonado</span>
         </div>
       </section>
-
-      <SiteBrands />
 
       <section
         className="site-story site-section"
@@ -295,69 +289,7 @@ function SiteHomeContent() {
         </article>
       </section>
 
-      <section
-        className="site-lines site-section"
-        id="lineas"
-        aria-labelledby="lines-title"
-      >
-        <div className="container">
-          <div className="site-section-heading">
-            <div>
-              <p className="eyebrow">Nuestras líneas</p>
-              <h2 id="lines-title">Una solución para cada necesidad.</h2>
-              <p>Explorá categorías disponibles en nuestro catálogo público.</p>
-            </div>
-            <Link className="button secondary" href="/productos">
-              Más información <ArrowRight size={17} />
-            </Link>
-          </div>
-          {categories.isPending ? (
-            <div className="site-line-list" aria-busy="true">
-              {needs.map((need) => (
-                <span className="site-line" key={need.name} aria-hidden="true">
-                  <span className="site-line-circle" />
-                  <span className="site-line-placeholder" />
-                </span>
-              ))}
-            </div>
-          ) : categories.error ? (
-            <ErrorBox
-              error={categories.error}
-              retry={() => void categories.refetch()}
-            />
-          ) : mapped.length ? (
-            <div className="site-line-list">
-              {mapped.map((need) => (
-                <Link
-                  className="site-line"
-                  key={need.id}
-                  href={withSearch(
-                    "/productos",
-                    new URLSearchParams({ categoryId: need.id }),
-                  )}
-                >
-                  <span className="site-line-circle">
-                    <Picture
-                      src={need.image}
-                      alt=""
-                      loading="lazy"
-                      sizes="124px"
-                    />
-                  </span>
-                  <span>{need.name}</span>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="site-empty">
-              <p>Aún no hay líneas disponibles en el catálogo.</p>
-              <Link className="text-link" href="/productos">
-                Explorar productos <ArrowRight size={16} />
-              </Link>
-            </div>
-          )}
-        </div>
-      </section>
+      <SiteBrands />
 
       <FeaturedProducts />
 

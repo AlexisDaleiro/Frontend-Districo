@@ -155,7 +155,7 @@ export function SiteBrands() {
       {brands.isPending ? (
         <>
           <div
-            className="site-brands-rail site-brands-loading"
+            className="site-brands-rail site-brands-loading container"
             aria-busy="true"
             aria-label="Cargando marcas"
           >
@@ -180,7 +180,7 @@ export function SiteBrands() {
         </div>
       ) : brands.data.length ? (
         <>
-          <div className="site-brands-stage">
+          <div className="site-brands-stage container">
             <div
               className="site-brands-rail"
               ref={rail}

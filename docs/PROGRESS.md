@@ -10,6 +10,18 @@
 - Verificado: `npm run typecheck -w apps/web`, `npm run lint -w apps/web`, `npm run test -w apps/web` (**55/55**) y build de producción en modo real, correctos. `landing.spec.ts` en modo demo: **12/12**. Capturas revisadas a 390 y 1440 px. En el build de producción, `PerformanceObserver` registró CLS **0** y desborde horizontal **0** a 390 y 1440 px, incluida la llegada de las marcas reales (31 en el entorno consultado). No se hizo commit ni push.
 - Pendiente: aprobación visual del usuario para las fotos decorativas generadas. Si se retoca la sección, siguiente comando: `$env:E2E_PORT='3105'; npm run test:e2e -w apps/web -- landing.spec.ts`.
 
+## Corrección: carrusel de marcas sin desborde a la derecha; más aire en el header (01/10)
+
+- `site-brands.tsx`: el riel (y su estado de carga) usa `.container`, así que las tarjetas se recortan en el borde del contenido en vez de llegar al borde de la ventana. `site.css`: se quitan los `padding-inline`/`scroll-padding-inline` calculados con `100vw` y las flechas quedan a 8px dentro del riel.
+- `site.css`: en ≥1120px `.site-header-actions` lleva `margin-left: clamp(20px, 2.5vw, 44px)`; separación «Contacto» → «Ver productos» de 56px (1120) a 72px (1920).
+- Verificado contra `next start`: riel alineado con el título de la sección en 390, 800, 1280, 1440 y 1920px, sin scroll horizontal del documento; `npm run lint` pasó; `landing.spec.ts` en verde. Sin revisión visual.
+
+## Cambio: Marcas reemplaza a Líneas en la landing (01/10)
+
+- `site-home.tsx`: se elimina la sección `#lineas` (categorías del catálogo) y `<SiteBrands />` (`#marcas`) pasa a ocupar su lugar, después de Visión/Misión/Valores y antes de destacados; ya no aparece arriba, tras el hero. Se quitaron la consulta `categories/catalog` y los imports que solo usaba Líneas.
+- `site-shell.tsx`: se quita «Líneas» del navbar y del menú mobile. `site.css`: se borran las reglas `.site-lines`/`.site-line*`. Quedan selectores `.site-line` sin efecto dentro de listas compartidas en `motion.css`, `site-motion.css`, `motion-system.tsx` y `motion.spec.ts`.
+- Verificado: `npm run typecheck` y `npm run lint` (apps/web) pasaron; `landing.spec.ts` 12/12. Sin revisión visual.
+
 ## Mejora: «Ver productos» en el header de escritorio (01/10)
 
 - En escritorio (≥1120px) el catálogo solo se alcanzaba por botones dentro de secciones. `site-shell.tsx` agrega «Ver productos» (`/productos`) en `.site-header-actions`, antes de Ingresar, con `aria-current="page"` en `/productos` y fichas. `site.css` lo muestra solo desde 1120px (debajo sigue el menú, que ya tenía «Productos»); borde blanco al 50 % y lime en hover/activo.

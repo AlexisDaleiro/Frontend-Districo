@@ -10,7 +10,6 @@ import { storeRoutes } from "@/lib/store-routes";
 
 const sections = [
   ["nosotros", "Nosotros"],
-  ["lineas", "Líneas"],
   ["marcas", "Marcas"],
   ["como-trabajamos", "Cómo trabajamos"],
   ["novedades", "Novedades"],
