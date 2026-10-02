@@ -176,12 +176,24 @@ export class ProductsRepository {
     return this.prisma.productMedia.findUnique({ where: { id } });
   }
 
-  updateMedia(id: string, data: Prisma.ProductMediaUpdateInput) {
-    return this.prisma.productMedia.update({ where: { id }, data });
+  async updateMedia(id: string, data: Prisma.ProductMediaUpdateInput) {
+    if (data.isPrimary !== true) return this.prisma.productMedia.update({ where: { id }, data });
+    return this.prisma.$transaction(async (tx) => {
+      const media = await tx.productMedia.findUniqueOrThrow({ where: { id } });
+      await tx.productMedia.updateMany({ where: { productId: media.productId, id: { not: id } }, data: { isPrimary: false } });
+      return tx.productMedia.update({ where: { id }, data });
+    });
   }
 
   deleteMedia(id: string) {
-    return this.prisma.productMedia.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      const removed = await tx.productMedia.delete({ where: { id } });
+      if (removed.isPrimary) {
+        const next = await tx.productMedia.findFirst({ where: { productId: removed.productId, type: 'IMAGE' }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+        if (next) await tx.productMedia.update({ where: { id: next.id }, data: { isPrimary: true } });
+      }
+      return removed;
+    });
   }
 
 }

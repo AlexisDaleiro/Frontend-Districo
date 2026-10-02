@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -28,6 +28,16 @@ export class PromotionsController {
     return this.promotionsService.create(dto, user.sub);
   }
 
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: CreatePromotionDto, @CurrentUser() user: JwtUser) {
+    return this.promotionsService.update(id, dto, user.sub);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.promotionsService.remove(id, user.sub);
+  }
+
   @Patch(':id/activate')
   activate(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.promotionsService.updateActive(id, true, user.sub);
@@ -46,5 +56,15 @@ export class PromotionsController {
   @Post('expiration')
   createExpirationPromotion(@Body() dto: CreateExpirationPromotionDto, @CurrentUser() user: JwtUser) {
     return this.promotionsService.createExpirationPromotion(dto, user.sub);
+  }
+
+  @Patch('expiration/:id')
+  updateExpiration(@Param('id') id: string, @Body() dto: CreateExpirationPromotionDto, @CurrentUser() user: JwtUser) {
+    return this.promotionsService.updateExpiration(id, dto, user.sub);
+  }
+
+  @Delete('expiration/:id')
+  removeExpiration(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.promotionsService.removeExpiration(id, user.sub);
   }
 }

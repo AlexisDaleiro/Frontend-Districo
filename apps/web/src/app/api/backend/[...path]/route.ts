@@ -45,13 +45,17 @@ async function handle(
   const invoiceUpload = request.method === "POST" && /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)$/.test(path);
   const bannerUpload = (request.method === "POST" && path === "admin/banners") ||
     (request.method === "PATCH" && /^admin\/banners\/[a-zA-Z0-9_-]+$/.test(path));
-  const multipartUpload = invoiceUpload || bannerUpload;
+  const catalogUpload = request.method === "POST" && (
+    /^products\/[a-zA-Z0-9_-]+\/media\/upload$/.test(path) ||
+    /^(brands|laboratories)\/[a-zA-Z0-9_-]+\/logo$/.test(path)
+  );
+  const multipartUpload = invoiceUpload || bannerUpload || catalogUpload;
   const invoiceDownload = request.method === "GET" && /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path);
   let body: BodyInit | undefined;
   if (multipartUpload) {
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))
       return reply({ message: "Adjuntá un archivo válido." }, 415);
-    const limit = bannerUpload ? 11_000_000 : 5_500_000;
+    const limit = bannerUpload ? 11_000_000 : catalogUpload && path.startsWith("products/") ? 41_000_000 : 5_500_000;
     if (Number(request.headers.get("content-length") ?? 0) > limit)
       return reply({ message: "El archivo supera el tamaño permitido." }, 413);
     const bytes = await request.arrayBuffer();
@@ -93,7 +97,7 @@ async function handle(
         body,
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(catalogUpload ? 90000 : 20000),
       },
     );
     if (invoiceDownload && upstream.ok) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -8,6 +8,12 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { CreateRecommendationRuleDto } from './dto/create-recommendation-rule.dto';
 import { RecommendationsService } from './recommendations.service';
+import { IsBoolean } from 'class-validator';
+
+class SetRecommendationActiveDto {
+  @IsBoolean()
+  active: boolean;
+}
 
 @ApiTags('recommendations')
 @ApiBearerAuth()
@@ -25,5 +31,20 @@ export class RecommendationsController {
   @Post()
   create(@Body() dto: CreateRecommendationRuleDto, @CurrentUser() user: JwtUser) {
     return this.recommendationsService.create(dto, user.sub);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: CreateRecommendationRuleDto, @CurrentUser() user: JwtUser) {
+    return this.recommendationsService.update(id, dto, user.sub);
+  }
+
+  @Patch(':id/active')
+  setActive(@Param('id') id: string, @Body() dto: SetRecommendationActiveDto, @CurrentUser() user: JwtUser) {
+    return this.recommendationsService.setActive(id, dto.active, user.sub);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.recommendationsService.remove(id, user.sub);
   }
 }

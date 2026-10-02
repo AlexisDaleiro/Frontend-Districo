@@ -12,12 +12,13 @@ import { UpdateVariantDto } from './dto/update-variant.dto';
 import { UpdateProductMediaDto } from './dto/update-product-media.dto';
 import { ProductsRepository } from './products.repository';
 import { sortProductVariants } from './variant-order';
+import { CatalogImagesService } from '../images/catalog-images.service';
 
 type CatalogProduct = NonNullable<Awaited<ReturnType<ProductsRepository['findBySlug']>>>;
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly productsRepository: ProductsRepository) {}
+  constructor(private readonly productsRepository: ProductsRepository, private readonly images: CatalogImagesService) {}
 
   async findMany(filters: ProductFilterDto, user?: JwtUser | null) {
     const result = await this.productsRepository.findMany(filters);
@@ -169,7 +170,7 @@ export class ProductsService {
         throw new BadRequestException('La variante no pertenece al producto.');
       }
     }
-    return this.productsRepository.updateMedia(id, {
+    const updated = await this.productsRepository.updateMedia(id, {
       variant: dto.variantId ? { connect: { id: dto.variantId } } : undefined,
       type: dto.type,
       url: dto.url,
@@ -177,12 +178,15 @@ export class ProductsService {
       position: dto.position,
       isPrimary: dto.isPrimary,
     });
+    if (dto.url && dto.url !== media.url) await this.images.removeProductImage(media.url, media.productId);
+    return updated;
   }
 
   async deleteMedia(id: string) {
     const media = await this.productsRepository.findMediaById(id);
     if (!media) throw new NotFoundException('Imagen o video no encontrado.');
     await this.productsRepository.deleteMedia(id);
+    await this.images.removeProductImage(media.url, media.productId);
     return { success: true };
   }
 

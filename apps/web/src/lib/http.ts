@@ -19,7 +19,7 @@ export async function http<T>(
       headers: multipart ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(multipart ? 95000 : 25000),
     });
   let response: Response;
   try {
