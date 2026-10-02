@@ -760,7 +760,10 @@ button {
   }
 
   .hero-visual img,
-  .company-hero-visual img {
+  .company-hero-visual img,
+  .site-hero-photo img,
+  .site-story-media img,
+  .site-operation-photo > img {
     transform: none !important;
     will-change: auto;
   }
@@ -780,6 +783,24 @@ button {
   .home-carousel-dot::after {
     animation: none !important;
   }
+
+  .site-hero h1 span,
+  .site-hero-copy > .eyebrow,
+  .site-hero-lead,
+  .site-hero-copy .actions,
+  .site-hero-visual,
+  .site-hero-orbit,
+  .site-purpose-image img,
+  .site-brand-track {
+    animation: none !important;
+    translate: none !important;
+    clip-path: none !important;
+  }
+  .site-brand-track { transform: none !important; flex-wrap: wrap; width: auto; justify-content: center; }
+  .site-brand-track [aria-hidden="true"] { display: none; }
+  .site-brand-window { overflow: visible; }
+  .site-timeline::after { transform: scale(1) !important; }
+  .site-line-circle img, .site-product-image img, .site-news-image img { scale: 1 !important; }
 
   .button:hover,
   .whatsapp-fab:hover,

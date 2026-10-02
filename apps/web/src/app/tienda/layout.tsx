@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/manrope";
 import "leaflet/dist/leaflet.css";
 import "../globals.css";
 import "../motion.css";
+import "../site.css";
+import "../site-motion.css";
 import { Providers } from "@/components/providers";
-import { Header, Footer } from "@/components/shell";
 import { MotionSystem } from "@/components/motion-system";
-import { PageTransition } from "@/components/page-transition";
+import { StoreFrame } from "@/components/store-frame";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.SITE_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")),
   title: {
     default: "DISTRICO · Marcas que acompañan",
     template: "%s | DISTRICO",
@@ -28,11 +29,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   return (
     <Providers>
       <MotionSystem />
-      <Header />
-      <main id="contenido">
-        <PageTransition>{children}</PageTransition>
-      </main>
-      <Footer />
+      <StoreFrame>{children}</StoreFrame>
     </Providers>
   );
 }

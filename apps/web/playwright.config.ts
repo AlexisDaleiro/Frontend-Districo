@@ -22,9 +22,9 @@ export default defineConfig({
   }],
   webServer: {
     command: `npm run dev -- --port ${port}`,
-    env: { NEXT_PUBLIC_DATA_MODE: "demo" },
+    env: { NEXT_PUBLIC_DATA_MODE: "demo", E2E_DIST_DIR: ".next-e2e" },
     url: `http://127.0.0.1:${port}`,
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.E2E_USE_EXISTING_SERVER === "1",
     timeout: 120000,
   },
 });

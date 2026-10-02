@@ -1,6 +1,16 @@
 # Registro de avance
 
-Última actualización: 30 de septiembre de 2026. Rama de trabajo: `main`.
+Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
+
+## Sitio institucional público y catálogo abierto (01/10)
+
+- `/` ahora presenta la landing institucional; `/productos` y `/productos/[slug]` muestran productos reales de los endpoints públicos existentes, sin precios ni compra. `/tienda/*` conserva la experiencia B2B y exige sesión; ingreso, solicitud y recuperación siguen públicos. Una cuenta activa que entra a `/` es enviada a `/tienda`.
+- Estructura: `src/app/(sitio)/*`, `src/components/site-home.tsx`, `site-shell.tsx`, `public-products.tsx`, `site-timeline-motion.tsx`, `store-frame.tsx` y `whatsapp-fab.tsx`. `src/lib/needs.ts` comparte el mapeo de categorías con la tienda. `site.css` y `site-motion.css` extienden tokens y movimiento existentes; `motion-system.tsx` controla revelados y parallax. El header móvil mantiene «Solicitar cuenta» visible.
+- Manrope se carga desde el archivo del paquete `@fontsource-variable/manrope` con `next/font/local` y preload en `src/app/layout.tsx`; se conserva la misma familia y se evita el cambio tardío de métricas que movía el hero. La landing y las rutas de acceso comparten el header público; la tienda privada conserva su diseño.
+- Contenido institucional reutilizado de `/tienda/empresa`; fotografías de fachada y depósito autorizadas desde la landing anterior. `src/data/site-news.ts` contiene **tres noticias ficticias de muestra**, identificadas como no publicadas en la interfaz. Procedencia y aprobación pendiente registradas en `docs/ASSETS.md`. `SITE_URL` puede fijar la base de metadatos Open Graph; en Vercel se usa `VERCEL_URL`. Toda la landing está `noindex` por decisión del usuario.
+- E2e actualizados: `flows.spec.ts`, `home-carousel.spec.ts`, `admin-complete.spec.ts` y `motion.spec.ts`; nuevo `landing.spec.ts`. `scripts/check-motion.mjs` incluye `/` y `/productos`. `playwright.config.ts` permite un servidor demo aislado (`.next-e2e`) para no interrumpir el servidor real; se ignora en Git y ESLint.
+- Verificado: `npm run typecheck -w apps/web` pasó; `npm run lint -w apps/web` pasó; `npm run test -w apps/web` pasó (55/55); `npm run build -w apps/web` pasó en modo real. Suite e2e demo completa: **43/43**. E2e público contra `next start` real: **10/10**. `node scripts/check-motion.mjs` contra producción local: 16 rutas, cinco anchos, movimiento reducido y sin bloques invisibles. Medición con `PerformanceObserver` en el build final de producción: CLS **0** y scroll horizontal **0** en 360, 390, 768, 1024 y 1440 px; ocho cargas frías adicionales a 360 px también dieron CLS 0. Una medición anterior al build final había dado 0,019 a 360 px. Lighthouse no se ejecutó: no está instalado en el workspace y no se agregaron dependencias.
+- Pendiente: reemplazar y aprobar noticias y fechas, confirmar derechos de publicación de las dos fotografías y fijar `SITE_URL` al dominio definitivo. No se hizo commit ni push. Siguiente comando de control tras editar el contenido: `$env:E2E_PORT='3301'; npm run test:e2e -w apps/web`.
 
 ## Mejora: vista previa del carrito en panel lateral (30/09)
 

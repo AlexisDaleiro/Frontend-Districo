@@ -27,30 +27,17 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page).toHaveURL(/\/tienda$/);
-  await expect(
-    page.getByRole("heading", { name: "Biofresh para tu negocio." }),
-  ).toBeVisible();
-  await expect(async () => {
-    await page.getByRole("button", { name: "Banner siguiente" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Gran Plus en DISTRICO." }),
-    ).toBeVisible();
-  }).toPass();
-  await page.getByRole("button", { name: "Mostrar Biofresh" }).click();
-  await expect(page.getByRole("link", { name: "Ver Biofresh", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Marcas que acompañan. Un socio que responde/ })).toBeVisible();
   await page
     .getByRole("link", { name: "Arenas sanitarias", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/tienda\/categorias\/[^/?]+$/);
-  await expect(page.locator(".product-card")).toHaveCount(2);
+  await expect(page).toHaveURL(/\/productos\?categoryId=/);
+  await expect(page.locator(".site-product-card")).toHaveCount(2);
   await page.reload();
-  await expect(page.locator(".product-card")).toHaveCount(2);
-  await expect(page.locator(".product-bottom").first()).toContainText(
-    "Ingresá para ver precios",
-  );
-  await page.getByRole("button", { name: "Arenas sanitarias" }).last().click();
-  await expect(page).toHaveURL(/\/tienda\/productos$/);
+  await expect(page.locator(".site-product-card")).toHaveCount(2);
+  await expect(page.locator(".site-catalog-result")).toContainText("Sin precios para visitantes");
+  await page.getByRole("link", { name: "Limpiar filtros" }).click();
+  await expect(page).toHaveURL(/\/productos$/);
 });
 test("cliente envía pedido y consulta detalle", async ({ page }) => {
   test.setTimeout(90000);
@@ -271,9 +258,9 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
   await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await page.goto("/tienda/productos");
-  await expect(page.locator(".product-bottom").first()).toContainText(
-    "Ingresá para ver precios",
-  );
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/);
+  await page.goto("/productos");
+  await expect(page.locator(".site-catalog-result")).toContainText("Sin precios para visitantes");
 });
 
 test("cliente edita su cuenta y administra varias direcciones", async ({ page }) => {
@@ -338,16 +325,15 @@ test("permisos: la identidad cambia sin recargar al ingresar y al salir", async 
   await expect(page.locator(".product-bottom strong").first()).toBeVisible();
   await account.click();
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
-  await expect(account).toContainText("Ingresar");
-  await page.getByRole("link", { name: "Catálogo" }).first().click();
-  await expect(page.locator(".product-bottom").first()).toContainText(
-    "Ingresá para ver precios",
-  );
-  await expect(page.locator(".cart-count")).toHaveText("0");
+  await page.goto("/tienda/productos");
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/);
+  await page.goto("/productos");
+  await expect(page.locator(".site-catalog-result")).toContainText("Sin precios para visitantes");
 });
 test("contacto registra consulta, filtra puntos demo y permite gestionarla", async ({
   page,
 }) => {
+  await login(page);
   await page.goto("/tienda/contacto");
   await expect(
     page.getByRole("heading", { name: "Hablemos de tu comercio" }),
@@ -373,6 +359,8 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
   await page.getByRole("button", { name: "Limpiar filtros" }).click();
   await expect(page.locator(".contact-store-card")).toHaveCount(6);
 
+  await page.goto("/tienda/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "Administración");
   await page.goto("/tienda/admin/consultas");
   await expect(page.locator(".admin-cards")).toContainText("Comercio Contacto");
@@ -391,6 +379,7 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
 test("empresa presenta historia, operación y acceso comercial", async ({
   page,
 }) => {
+  await login(page);
   await page.goto("/tienda/empresa");
   await expect(
     page.getByRole("heading", {
@@ -462,6 +451,7 @@ test("administración modifica precio y stock y crea recomendación", async ({
 for (const width of [360, 390, 768, 1024, 1440])
   test(`adaptable a ${width}px sin desbordamiento`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await login(page);
     for (const path of [
       "/tienda",
       "/tienda/productos",
@@ -490,6 +480,7 @@ test("panel móvil atrapa foco, cierra con Escape y respeta movimiento reducido"
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await login(page);
   await page.goto("/tienda/productos");
   const trigger = page.getByRole("button", { name: "Filtrar", exact: true });
   await trigger.click();

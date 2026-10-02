@@ -96,18 +96,16 @@ test("imagen no disponible tiene sustituto y búsqueda vacía tiene salida", asy
   page,
 }) => {
   await page.route(
-    (url) => url.pathname === "/images/product-0-0.jpg",
+    (url) => url.pathname === "/images/product-0-0.jpg" || (url.pathname === "/_next/image" && url.searchParams.get("url") === "/images/product-0-0.jpg"),
     (route) => route.abort(),
   );
-  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
-  await expect(page.locator(".detail-image img")).toHaveAttribute(
+  await page.goto("/productos/biofresh-para-cachorros-razas-medianas");
+  await expect(page.locator(".site-detail-image img")).toHaveAttribute(
     "src",
     "/images/placeholder.svg",
   );
-  await page.goto("/tienda/productos?search=producto-que-no-existe");
-  await expect(
-    page.getByRole("heading", { name: "No encontramos productos" }),
-  ).toBeVisible();
+  await page.goto("/productos?search=producto-que-no-existe");
+  await expect(page.getByText("No encontramos productos con esos filtros.")).toBeVisible();
   await page.getByRole("link", { name: "Ver todo el catálogo" }).click();
-  await expect(page.locator(".product-card")).toHaveCount(12);
+  await expect(page.locator(".site-product-card")).toHaveCount(12);
 });

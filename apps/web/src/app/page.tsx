@@ -1,7 +1,0 @@
-import { redirect } from "next/navigation";
-import { storeRoutes } from "@/lib/store-routes";
-
-// Replace this temporary handoff when the institutional landing is ready.
-export default function Page() {
-  redirect(storeRoutes.home);
-}

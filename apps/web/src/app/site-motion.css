@@ -1,0 +1,27 @@
+/* Extensión institucional del sistema de movimiento de DISTRICO. */
+.site-hero h1 span { animation: site-word-in 760ms var(--ease-out) both; }
+.site-hero h1 span:nth-child(2) { animation-delay: 110ms; }
+.site-hero h1 span:nth-child(3) { animation-delay: 220ms; }
+.site-hero-copy > .eyebrow, .site-hero-lead, .site-hero-copy .actions { animation: site-word-in 650ms var(--ease-out) both; }
+.site-hero-copy > .eyebrow { animation-delay: 50ms; }
+.site-hero-lead { animation-delay: 340ms; }
+.site-hero-copy .actions { animation-delay: 450ms; }
+.site-hero-visual { animation: site-visual-in 900ms var(--ease-out) 180ms both; }
+.site-hero-orbit { animation: site-orbit 9s ease-in-out infinite alternate; }
+.site-hero-photo img, .site-story-media img, .site-operation-photo > img { transform: translate3d(0, var(--motion-parallax, 0px), 0) scale(1.07); }
+.site-brand-track { animation: site-marquee 34s linear infinite; }
+.site-brand-window:hover .site-brand-track, .site-brand-window:focus-within .site-brand-track, .motion-tab-hidden .site-brand-track { animation-play-state: paused; }
+.motion-tab-hidden .site-hero-orbit, .motion-tab-hidden .site-hero h1 span, .motion-tab-hidden .site-hero-visual, .motion-tab-hidden .site-hero-copy > .eyebrow, .motion-tab-hidden .site-hero-lead, .motion-tab-hidden .site-hero-copy .actions, .motion-tab-hidden .site-purpose-image img { animation-play-state: paused; }
+.site-purpose-image[data-motion-state="in"] img { animation: site-image-reveal 900ms var(--ease-out) both; }
+.site-timeline::after { transition: transform 120ms linear; }
+.site-line-circle img, .site-product-image img, .site-news-image img { transition: scale var(--dur-slow) var(--ease-out); }
+.site-line:hover .site-line-circle img, .site-product-card:hover .site-product-image img, .site-news-card:hover .site-news-image img { scale: 1.06; }
+.site-product-card, .site-news-card, .site-operation-cards article, .site-benefits article { transition: translate var(--dur-base) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .site-product-card:hover, .site-news-card:hover, .site-operation-cards article:hover, .site-benefits article:hover { translate: 0 -5px; box-shadow: 0 16px 35px rgb(22 61 74 / .13); }
+}
+@keyframes site-word-in { from { opacity: 0; translate: 0 28px; } to { opacity: 1; translate: 0 0; } }
+@keyframes site-visual-in { from { opacity: 0; translate: 28px 0; clip-path: inset(0 0 0 22% round 30px); } to { opacity: 1; translate: 0 0; clip-path: inset(0 0 0 0 round 30px); } }
+@keyframes site-orbit { from { transform: translate3d(0, 0, 0) scale(.94); } to { transform: translate3d(-12px, 9px, 0) scale(1.05); } }
+@keyframes site-marquee { to { transform: translateX(-50%); } }
+@keyframes site-image-reveal { from { clip-path: inset(0 0 100% 0); scale: 1.08; } to { clip-path: inset(0 0 0 0); scale: 1; } }

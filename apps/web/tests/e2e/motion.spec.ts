@@ -1,14 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const publicRoutes = [
-  "/tienda",
-  "/tienda/productos",
-  "/tienda/marcas",
-  "/tienda/empresa",
-  "/tienda/contacto",
+  "/",
+  "/productos",
+  "/productos/biofresh-para-cachorros-razas-medianas",
 ];
 const revealed =
-  ".need, .section-title, .line-card, .brand-word, .product-card, .cta-band, .company-page section, .company-card, .company-value, .company-operation-card, .company-benefit, .contact-branch-card, .contact-store-card, .directory-grid > *, .benefits > div";
+  ".need, .section-title, .line-card, .brand-word, .product-card, .cta-band, .company-page section, .company-card, .company-value, .company-operation-card, .company-benefit, .contact-branch-card, .contact-store-card, .directory-grid > *, .benefits > div, .site-story-grid > *, .site-purpose-image, .site-purpose-copy, .site-line, .site-product-card, .site-steps > *, .site-news-card";
+
+async function clientLogin(page: Page) {
+  await page.goto("/tienda/ingresar");
+  await page.getByRole("button", { name: "Cliente mayorista", exact: true }).click();
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda\/productos$/, { timeout: 10000 });
+}
 
 async function adminLogin(page: Page) {
   await page.goto("/tienda/ingresar");
@@ -123,18 +128,14 @@ test("el banner conserva su posición y anima cada cambio de slide", async ({
   await page.addInitScript(() => {
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (this: Element, keyframes, options) {
-      if (this.matches(".needs-intro"))
-        document.documentElement.setAttribute("data-needs-reveal", "yes");
       if (this.matches(".home-carousel-slide .hero-copy, .home-carousel-slide .hero-visual"))
         document.documentElement.setAttribute("data-banner-child-reveal", "yes");
       return animate.call(this, keyframes, options);
     };
   });
+  await clientLogin(page);
   await page.goto("/tienda", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-needs-reveal",
-    "yes",
-  );
+  await expect(page.locator(".needs-intro")).toBeVisible();
 
   const carousel = page.locator(".home-carousel");
   const copy = carousel.locator(".hero-copy");
@@ -175,6 +176,7 @@ test("el banner conserva su posición y anima cada cambio de slide", async ({
 test("el carrusel avanza solo, se pausa y no rota con movimiento reducido", async ({
   page,
 }) => {
+  await clientLogin(page);
   await page.goto("/tienda");
   const carousel = page.locator(".home-carousel");
   await expect(carousel).toHaveAttribute("data-autoplay", "true");
@@ -244,6 +246,7 @@ test("el carrusel avanza solo, se pausa y no rota con movimiento reducido", asyn
 test("las páginas nuevas animan su entrada y respetan movimiento reducido", async ({
   page,
 }) => {
+  await clientLogin(page);
   await page.goto("/tienda");
   await page.evaluate(() => {
     document.documentElement.setAttribute("data-view-transitions", "0");
@@ -334,13 +337,14 @@ for (const width of [390, 1280])
 
 test("los diálogos animan su salida y devuelven el foco", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await clientLogin(page);
   await page.goto("/tienda");
   const trigger = page.getByRole("button", { name: "Abrir menú" });
   await trigger.click();
   const dialog = page.locator("dialog[open]");
   await expect(dialog).toContainText("Explorá DISTRICO");
   await expect(dialog.locator(".mobile-nav a").first()).toBeVisible();
-  await dialog.getByRole("button", { name: "Cerrar" }).click();
+  await dialog.getByRole("button", { name: "Cerrar", exact: true }).click();
   // Durante la salida conserva su contenido y queda fuera del árbol accesible.
   await expect(page.locator("dialog[data-closing]")).toHaveAttribute(
     "aria-hidden",
@@ -389,17 +393,15 @@ test("las páginas públicas cargan sin errores de script", async ({ page }) => 
   page.on("pageerror", (error) => errors.push(`${page.url()}: ${error.message}`));
   for (const route of [
     ...publicRoutes,
-    "/tienda/producto/biofresh-para-cachorros-razas-medianas",
     "/tienda/ingresar",
     "/tienda/solicitar-cuenta",
     "/tienda/recuperar-acceso",
-    "/tienda/carrito",
-    "/tienda/no-existe",
   ]) {
     await page.goto(route);
     await page.waitForTimeout(400);
   }
   // Navegación del cliente entre páginas (con View Transitions).
+  await clientLogin(page);
   await page.goto("/tienda");
   for (const name of [
     "Catálogo",

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { imageHosts } from "./src/lib/image-hosts";
 const config: NextConfig = {
+  distDir: process.env.E2E_DIST_DIR || ".next",
   poweredByHeader: false,
   images: {
     // El rewrite de Vercel Services devuelve 404 para /_next/image.

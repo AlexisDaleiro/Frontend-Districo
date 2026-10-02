@@ -21,58 +21,7 @@ import { HomeCarousel } from "./home-carousel";
 import { useQueryClient } from "@tanstack/react-query";
 import { catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
-const normalize = (text: string) =>
-  text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-const needs = [
-  {
-    name: "Alimentación",
-    match: ["alimentacion", "alimentos", "alimento para mascotas"],
-    image: "/images/product-0-0.jpg",
-  },
-  {
-    name: "Higiene y cuidado",
-    match: [
-      "higiene",
-      "higiene y cuidado",
-      "cuidado de la mascota",
-      "cuidado mascotas",
-    ],
-    image: "/images/product-2-1.png",
-  },
-  {
-    name: "Arenas sanitarias",
-    match: ["arenas", "arenas sanitarias"],
-    image: "/images/product-1-0.jpg",
-  },
-  {
-    name: "Veterinaria",
-    match: ["veterinaria", "animales de compania"],
-    image: "/images/raicor-animales-de-compania-0.png",
-  },
-  {
-    name: "Ganadería",
-    match: ["ganaderia"],
-    image: "/images/raicor-ganaderia-0.png",
-  },
-  {
-    name: "Aves y cerdos",
-    match: ["aves y cerdos"],
-    image: "/images/magnis-aves-y-cerdos-0.jpg",
-  },
-  {
-    name: "Snacks",
-    match: ["snacks", "snacks para personas", "snacks para consumo humano"],
-    image: "/images/product-3-0.png",
-  },
-  {
-    name: "Control de plagas",
-    match: ["control de plagas", "raticidas"],
-    image: "/images/magnis-raticidas-0.png",
-  },
-];
+import { needs, mappedNeeds } from "@/lib/needs";
 export function Home() {
   const { user, loading } = useSession();
   const client = useQueryClient();
@@ -89,16 +38,7 @@ export function Home() {
     featured = useApi<ProductCardList>("products/cards?featured=true&limit=4"),
     brands = usePublicApi<Entity[]>("brands");
   // Solo se muestran necesidades que coinciden con una categoría existente.
-  const mapped = needs
-    .flatMap((n) => {
-      const category = categories.data?.find(
-        (c) =>
-          n.match.includes(normalize(c.name)) ||
-          n.match.includes(normalize(c.slug ?? "").replaceAll("-", " ")),
-      );
-      return category ? [{ ...n, id: category.id }] : [];
-    })
-    .filter((n, i, all) => all.findIndex((m) => m.id === n.id) === i);
+  const mapped = mappedNeeds(categories.data);
   const lines = mapped.filter((n) =>
     ["Alimentación", "Veterinaria", "Snacks"].includes(n.name),
   );

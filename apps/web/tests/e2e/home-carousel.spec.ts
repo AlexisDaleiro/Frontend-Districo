@@ -3,9 +3,13 @@ import { expect, test } from "@playwright/test";
 test("el carrusel del inicio se recorre con teclado y no desborda", async ({
   page,
 }) => {
+  await page.goto("/tienda/ingresar");
+  await page.getByRole("button", { name: "Cliente mayorista", exact: true }).click();
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda\/productos$/);
   for (const width of [360, 390, 600, 767, 768, 900, 901, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await page.goto("/tienda");
 
     const carousel = page.locator(".home-carousel");
     await expect(
@@ -111,7 +115,7 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
   }
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/tienda");
   expect(
     await page.locator(".home-carousel-slide").evaluate(
       (element) => getComputedStyle(element).animationName,
@@ -126,7 +130,7 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
   await brandLink.click();
   await expect(page).toHaveURL(/\/tienda\/productos\?brandId=/);
 
-  await page.goto("/");
+  await page.goto("/tienda");
   await page.getByRole("button", { name: "Mostrar Gran Plus" }).click();
   const granPlusLink = page.getByRole("link", { name: "Ver Gran Plus", exact: true });
   await expect(granPlusLink).toHaveAttribute(

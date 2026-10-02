@@ -235,12 +235,9 @@ try {
   );
   await mockApi(publicPage, null);
   for (const [name, route] of [
-    ["home", "/tienda"],
-    ["catalog", "/tienda/productos"],
-    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
-    ["brands", "/tienda/marcas"],
-    ["company", "/tienda/empresa"],
-    ["contact", "/tienda/contacto"],
+    ["landing", "/"],
+    ["public-catalog", "/productos"],
+    ["public-product", "/productos/biofresh-para-cachorros-razas-medianas"],
     ["login", "/tienda/ingresar"],
     ["apply", "/tienda/solicitar-cuenta"],
   ]) {
@@ -248,47 +245,64 @@ try {
     await publicPage.locator("main").waitFor();
     await inspect(publicPage, name, [360, 390, 768, 1024, 1440], false);
   }
-  await publicPage.goto(`${base}/tienda/empresa`);
-  await publicPage.setViewportSize({ width: 1440, height: 900 });
-  await publicPage.locator(".company-hero-visual img").waitFor();
-  const before = await publicPage
+  await publicPage.close();
+
+  const storePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  storePage.on("pageerror", (error) => errors.push(`tienda: ${error.message}`));
+  await mockApi(storePage, client);
+  for (const [name, route] of [
+    ["home", "/tienda"],
+    ["catalog", "/tienda/productos"],
+    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
+    ["brands", "/tienda/marcas"],
+    ["company", "/tienda/empresa"],
+    ["contact", "/tienda/contacto"],
+  ]) {
+    await storePage.goto(`${base}${route}`, { waitUntil: "domcontentloaded" });
+    await storePage.locator("main").waitFor();
+    await inspect(storePage, name, [360, 390, 768, 1024, 1440], false);
+  }
+  await storePage.goto(`${base}/tienda/empresa`);
+  await storePage.setViewportSize({ width: 1440, height: 900 });
+  await storePage.locator(".company-hero-visual img").waitFor();
+  const before = await storePage
     .locator(".company-hero-visual img")
     .evaluate((element) =>
       getComputedStyle(element).getPropertyValue("--motion-parallax"),
     );
-  await publicPage.evaluate(() => scrollTo(0, 250));
-  await publicPage.waitForTimeout(150);
-  const after = await publicPage
+  await storePage.evaluate(() => scrollTo(0, 250));
+  await storePage.waitForTimeout(150);
+  const after = await storePage
     .locator(".company-hero-visual img")
     .evaluate((element) =>
       getComputedStyle(element).getPropertyValue("--motion-parallax"),
     );
   if (before === after)
     errors.push("El parallax de la fotografía de empresa no respondió al desplazamiento.");
-  await publicPage.setViewportSize({ width: 390, height: 900 });
-  await publicPage.goto(`${base}/tienda/productos`, { waitUntil: "domcontentloaded" });
-  const filterButton = publicPage.getByRole("button", { name: "Filtrar" });
+  await storePage.setViewportSize({ width: 390, height: 900 });
+  await storePage.goto(`${base}/tienda/productos`, { waitUntil: "domcontentloaded" });
+  const filterButton = storePage.getByRole("button", { name: "Filtrar" });
   await filterButton.click();
   try {
-    await publicPage.locator("dialog[open]").waitFor({ timeout: 3000 });
+    await storePage.locator("dialog[open]").waitFor({ timeout: 3000 });
   } catch {
     await filterButton.click();
-    await publicPage.locator("dialog[open]").waitFor();
+    await storePage.locator("dialog[open]").waitFor();
   }
-  await publicPage.keyboard.press("Escape");
-  await publicPage.locator("dialog[open]").waitFor({ state: "hidden" });
-  await publicPage.goto(`${base}/tienda`, { waitUntil: "domcontentloaded" });
-  const menuButton = publicPage.getByRole("button", { name: "Abrir menú" });
+  await storePage.keyboard.press("Escape");
+  await storePage.locator("dialog[open]").waitFor({ state: "hidden" });
+  await storePage.goto(`${base}/tienda`, { waitUntil: "domcontentloaded" });
+  const menuButton = storePage.getByRole("button", { name: "Abrir menú" });
   await menuButton.click();
   try {
-    await publicPage.locator("dialog[open]").waitFor({ timeout: 3000 });
+    await storePage.locator("dialog[open]").waitFor({ timeout: 3000 });
   } catch {
     await menuButton.click();
-    await publicPage.locator("dialog[open]").waitFor();
+    await storePage.locator("dialog[open]").waitFor();
   }
-  await publicPage.keyboard.press("Escape");
-  await publicPage.locator("dialog[open]").waitFor({ state: "hidden" });
-  await publicPage.close();
+  await storePage.keyboard.press("Escape");
+  await storePage.locator("dialog[open]").waitFor({ state: "hidden" });
+  await storePage.close();
 
   for (const [role, user, routes] of [
     [
@@ -343,12 +357,9 @@ try {
   );
   await mockApi(reducedPage, null);
   for (const [name, route] of [
-    ["home", "/tienda"],
-    ["catalog", "/tienda/productos"],
-    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
-    ["brands", "/tienda/marcas"],
-    ["company", "/tienda/empresa"],
-    ["contact", "/tienda/contacto"],
+    ["landing", "/"],
+    ["public-catalog", "/productos"],
+    ["public-product", "/productos/biofresh-para-cachorros-razas-medianas"],
     ["login", "/tienda/ingresar"],
     ["apply", "/tienda/solicitar-cuenta"],
   ]) {
@@ -357,13 +368,27 @@ try {
     });
     await inspect(reducedPage, name, [360, 390, 768, 1024, 1440], true);
   }
-  await reducedPage.goto(`${base}/tienda`);
-  const transform = await reducedPage
+  await reducedPage.close();
+  const reducedStorePage = await browser.newPage({ viewport: { width: 390, height: 900 }, reducedMotion: "reduce" });
+  await mockApi(reducedStorePage, client);
+  for (const [name, route] of [
+    ["home", "/tienda"],
+    ["catalog", "/tienda/productos"],
+    ["product", "/tienda/producto/biofresh-para-cachorros-razas-medianas"],
+    ["brands", "/tienda/marcas"],
+    ["company", "/tienda/empresa"],
+    ["contact", "/tienda/contacto"],
+  ]) {
+    await reducedStorePage.goto(`${base}${route}`, { waitUntil: "domcontentloaded" });
+    await inspect(reducedStorePage, name, [360, 390, 768, 1024, 1440], true);
+  }
+  await reducedStorePage.goto(`${base}/tienda`);
+  const transform = await reducedStorePage
     .locator(".hero-visual img")
     .evaluate((element) => getComputedStyle(element).transform);
   if (transform !== "none")
     errors.push(`Movimiento reducido: imagen con transform ${transform}`);
-  await reducedPage.close();
+  await reducedStorePage.close();
   for (const [role, user, routes] of [
     [
       "admin",
@@ -407,7 +432,7 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Animaciones verificadas en 13 rutas y cinco anchos; parallax, teclado, guardado y movimiento reducido correctos.",
+    "Animaciones verificadas en 16 rutas y cinco anchos; parallax, teclado, guardado y movimiento reducido correctos.",
   );
   console.log(`Capturas: ${output}`);
 }

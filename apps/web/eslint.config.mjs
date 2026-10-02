@@ -9,6 +9,7 @@ export default defineConfig([
   },
   globalIgnores([
     ".next/**",
+    ".next-e2e/**",
     ".local-support/**",
     "playwright-report/**",
     "test-results/**",

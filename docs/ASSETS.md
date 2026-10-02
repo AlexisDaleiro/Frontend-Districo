@@ -13,3 +13,9 @@ Recuperación: 25/09/2026. Se seleccionaron 20 productos de catálogos públicos
 - Tipografía: Manrope Variable, paquete `@fontsource-variable/manrope`, servido desde la aplicación (sin llamadas a Google Fonts en tiempo de ejecución).
 
 El frontend no sincroniza ni scrapea los sitios durante el uso. En modo real usa los medios de la API y el contenido editorial local. Antes de la presentación final, revisar con DISTRICO las marcas y líneas que efectivamente comercializará y el material que desea mostrar.
+
+## Sitio institucional público (01/10/2026)
+
+- `apps/web/public/images/casa-matriz-fachada.webp` y `apps/web/public/images/deposito-estanterias.webp`: fotografías recuperadas de la landing anterior del usuario, [importadora.vercel.app](https://importadora.vercel.app/), con su autorización expresa en esta tarea. La fachada se usa en el hero y en operación; el depósito, en historia y en una tarjeta de muestra. La autoría y el permiso para una publicación definitiva deben verificarse con DISTRICO.
+- Los demás medios de la landing provienen de `public/images`, `public/images/brands` o de los productos públicos de la API. La correspondencia de marcas y categorías se resuelve con datos de la API, sin líneas comerciales inventadas.
+- `apps/web/src/data/site-news.ts`: tres tarjetas editoriales ficticias, solicitadas para visualizar la sección Novedades. Titulares, fechas 01–03 OCT y textos son **muestras pendientes de contenido real y aprobación**; así se indica también en la interfaz. Las imágenes de esas tarjetas reutilizan los recursos ya descritos arriba y en este documento. No son noticias publicadas.

@@ -41,14 +41,28 @@ const revealSelector = [
   ".panel",
   ".empty",
   ".error-page > *",
+  ".site-story-grid > *",
+  ".site-facts > *",
+  ".site-purpose-image",
+  ".site-purpose-copy",
+  ".site-section-heading",
+  ".site-line:not([aria-hidden='true'])",
+  ".site-product-card:not(.site-product-skeleton)",
+  ".site-steps > *",
+  ".site-operation-photo",
+  ".site-operation-cards > *",
+  ".site-timeline > *",
+  ".site-news-card",
+  ".site-benefits > *",
+  ".site-contact-grid > *",
 ].join(", ");
 
 // Entran con un pequeño rebote de escala en vez de subir.
-const popSelector = ".need, .brand-word, .stats > *";
+const popSelector = ".need, .brand-word, .stats > *, .site-line";
 const parallaxSelector =
-  ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img";
+  ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-hero-photo img, .site-story-media img, .site-operation-photo > img";
 const staggerSelector =
-  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page";
+  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits";
 
 // Mientras corre la transición de página, lo que ya está en pantalla entra con
 // ella; solo las grillas escalonan por su cuenta.
