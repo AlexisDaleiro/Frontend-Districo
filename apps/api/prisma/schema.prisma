@@ -225,6 +225,7 @@ model Brand {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
+  imageUrl  String?
   active    Boolean   @default(true)
   products  Product[]
   createdAt DateTime  @default(now())
@@ -236,6 +237,7 @@ model Laboratory {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
+  imageUrl  String?
   active    Boolean   @default(true)
   products  Product[]
   createdAt DateTime  @default(now())

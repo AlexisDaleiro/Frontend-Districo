@@ -4,6 +4,7 @@ export type Entity = {
   id: string;
   name: string;
   slug?: string;
+  imageUrl?: string | null;
   parentId?: string | null;
   aliasIds?: string[];
 };
@@ -61,6 +62,7 @@ export type Media = {
   alt?: string;
   type: "IMAGE" | "VIDEO";
   isPrimary?: boolean;
+  position?: number;
   variantId?: string;
 };
 export type Product = {
@@ -199,13 +201,16 @@ export type Rule = {
   name: string;
   type?: string;
   active?: boolean;
+  priority?: number;
+  combinable?: boolean;
+  minimumCartAmount?: number;
   startsAt?: string;
   endsAt?: string;
   description?: string;
   triggerType?: string;
   triggerId?: string;
   minimumQuantity?: number;
-  products?: { productId: string; variantId?: string }[];
+  products?: { productId: string; variantId?: string; position?: number }[];
   conditions?: {
     targetType: string;
     targetId?: string;

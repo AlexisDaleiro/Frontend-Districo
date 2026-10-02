@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -16,11 +17,13 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { UpdateProductMediaDto } from './dto/update-product-media.dto';
 import { ProductsService } from './products.service';
+import { CatalogImagesService } from '../images/catalog-images.service';
+import { MAX_BANNER_BYTES } from '../../banners/banner-storage.service';
 
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService, private readonly images: CatalogImagesService) {}
 
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
@@ -80,6 +83,15 @@ export class ProductsController {
   @Roles(Role.ADMIN, Role.CATALOG)
   createMedia(@Param('id') id: string, @Body() dto: CreateProductMediaDto) {
     return this.productsService.createMedia(id, dto);
+  }
+
+  @Post(':id/media/upload')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  @UseInterceptors(FilesInterceptor('files', 8, { limits: { fileSize: MAX_BANNER_BYTES, files: 8 } }))
+  uploadMedia(@Param('id') id: string, @UploadedFiles() files: { buffer: Buffer; size: number; originalname: string }[] | undefined) {
+    return this.images.uploadProductImages(id, files);
   }
 
   @Patch('media/:id')

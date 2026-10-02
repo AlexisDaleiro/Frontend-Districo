@@ -8,5 +8,6 @@ import { BannersService } from './banners.service';
   imports: [PrismaModule],
   controllers: [BannersController, AdminBannersController],
   providers: [BannersService, BannerStorageService],
+  exports: [BannerStorageService],
 })
 export class BannersModule {}

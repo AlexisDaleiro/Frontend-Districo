@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Eye, Pencil, Layers3 } from "lucide-react";
+import { ArrowLeft, Eye, Pencil, Layers3, Images } from "lucide-react";
 import { AccessGate } from "./auth";
 import { AdminNav, VariantManagement } from "./admin";
+import { AdminProductImages } from "./admin-product-images";
 import { AdminForm, type Editor } from "./admin-form";
 import { useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
@@ -71,9 +72,11 @@ export function AdminProductPage({ slug }: { slug: string }) {
                   ><Eye size={19} /></button>
                 </div>
                 <nav className="admin-product-tabs" aria-label="Secciones del producto">
+                  <a href="#imagenes"><Images size={16} /> Imágenes</a>
                   <a href="#edicion"><Pencil size={16} /> Editar producto</a>
-                  <a href="#presentaciones"><Layers3 size={16} /> Presentaciones e imágenes</a>
+                  <a href="#presentaciones"><Layers3 size={16} /> Presentaciones</a>
                 </nav>
+                <AdminProductImages product={item} edit={setEditor} />
                 {previewOpen && <section id="vista-previa" className="admin-product-section">
                   <div className="admin-toolbar">
                     <h2>Vista previa</h2>
@@ -128,7 +131,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                       />}
                 </section>
                 <section id="presentaciones" className="admin-product-section">
-                  <div className="admin-toolbar"><h2>Presentaciones e imágenes</h2></div>
+                  <div className="admin-toolbar"><h2>Presentaciones</h2></div>
                   <VariantManagement product={item} edit={setEditor} />
                 </section>
               </>

@@ -41,8 +41,8 @@ export default function Page() {
                     href={withSearch(storeRoutes.products, new URLSearchParams({ [String(key)]: item.id }))}
                     key={item.id}
                   >
-                    <h3 className={key === "brandId" ? "brand-card-heading" : undefined}>
-                      {key === "brandId" ? <BrandLogo brand={item} /> : item.name}
+                    <h3 className={key === "brandId" || item.imageUrl ? "brand-card-heading" : undefined}>
+                      {key === "brandId" || item.imageUrl ? <BrandLogo brand={item} /> : item.name}
                     </h3>
                     <span className="text-link">
                       Ver productos <ArrowUpRight size={16} />

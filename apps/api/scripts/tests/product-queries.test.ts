@@ -98,7 +98,7 @@ test('card prices keep the same account and medication restrictions as detail', 
       meta: { total: 1, page: 1, limit: 12 },
     }),
   } as unknown as ProductsRepository;
-  const service = new ProductsService(repository);
+  const service = new ProductsService(repository, {} as ConstructorParameters<typeof ProductsService>[1]);
   const filters = { page: 1, limit: 12 };
 
   const anonymous = await service.findCards(filters);

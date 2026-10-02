@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Permission, RecommendationTriggerType, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { JwtUser } from '../common/types/jwt-user.type';
@@ -43,6 +43,46 @@ export class RecommendationsService {
       include: { products: true },
       orderBy: [{ active: 'desc' }, { priority: 'desc' }],
     });
+  }
+
+  async update(id: string, dto: CreateRecommendationRuleDto, userId?: string) {
+    const existing = await this.prisma.recommendationRule.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Recomendacion no encontrada.');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.recommendationRuleProduct.deleteMany({ where: { ruleId: id } });
+      return tx.recommendationRule.update({ where: { id }, data: {
+        name: dto.name,
+        active: dto.active ?? existing.active,
+        priority: dto.priority ?? 0,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        triggerType: dto.triggerType,
+        triggerId: dto.triggerId,
+        minimumQuantity: dto.minimumQuantity ?? null,
+        minimumCartAmount: dto.minimumCartAmount ?? null,
+        products: { create: dto.products.map((product) => ({
+          productId: product.productId, variantId: product.variantId, position: product.position ?? 0,
+        })) },
+      }, include: { products: true } });
+    });
+    await this.audit.log('RECOMMENDATION_RULE_UPDATED', 'RecommendationRule', id, userId, { name: updated.name });
+    return updated;
+  }
+
+  async setActive(id: string, active: boolean, userId?: string) {
+    const existing = await this.prisma.recommendationRule.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Recomendacion no encontrada.');
+    const updated = await this.prisma.recommendationRule.update({ where: { id }, data: { active } });
+    await this.audit.log('RECOMMENDATION_RULE_UPDATED', 'RecommendationRule', id, userId, { active });
+    return updated;
+  }
+
+  async remove(id: string, userId?: string) {
+    const existing = await this.prisma.recommendationRule.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Recomendacion no encontrada.');
+    await this.prisma.recommendationRule.delete({ where: { id } });
+    await this.audit.log('RECOMMENDATION_RULE_DELETED', 'RecommendationRule', id, userId, { name: existing.name });
+    return { success: true };
   }
 
   async recommendationsForUserCart(user: JwtUser) {

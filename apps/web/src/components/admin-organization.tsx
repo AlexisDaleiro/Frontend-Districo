@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
-import { useApi } from "./providers";
-import { Empty, ErrorBox, Loading } from "./ui";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { request, useApi, useSession } from "./providers";
+import { Empty, ErrorBox, Loading, Picture } from "./ui";
 import type { Editor, Field } from "./admin-form";
 import type { Entity } from "@/lib/types";
 
@@ -15,8 +16,45 @@ const nameFields: Field[] = [
   { key: "slug", label: "Identificador en la URL" },
 ];
 
+function LogoUploadButton({ item, busy, onFile }: { item: Entity; busy: boolean; onFile: (file?: File) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  return <>
+    <button className="icon-button" type="button" disabled={busy} title={`${item.imageUrl ? "Cambiar" : "Subir"} logo de ${item.name}`} aria-label={`${item.imageUrl ? "Cambiar" : "Subir"} logo de ${item.name}`} onClick={() => input.current?.click()}><ImagePlus size={16} /></button>
+    <input ref={input} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => { onFile(event.target.files?.[0]); event.target.value = ""; }} />
+  </>;
+}
+
 function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories"; title: string; edit: OpenEditor }) {
   const q = useApi<Entity[]>(path);
+  const client = useQueryClient();
+  const { notify } = useSession();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>();
+  async function upload(item: Entity, file?: File) {
+    if (!file) return;
+    if (file.size === 0 || file.size > 5_000_000) { setError(new Error("El logo debe pesar menos de 5 MB.")); return; }
+    const form = new FormData();
+    form.set("file", file);
+    setBusy(item.id);
+    setError(undefined);
+    try {
+      await request(`${path}/${item.id}/logo`, "POST", form);
+      await client.invalidateQueries();
+      notify("Logo guardado.");
+    } catch (cause) { setError(cause); }
+    finally { setBusy(null); }
+  }
+  async function removeLogo(item: Entity) {
+    if (!window.confirm(`¿Quitar el logo de ${item.name}?`)) return;
+    setBusy(item.id);
+    setError(undefined);
+    try {
+      await request(`${path}/${item.id}/logo`, "DELETE");
+      await client.invalidateQueries();
+      notify("Logo quitado.");
+    } catch (cause) { setError(cause); }
+    finally { setBusy(null); }
+  }
   return <section className="admin-directory">
     <div className="admin-toolbar">
       <h2>{title}</h2>
@@ -24,14 +62,20 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
         <Plus size={16} /> Crear
       </button>
     </div>
+    {error ? <ErrorBox error={error} /> : null}
     {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : !q.data.length ?
       <Empty title={`Todavía no hay ${title.toLowerCase()}`} /> :
       <div className="admin-directory-list">{q.data.map((item) =>
         <div className="admin-directory-row" key={item.id}>
+          {item.imageUrl ? <Picture className="admin-directory-logo" src={item.imageUrl} alt={item.name} sizes="42px" /> : <span className="admin-directory-logo admin-directory-logo-empty" aria-hidden="true" />}
           <span>{item.name}</span>
+          <div className="actions">
+          <LogoUploadButton item={item} busy={busy === item.id} onFile={(file) => { void upload(item, file); }} />
+          {item.imageUrl && <button className="icon-button" disabled={busy === item.id} title={`Quitar logo de ${item.name}`} aria-label={`Quitar logo de ${item.name}`} onClick={() => void removeLogo(item)}><Trash2 size={16} /></button>}
           <button className="icon-button" title={`Editar ${item.name}`} aria-label={`Editar ${item.name}`} onClick={() => edit({
             title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: nameFields, initial: { ...item },
           })}><Pencil size={16} /></button>
+          </div>
         </div>)}</div>}
   </section>;
 }

@@ -309,7 +309,7 @@ function Applications({ edit }: { edit: OpenEditor }) {
   const { user } = useSession();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("PENDING");
   const [page, setPage] = useState(1);
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
@@ -320,19 +320,18 @@ function Applications({ edit }: { edit: OpenEditor }) {
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const list = q.data.items;
-  const pending = list.filter((a) => a.status === "PENDING").length;
   return (
     <>
       <div className="admin-toolbar">
         <h2>Solicitudes de acceso</h2>
         <span className="muted small-copy">
-          {pending} {pending === 1 ? "pendiente" : "pendientes"} en esta página · {q.data.meta.total} en total
+          {q.data.meta.total} {status === "PENDING" ? "pendientes" : "solicitudes"}
         </span>
         <div className="admin-order-filters">
           <input className="form-input" type="search" aria-label="Buscar solicitudes" placeholder="Comercio, RUT o correo" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
           <select className="form-input" aria-label="Filtrar solicitudes" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
-            <option value="">Todos los estados</option>
             <option value="PENDING">Pendientes</option>
+            <option value="">Historial completo</option>
             <option value="APPROVED">Aprobadas</option>
             <option value="REJECTED">Rechazadas</option>
           </select>
@@ -898,21 +897,12 @@ export function VariantManagement({
   product: Product;
   edit: OpenEditor;
 }) {
-  const [remove, setRemove] = useState<string | null>(null),
-    [stockId, setStockId] = useState("");
-  const client = useQueryClient();
+  const [stockId, setStockId] = useState("");
   const stock = useApi<{
     physicalStock: number;
     reservedStock: number;
     availableStock: number;
   }>(`inventory/variants/${stockId}/stock`, !!stockId);
-  const deletion = useMutation({
-    mutationFn: () => request(`products/media/${remove}`, "DELETE"),
-    onSuccess: () => {
-      void client.invalidateQueries();
-      setRemove(null);
-    },
-  });
   const fields: Field[] = [
     text("sku", "SKU"),
     text("name", "Nombre de la presentación"),
@@ -939,25 +929,6 @@ export function VariantManagement({
       <div className="actions">
         <button className="button small" onClick={() => variantEditor()}>
           Agregar presentación
-        </button>
-        <button
-          className="button secondary small"
-          onClick={() =>
-            edit({
-              title: "Agregar imagen",
-              path: `products/${product.id}/media`,
-              fields: [
-                { ...text("url", "URL de la imagen"), type: "url" },
-                text("alt", "Texto alternativo"),
-                number("position", "Orden", 0),
-                bool("isPrimary", "Imagen principal"),
-              ],
-              initial: { position: 0, isPrimary: false },
-              transform: (data) => ({ ...data, type: "IMAGE" }),
-            })
-          }
-        >
-          Agregar imagen por URL
         </button>
       </div>
       <div className="stack" style={{ marginTop: 20 }}>
@@ -1054,65 +1025,6 @@ export function VariantManagement({
           )}
         </div>
       )}
-      <div className="admin-cards" style={{ marginTop: 25 }}>
-        {product.media.map((m) => (
-          <div className="card" key={m.id}>
-            <Picture
-              src={m.url}
-              alt={m.alt ?? product.name}
-              sizes="240px"
-              style={{ height: 110, width: "100%", objectFit: "contain" }}
-            />
-            <div className="actions">
-              <button
-                className="button secondary small"
-                onClick={() =>
-                  edit({
-                    title: "Editar imagen",
-                    path: `products/media/${m.id}`,
-                    method: "PATCH",
-                    fields: [
-                      { key: "url", label: "URL", type: "url", required: true },
-                      text("alt", "Texto alternativo", false),
-                      bool("isPrimary", "Imagen principal"),
-                    ],
-                    initial: { ...m },
-                  })
-                }
-              >
-                Editar imagen
-              </button>
-              <button
-                className="icon-button"
-                aria-label="Eliminar imagen"
-                onClick={() => setRemove(m.id)}
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <Modal
-        open={!!remove}
-        onClose={() => setRemove(null)}
-        title="Eliminar imagen"
-      >
-        <p>Se quitará la referencia de esta imagen del producto.</p>
-        {deletion.error && <ErrorBox error={deletion.error} />}
-        <div className="actions">
-          <button
-            className="button danger"
-            disabled={deletion.isPending}
-            onClick={() => deletion.mutate()}
-          >
-            Eliminar imagen
-          </button>
-          <button className="button secondary" onClick={() => setRemove(null)}>
-            Cancelar
-          </button>
-        </div>
-      </Modal>
     </>
   );
 }
@@ -1124,8 +1036,19 @@ function Marketing({
   recommendations?: boolean;
 }) {
   const path = recommendations ? "admin/recommendations" : "admin/promotions";
+  const mutationPath = recommendations ? "recommendations" : "promotions";
+  const client = useQueryClient();
+  const { notify } = useSession();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<unknown>();
+  const [productSearch, setProductSearch] = useState("");
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedProductSearch(productSearch.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [productSearch]);
   const q = useApi<Rule[]>(path);
-  const products = useApi<ProductList>("products?limit=100");
+  const products = useApi<ProductList>(`products/admin/list?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`);
   const brands = useApi<Entity[]>("brands"),
     categories = useApi<Entity[]>("categories/catalog"),
     labs = useApi<Entity[]>("laboratories");
@@ -1158,37 +1081,76 @@ function Marketing({
       })),
     ),
   ];
-  function create() {
+  const day = (value?: string) => value ? value.slice(0, 10) : "";
+  async function action(rule: Rule | Expiration, target: string, method: "PATCH" | "DELETE", body?: unknown) {
+    if (method === "DELETE" && !window.confirm(`¿Eliminar ${"name" in rule ? rule.name : "esta promoción"}?`)) return;
+    setBusyId(rule.id);
+    setActionError(undefined);
+    try {
+      await request(target, method, body);
+      await client.invalidateQueries();
+      notify(method === "DELETE" ? "Regla eliminada." : "Regla actualizada.");
+    } catch (cause) { setActionError(cause); }
+    finally { setBusyId(null); }
+  }
+  function create(rule?: Rule) {
+    const condition = rule?.conditions?.[0];
+    const reward = rule?.rewards?.[0];
+    const recommended = rule?.products?.[0];
+    const selectedTargets = [
+      rule?.triggerType && rule.triggerId ? `${rule.triggerType}:${rule.triggerId}` : "",
+      condition?.targetType && condition.targetId ? `${condition.targetType}:${condition.targetId}` : "",
+      reward?.targetType && reward.targetId ? `${reward.targetType}:${reward.targetId}` : "",
+    ].filter(Boolean);
+    const availableTargets = [...targets];
+    for (const value of selectedTargets) if (!availableTargets.some((target) => target.value === value)) availableTargets.push({ value, label: `Actual · ${value}` });
+    const availableProducts = [...productsOptions];
+    if (recommended?.productId && !availableProducts.some((product) => product.value === recommended.productId)) {
+      availableProducts.push({ value: recommended.productId, label: `Actual · ${recommended.productId}` });
+    }
     if (recommendations)
       edit({
-        title: "Crear recomendación",
-        path,
+        title: rule ? "Editar recomendación" : "Crear recomendación",
+        path: rule ? `recommendations/${rule.id}` : path,
+        method: rule ? "PATCH" : "POST",
         fields: [
           text("name", "Nombre de la regla"),
           select(
             "trigger",
             "Se activa al comprar",
-            targets.filter((t) => !t.value.startsWith("PRODUCT_VARIANT")),
+            availableTargets.filter((t) => !t.value.startsWith("PRODUCT_VARIANT")),
           ),
           number("minimumQuantity", "Cantidad mínima", 1),
-          select("productId", "Producto recomendado", productsOptions),
+          { ...number("minimumCartAmount", "Importe mínimo del carrito", 0, "any"), required: false },
+          select("productId", "Producto recomendado", availableProducts),
           number("priority", "Prioridad", 0),
+          date("startsAt", "Comienza", false),
+          date("endsAt", "Finaliza", false),
         ],
-        initial: { minimumQuantity: 1, priority: 0 },
+        initial: rule ? {
+          name: rule.name, trigger: `${rule.triggerType}:${rule.triggerId}`,
+          minimumQuantity: rule.minimumQuantity ?? 1, minimumCartAmount: rule.minimumCartAmount ?? "", productId: recommended?.productId,
+          priority: rule.priority ?? 0, startsAt: day(rule.startsAt), endsAt: day(rule.endsAt),
+        } : { minimumQuantity: 1, priority: 0 },
         transform: ({ trigger, productId, ...data }) => {
           const [triggerType, triggerId] = String(trigger).split(":");
+          if (data.endsAt && data.startsAt && String(data.endsAt) < String(data.startsAt)) throw new Error("La fecha final debe ser posterior al inicio.");
           return {
             ...data,
             triggerType,
             triggerId,
-            products: [{ productId, position: 0 }],
+            products: [
+              { productId, variantId: recommended?.productId === productId ? recommended?.variantId : undefined, position: recommended?.position ?? 0 },
+              ...(rule?.products?.slice(1).map((product) => ({ productId: product.productId, variantId: product.variantId, position: product.position ?? 0 })) ?? []),
+            ],
           };
         },
       });
     else
       edit({
-        title: "Crear promoción",
-        path,
+        title: rule ? "Editar promoción" : "Crear promoción",
+        path: rule ? `promotions/${rule.id}` : path,
+        method: rule ? "PATCH" : "POST",
         fields: [
           text("name", "Nombre"),
           { key: "description", label: "Descripción", type: "textarea" },
@@ -1197,9 +1159,11 @@ function Marketing({
             { value: "FIXED_AMOUNT", label: "Importe fijo" },
             { value: "CROSS_DISCOUNT", label: "Descuento cruzado" },
           ]),
-          select("condition", "Compra que activa el beneficio", targets),
-          number("minQuantity", "Cantidad mínima", 1),
-          select("reward", "Productos que reciben el beneficio", targets),
+          select("condition", "Compra que activa el beneficio", availableTargets),
+          select("metric", "Condición", [{ value: "MIN_QUANTITY", label: "Cantidad mínima" }, { value: "MIN_AMOUNT", label: "Importe mínimo" }]),
+          { ...number("minQuantity", "Cantidad mínima", 1), required: false },
+          { ...number("minAmount", "Importe mínimo", 0, "any"), required: false },
+          select("reward", "Productos que reciben el beneficio", availableTargets),
           select("rewardType", "Beneficio", [
             { value: "PERCENTAGE", label: "Porcentaje" },
             { value: "FIXED_AMOUNT", label: "Importe por unidad" },
@@ -1211,18 +1175,34 @@ function Marketing({
           number("value", "Valor del beneficio", 0, "any"),
           date("startsAt", "Comienza"),
           date("endsAt", "Finaliza", false),
+          number("priority", "Prioridad", 0),
+          bool("combinable", "Combinable con otras promociones"),
         ],
-        initial: {
+        initial: rule ? {
+          name: rule.name, description: rule.description ?? "", type: rule.type ?? "PERCENTAGE",
+          condition: `${condition?.targetType}:${condition?.targetId}`,
+          metric: condition?.metric ?? "MIN_QUANTITY", minQuantity: condition?.minQuantity ?? "",
+          minAmount: condition?.minAmount ?? "",
+          reward: `${reward?.targetType}:${reward?.targetId}`,
+          rewardType: reward?.rewardType ?? "PERCENTAGE",
+          value: reward?.rewardType === "PERCENTAGE" ? reward.percentage : reward?.amount,
+          startsAt: day(rule.startsAt), endsAt: day(rule.endsAt),
+          priority: rule.priority ?? 0, combinable: rule.combinable ?? false,
+        } : {
           type: "PERCENTAGE",
           rewardType: "PERCENTAGE",
+          metric: "MIN_QUANTITY",
           minQuantity: 1,
           startsAt: new Date().toISOString().slice(0, 10),
+          priority: 0, combinable: false,
         },
         transform: ({
           condition,
           reward,
           rewardType,
+          metric,
           minQuantity,
+          minAmount,
           value,
           ...data
         }) => {
@@ -1230,6 +1210,8 @@ function Marketing({
             throw new Error("El porcentaje no puede superar 100.");
           if (data.endsAt && String(data.endsAt) < String(data.startsAt))
             throw new Error("La fecha final debe ser posterior al inicio.");
+          if (metric === "MIN_QUANTITY" && !minQuantity) throw new Error("Indicá la cantidad mínima.");
+          if (metric === "MIN_AMOUNT" && !minAmount) throw new Error("Indicá el importe mínimo.");
           const [ct, ci] = String(condition).split(":"),
             [rt, ri] = String(reward).split(":");
           return {
@@ -1238,9 +1220,13 @@ function Marketing({
               {
                 targetType: ct,
                 targetId: ci,
-                metric: "MIN_QUANTITY",
-                minQuantity,
+                metric,
+                ...(metric === "MIN_QUANTITY" ? { minQuantity } : { minAmount }),
               },
+              ...(rule?.conditions?.slice(1).map((item) => ({
+                targetType: item.targetType, targetId: item.targetId, metric: item.metric,
+                minQuantity: item.minQuantity, minAmount: item.minAmount,
+              })) ?? []),
             ],
             rewards: [
               {
@@ -1251,12 +1237,16 @@ function Marketing({
                   ? { percentage: value }
                   : { amount: value }),
               },
+              ...(rule?.rewards?.slice(1).map((item) => ({
+                targetType: item.targetType, targetId: item.targetId,
+                rewardType: item.rewardType, percentage: item.percentage, amount: item.amount,
+              })) ?? []),
             ],
-            combinable: false,
           };
         },
-        description:
-          "Esta versión crea una condición y un beneficio por regla. Las reglas existentes se consultan; el backend no expone edición ni eliminación.",
+        description: rule && ((rule.conditions?.length ?? 0) > 1 || (rule.rewards?.length ?? 0) > 1)
+          ? "Esta regla tiene condiciones o beneficios adicionales; se conservarán sin cambios."
+          : undefined,
       });
   }
   return (
@@ -1270,21 +1260,19 @@ function Marketing({
         <button
           className="button small"
           disabled={!products.data}
-          onClick={create}
+          onClick={() => create()}
         >
           Crear {recommendations ? "recomendación" : "promoción"}
         </button>
       </div>
+      <input className="form-input admin-category-search" type="search" aria-label="Buscar producto para reglas" placeholder="Buscar producto para reglas" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
+      {actionError && <ErrorBox error={actionError} />}
       {products.error && (
         <ErrorBox
           error={products.error}
           retry={() => void products.refetch()}
         />
       )}
-      <p className="info-note" style={{ marginBottom: 20 }}>
-        Los selectores cargan hasta 100 productos del catálogo. Las reglas se
-        crean y consultan; la API actual no ofrece modificación ni eliminación.
-      </p>
       {q.isPending ? (
         <Loading />
       ) : q.error ? (
@@ -1311,6 +1299,13 @@ function Marketing({
               <p className="small-copy">
                 {rule.active === false ? "Inactiva" : "Activa"}
               </p>
+              <div className="actions">
+                <button className="button small secondary" disabled={!!busyId || !products.data} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
+                <button className="button small secondary" disabled={!!busyId} onClick={() => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}>
+                  {rule.active === false ? "Activar" : "Desactivar"}
+                </button>
+                <button className="icon-button" title={`Eliminar ${rule.name}`} aria-label={`Eliminar ${rule.name}`} disabled={!!busyId} onClick={() => void action(rule, `${mutationPath}/${rule.id}`, "DELETE")}><Trash2 size={16} /></button>
+              </div>
             </div>
           ))}
         </div>
@@ -1347,7 +1342,8 @@ function Marketing({
                     ),
                     text("batch", "Lote", false),
                     date("expirationDate", "Vencimiento del lote"),
-                    number("discountPercentage", "Descuento (%)", 0, "any"),
+                    { ...number("discountPercentage", "Descuento (%)", 0, "any"), required: false },
+                    { ...number("promotionalPrice", "Precio promocional", 0, "any"), required: false },
                     date("startsAt", "Comienza"),
                     date("endsAt", "Finaliza", false),
                     {
@@ -1357,6 +1353,8 @@ function Marketing({
                   ],
                   initial: { startsAt: new Date().toISOString().slice(0, 10) },
                   transform: (data) => {
+                    if (!data.discountPercentage && !data.promotionalPrice)
+                      throw new Error("Indicá un descuento o un precio promocional.");
                     if (Number(data.discountPercentage) > 100)
                       throw new Error("El porcentaje no puede superar 100.");
                     return data;
@@ -1392,6 +1390,41 @@ function Marketing({
                       ? `${p.discountPercentage}% de descuento`
                       : `Precio promocional: ${p.promotionalPrice}`}
                   </p>
+                  <p className="small-copy">{p.active === false ? "Inactiva" : "Activa"}</p>
+                  <div className="actions">
+                    <button className="button small secondary" disabled={!!busyId || !products.data} onClick={() => edit({
+                      title: "Editar promoción por vencimiento", path: `promotions/expiration/${p.id}`, method: "PATCH",
+                      fields: [
+                        select("variantId", "Presentación", [
+                          ...(products.data?.items.flatMap((item) => item.variants.map((variant) => ({ value: variant.id, label: `${item.name} · ${variant.name}` }))) ?? []),
+                          ...(!products.data?.items.some((item) => item.variants.some((variant) => variant.id === p.variantId)) && p.variantId ? [{ value: p.variantId, label: `Actual · ${p.variantId}` }] : []),
+                        ]),
+                        text("batch", "Lote", false), date("expirationDate", "Vencimiento del lote"),
+                        { ...number("discountPercentage", "Descuento (%)", 0, "any"), required: false },
+                        { ...number("promotionalPrice", "Precio promocional", 0, "any"), required: false },
+                        date("startsAt", "Comienza"), date("endsAt", "Finaliza", false),
+                        { ...number("quantityLimit", "Cantidad máxima", 1), required: false },
+                        bool("active", "Promoción activa"),
+                      ],
+                      initial: {
+                        variantId: p.variantId, batch: p.batch ?? "", expirationDate: day(p.expirationDate),
+                        discountPercentage: p.discountPercentage ?? "", promotionalPrice: p.promotionalPrice ?? "",
+                        startsAt: day(p.startsAt), endsAt: day(p.endsAt), quantityLimit: p.quantityLimit ?? "", active: p.active !== false,
+                      },
+                      transform: (data) => {
+                        if (!data.discountPercentage && !data.promotionalPrice) throw new Error("Indicá un descuento o un precio promocional.");
+                        if (Number(data.discountPercentage ?? 0) > 100) throw new Error("El porcentaje no puede superar 100.");
+                        return data;
+                      },
+                    })}><Pencil size={15} /> Editar</button>
+                    <button className="button small secondary" disabled={!!busyId} onClick={() => void action(p, `promotions/expiration/${p.id}`, "PATCH", {
+                      productId: p.productId, variantId: p.variantId, batch: p.batch,
+                      expirationDate: p.expirationDate, discountPercentage: p.discountPercentage,
+                      promotionalPrice: p.promotionalPrice, startsAt: p.startsAt, endsAt: p.endsAt,
+                      quantityLimit: p.quantityLimit, active: p.active === false,
+                    })}>{p.active === false ? "Activar" : "Desactivar"}</button>
+                    <button className="icon-button" title="Eliminar promoción por vencimiento" aria-label="Eliminar promoción por vencimiento" disabled={!!busyId} onClick={() => void action(p, `promotions/expiration/${p.id}`, "DELETE")}><Trash2 size={16} /></button>
+                  </div>
                 </div>
               ))}
             </div>
