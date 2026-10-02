@@ -701,7 +701,7 @@ function RelatedProducts({ product }: { product: Product }) {
         </div>
         <Link
           className="text-link"
-          href={`/catalogo?categoryId=${encodeURIComponent(categoryId)}`}
+          href={catalogLink("categoryId", categoryId)}
         >
           Ver todos <ArrowUpRight size={16} />
         </Link>
@@ -710,18 +710,13 @@ function RelatedProducts({ product }: { product: Product }) {
     </section>
   );
 }
-function ProductTabs({
+function ProductInfo({
   product,
   variant,
 }: {
   product: Product;
   variant?: Variant;
 }) {
-  const [tab, setTab] = useState<"descripcion" | "ficha">("descripcion");
-  const tabs = [
-    ["descripcion", "Descripción"],
-    ["ficha", "Ficha técnica"],
-  ] as const;
   const categories = product.categories.filter((c) => c.category);
   // Solo filas con dato: la ficha no inventa valores.
   const rows: [string, ReactNode][] = [
@@ -729,7 +724,7 @@ function ProductTabs({
       "Marca",
       product.brand && (
         <Link
-          href={`/catalogo?brandId=${encodeURIComponent(product.brand.id)}`}
+          href={catalogLink("brandId", product.brand.id)}
         >
           {product.brand.name}
         </Link>
@@ -743,7 +738,7 @@ function ProductTabs({
           <span key={c.categoryId}>
             {i > 0 && " · "}
             <Link
-              href={`/catalogo?categoryId=${encodeURIComponent(c.categoryId)}`}
+              href={catalogLink("categoryId", c.categoryId)}
             >
               {c.category?.name}
             </Link>
@@ -770,75 +765,88 @@ function ProductTabs({
     ],
   ];
   return (
-    <div className="detail-tabs">
-      <div
-        role="tablist"
-        aria-label="Información del producto"
-        onKeyDown={(e) => {
-          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-          const next = tab === "descripcion" ? "ficha" : "descripcion";
-          setTab(next);
-          document.getElementById(`tab-${next}`)?.focus();
-        }}
-      >
-        {tabs.map(([id, title]) => (
-          <button
-            type="button"
-            role="tab"
-            id={`tab-${id}`}
-            key={id}
-            aria-selected={tab === id}
-            aria-controls={`panel-${id}`}
-            tabIndex={tab === id ? 0 : -1}
-            onClick={() => setTab(id)}
+    <div className="detail-sections">
+      <section aria-labelledby="detalle-descripcion">
+        <h2 id="detalle-descripcion">Descripción</h2>
+        <p style={{ whiteSpace: "pre-line" }}>
+          {product.description?.replace(/<[^>]+>/g, " ") ||
+            "Consultá a DISTRICO para obtener más información."}
+        </p>
+        {product.sourceUrl && (
+          <a
+            className="text-link"
+            style={{ marginTop: 16 }}
+            href={product.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
           >
-            {title}
-          </button>
-        ))}
-      </div>
-      <div
-        role="tabpanel"
-        id={`panel-${tab}`}
-        aria-labelledby={`tab-${tab}`}
-        className="detail-tab-panel"
-        // Se vuelve a montar al cambiar de pestaña para animar su entrada.
-        key={tab}
-      >
-        {tab === "descripcion" ? (
-          <>
-            <p style={{ whiteSpace: "pre-line" }}>
-              {product.description?.replace(/<[^>]+>/g, " ") ||
-                "Consultá a DISTRICO para obtener más información."}
-            </p>
-            {product.sourceUrl && (
-              <a
-                className="text-link"
-                style={{ marginTop: 16 }}
-                href={product.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Información del proveedor <ArrowUpRight size={14} />
-              </a>
-            )}
-          </>
-        ) : (
-          <dl className="detail-specs">
-            {rows
-              .filter(([, value]) => value)
-              .map(([title, value]) => (
-                <div key={title}>
-                  <dt>{title}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-          </dl>
+            Información del proveedor <ArrowUpRight size={14} />
+          </a>
         )}
-      </div>
+      </section>
+      <section aria-labelledby="detalle-ficha">
+        <h2 id="detalle-ficha">Ficha técnica</h2>
+        <dl className="detail-specs">
+          {rows
+            .filter(([, value]) => value)
+            .map(([title, value]) => (
+              <div key={title}>
+                <dt>{title}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+        </dl>
+      </section>
     </div>
   );
 }
+// Barra fija en mobile: aparece mientras el bloque de compra está fuera de la
+// vista y lleva hasta él. No repite «Guardar en carrito».
+function BuyBar({ variant, target }: { variant: Variant; target: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = document.getElementById(target);
+    if (!node || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setVisible(!entry.isIntersecting),
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [target]);
+  return (
+    <div
+      className={"detail-buybar" + (visible ? " is-visible" : "")}
+      aria-hidden={!visible}
+    >
+      <div>
+        <small>{variant.name}</small>
+        <strong>
+          {variant.price
+            ? money(variant.price.amount, variant.price.currency)
+            : "Sin precio"}
+        </strong>
+      </div>
+      <button
+        type="button"
+        className="button"
+        tabIndex={visible ? 0 : -1}
+        onClick={() => {
+          const node = document.getElementById(target);
+          node?.scrollIntoView({ behavior: "smooth", block: "center" });
+          node
+            ?.querySelector<HTMLElement>("input")
+            ?.focus({ preventScroll: true });
+        }}
+      >
+        Ir a comprar
+      </button>
+    </div>
+  );
+}
+const catalogLink = (key: "brandId" | "categoryId", id: string) =>
+  withSearch(storeRoutes.products, new URLSearchParams({ [key]: id }));
 function ProductDetailContent({ product }: { product: Product }) {
+  const { user } = useSession();
   const [variantId, setVariantId] = useState(
     product.variants.find((v) => v.active !== false)?.id ?? "",
   );
@@ -896,7 +904,7 @@ function ProductDetailContent({ product }: { product: Product }) {
           <p className="eyebrow detail-eyebrow">
             {product.brand ? (
               <Link
-                href={`/catalogo?brandId=${encodeURIComponent(product.brand.id)}`}
+                href={catalogLink("brandId", product.brand.id)}
               >
                 {product.brand.name}
               </Link>
@@ -907,7 +915,7 @@ function ProductDetailContent({ product }: { product: Product }) {
               <>
                 {(product.brand || product.laboratory) && " · "}
                 <Link
-                  href={`/catalogo?categoryId=${encodeURIComponent(category.categoryId)}`}
+                  href={catalogLink("categoryId", category.categoryId)}
                 >
                   {category.category.name}
                 </Link>
@@ -934,32 +942,39 @@ function ProductDetailContent({ product }: { product: Product }) {
           </div>
           {variant ? (
             <>
-              {variants.length > 1 ? (
-                <div className="detail-variants">
-                  <p id="presentaciones">Presentación</p>
-                  <div role="radiogroup" aria-labelledby="presentaciones">
-                    {variants.map((v) => (
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={v.id === variantId}
-                        key={v.id}
-                        onClick={() => {
-                          setVariantId(v.id);
-                          setImageId(undefined);
-                        }}
-                      >
-                        {v.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="detail-variant-single">
-                  Presentación: <strong>{variant.name}</strong>
+              <div className="detail-variants">
+                <p id="presentaciones">
+                  {variants.length > 1
+                    ? variants.length + " presentaciones"
+                    : "Presentación"}
                 </p>
-              )}
-              <div className="detail-purchase">
+                <div role="radiogroup" aria-labelledby="presentaciones">
+                  {variants.map((v) => (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={v.id === variantId}
+                      key={v.id}
+                      onClick={() => {
+                        setVariantId(v.id);
+                        setImageId(undefined);
+                      }}
+                    >
+                      {v.name}
+                      <strong>
+                        {v.price
+                          ? money(v.price.amount, v.price.currency)
+                          : hiddenPriceText(user, product)}
+                      </strong>
+                      <small>
+                        {v.availableStock > 0 ? "Disponible" : "Sin stock"} · Mín.{" "}
+                        {firstQuantity(v)}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="detail-purchase" id="comprar">
                 <div className="row between">
                   {variant.price ? (
                     <p className="price">
@@ -975,6 +990,9 @@ function ProductDetailContent({ product }: { product: Product }) {
                 )}
                 <BuyForm key={variantId} product={product} variant={variant} />
               </div>
+              {user && canBuy(user, product) && (
+                <BuyBar variant={variant} target="comprar" />
+              )}
             </>
           ) : (
             <p className="panel">
@@ -988,8 +1006,8 @@ function ProductDetailContent({ product }: { product: Product }) {
             </p>
           )}
         </div>
+        <ProductInfo product={product} variant={variant} />
       </div>
-      <ProductTabs product={product} variant={variant} />
       <RelatedProducts product={product} />
     </>
   );

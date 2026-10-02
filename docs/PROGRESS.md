@@ -2,6 +2,15 @@
 
 Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
 
+## Mejora: ficha de producto B2B con panel de compra fijo (01/10)
+
+- `catalog.tsx` (`ProductDetailContent`): presentaciones como tarjetas (nombre, precio o texto de precio oculto, disponibilidad y mínimo), también con una sola presentación. En ≥900px la grilla usa áreas: galería y textos a la izquierda, panel de compra (`.detail-info`) fijo a la derecha. Descripción y ficha técnica (`ProductInfo`, antes `ProductTabs`) se ven sin pestañas. En mobile el orden es galería, compra y textos, y `BuyBar` muestra presentación, precio y «Ir a comprar» mientras `#comprar` está fuera de la vista; lleva el foco al campo de cantidad y sube el botón de WhatsApp. Solo se muestra a cuentas que pueden comprar.
+- Sin subtotal (sería un cálculo comercial en el navegador). Lógica de compra sin cambios.
+- Corregido: marca, categoría y «Ver todos» enlazaban a `/catalogo?…`, ruta inexistente (404); ahora van a `/tienda/productos?brandId|categoryId=…` (`catalogLink`).
+- CSS: se borraron `.detail-tabs`, `.detail-tab-panel` (y su animación en `motion.css`) y `.detail-variant-single`.
+- Verificado: typecheck, lint, `npm run test -w apps/web` 60/60. E2e `flows` + `motion` + `admin-complete`: 33 pasan, 1 falla. La falla es `admin-complete.spec.ts:82`: busca «Agregar imagen por URL», que ya no existe tras `49a0cb85`, y falla igual sin este cambio. Playwright (demo, cliente): botón de compra visible al hacer scroll en 1024, 1280 y 1440px; sin scroll horizontal en 390–1440px; barra mobile aparece y lleva al bloque.
+- Pendiente: productos con varias presentaciones sin verificar (el demo trae una por producto). Sin revisión visual humana.
+
 ## Pruebas: solicitud aprobada con filtro por estado (01/10)
 
 - Desde `49a0cb85`, Solicitudes en admin muestra solo «Pendientes» por defecto; al aprobar, la solicitud sale de la lista. `flows.spec.ts` («solicitud aprobada habilita nueva cuenta…») elige «Aprobadas» en «Filtrar solicitudes» antes de verificar el estado y el RUT.

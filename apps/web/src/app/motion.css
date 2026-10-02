@@ -595,11 +595,6 @@ button {
   scale: 0.96;
 }
 
-/* Pestañas de la ficha: el panel nuevo entra subiendo. */
-.detail-tab-panel {
-  animation: motion-rise 360ms var(--ease-out) both;
-}
-
 .thumbs button[aria-pressed="true"] {
   box-shadow: 0 0 0 2px var(--lime-soft);
 }
