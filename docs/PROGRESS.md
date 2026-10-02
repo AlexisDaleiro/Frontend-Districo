@@ -2,6 +2,20 @@
 
 Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
 
+## Pruebas: e2e de catálogo, admin y movimiento al día (01/10)
+
+- `flows.spec.ts:26`: Líneas ya no está en la landing; la prueba entra por «Ver productos» del header y filtra con el select «Categoría».
+- `flows.spec.ts:304`: Clientes en admin es una tabla (`.admin-customers-table`); el botón se llama «Editar» y el teléfono vacío muestra «Sin teléfono».
+- `motion.spec.ts`: el detector de bloques invisibles ignora `.brand-mark` dentro de `.site-brand-art.is-loaded` (logo de respaldo que se oculta a propósito cuando carga la foto). Se quitó `.site-line` de la lista de revelados.
+- Verificado: `E2E_PORT=3302 npx -w apps/web playwright test flows.spec.ts motion.spec.ts` 28/28; lint y typecheck pasaron.
+
+## Mejora: product cards B2B contenidas y con más aire (01/10)
+
+- Solo `globals.css`. `.product-card` pasa a caja blanca con borde y radio 14px; la imagen queda a sangre arriba. Marca, nombre y pie con 16px laterales (12px en mobile). Tipografía: marca 11px, nombre 15px cortado a 2 líneas, pie 12px, precio 18px; en mobile 10/13/11px y precio 15px. En mobile, separación de grilla de `25px 14px` a `18px 12px`.
+- Catálogo `/tienda/productos` entre 600 y 1023px pasa de 3 a 2 columnas: con la caja, 3 columnas junto al filtro medían 172–177px. En 1024px el layout del frame cambia y las 3 columnas miden 246px.
+- Medido con Playwright (demo, cliente mayorista): card de 238 a 324px desde 600px; 173px a 390px (2 columnas); nombre en 2 líneas; pies alineados; sin scroll horizontal.
+- Verificado: `npm run lint` y `npm run test -w apps/web` (58/58) pasaron. E2e `flows.spec.ts` + `motion.spec.ts`: 28/28 tras actualizar las pruebas (ver entrada siguiente). Sin revisión visual humana.
+
 ## Rediseño de marcas en la landing pública (01/10)
 
 - `src/components/site-home.tsx` reemplaza la marquesina de logos por `src/components/site-brands.tsx`: tarjetas verticales con fotografías tintadas, flechas, paginación, scroll horizontal manual y enlaces al catálogo filtrado. El título usa la cantidad real devuelta por `brands`; las cantidades por tarjeta vienen de `products/cards?brandId=…&limit=1` y se consultan solo al acercarse a la vista. Si fallan, la marca sigue visible sin una cifra inventada. El botón «Ver las N marcas» lleva al filtro de marca de `/productos` (`public-products.tsx`).

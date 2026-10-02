@@ -6,7 +6,7 @@ const publicRoutes = [
   "/productos/biofresh-para-cachorros-razas-medianas",
 ];
 const revealed =
-  ".need, .section-title, .line-card, .brand-word, .product-card, .cta-band, .company-page section, .company-card, .company-value, .company-operation-card, .company-benefit, .contact-branch-card, .contact-store-card, .directory-grid > *, .benefits > div, .site-story-grid > *, .site-purpose-image, .site-purpose-copy, .site-line, .site-product-card, .site-steps > *, .site-news-card";
+  ".need, .section-title, .line-card, .brand-word, .product-card, .cta-band, .company-page section, .company-card, .company-value, .company-operation-card, .company-benefit, .contact-branch-card, .contact-store-card, .directory-grid > *, .benefits > div, .site-story-grid > *, .site-purpose-image, .site-purpose-copy, .site-product-card, .site-steps > *, .site-news-card";
 
 async function clientLogin(page: Page) {
   await page.goto("/tienda/ingresar");
@@ -86,6 +86,9 @@ async function probeReveal(page: Page) {
             getComputedStyle(e).opacity === "0" &&
             e.getBoundingClientRect().height > 0 &&
             !e.closest("dialog:not([open])") &&
+            // Logo de respaldo de las tarjetas de marca: se oculta a propósito
+            // cuando carga la foto de la marca.
+            !e.closest(".site-brand-art.is-loaded") &&
             !clipped(e),
         )
         .map((e) => e.className.toString().slice(0, 30));

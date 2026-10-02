@@ -28,9 +28,10 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: /Marcas que acompañan. Un socio que responde/ })).toBeVisible();
-  await page
-    .getByRole("link", { name: "Arenas sanitarias", exact: true })
-    .click();
+  // Líneas salió de la landing: se entra al catálogo desde el header y se filtra ahí.
+  await page.getByRole("link", { name: "Ver productos", exact: true }).click();
+  await expect(page).toHaveURL(/productos$/);
+  await page.getByLabel("Categoría").selectOption({ label: "Arenas sanitarias" });
   await expect(page).toHaveURL(/\/productos\?categoryId=/);
   await expect(page.locator(".site-product-card")).toHaveCount(2);
   await page.reload();
@@ -305,16 +306,17 @@ test("administración puede registrar y quitar el teléfono de un cliente", asyn
   test.setTimeout(90000);
   await login(page, "Administración");
   await page.goto("/tienda/admin/clientes");
-  const customer = page.locator(".admin-cards .card").filter({ hasText: "Pet Shop Demo" });
-  await customer.getByRole("button", { name: "Editar cuenta" }).click();
+  // Clientes se muestra como tabla: una fila por comercio.
+  const customer = page.locator(".admin-customers-table tbody tr").filter({ hasText: "Pet Shop Demo" });
+  await customer.getByRole("button", { name: "Editar" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Teléfono").fill("099 123 456");
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(customer).toContainText("099 123 456");
-  await customer.getByRole("button", { name: "Editar cuenta" }).click();
+  await customer.getByRole("button", { name: "Editar" }).click();
   await dialog.getByLabel("Teléfono").fill("");
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(customer).toContainText("Sin registrar");
+  await expect(customer).toContainText("Sin teléfono");
 });
 test("permisos: la identidad cambia sin recargar al ingresar y al salir", async ({
   page,
