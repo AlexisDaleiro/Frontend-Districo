@@ -8,6 +8,18 @@ async function admin(page: Page) {
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(/\/tienda\/admin$/, { timeout: 10000 });
 }
+test("administración permite cerrar sesión con el menú abierto o contraído", async ({ page }) => {
+  await admin(page);
+  await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/);
+
+  await admin(page);
+  await page.getByRole("button", { name: "Contraer menú" }).click();
+  await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/);
+});
 test("administración conserva búsqueda, roles y aviso de suspensión", async ({ page }) => {
   await admin(page);
   const sidebar = page.locator(".admin-sidebar");

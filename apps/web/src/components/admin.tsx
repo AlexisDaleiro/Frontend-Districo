@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useLayoutEffect,
@@ -14,6 +15,7 @@ import {
   ClipboardList,
   Inbox,
   LayoutDashboard,
+  LogOut,
   Menu,
   Package,
   Pencil,
@@ -1402,7 +1404,11 @@ function Marketing({
 export function AdminNav({ section, email, role }: { section: string; email?: string; role?: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CLIENT" }) {
   // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
   const counts = useApi<Record<string, number>>("admin/dashboard");
+  const { logout } = useSession();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<unknown>();
   const nav = useRef<HTMLElement>(null);
   const indicator = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -1504,6 +1510,31 @@ export function AdminNav({ section, email, role }: { section: string; email?: st
           </div>
         ))}
       </nav>
+      <div className="admin-sidebar-footer">
+        <button
+          type="button"
+          className="admin-logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          disabled={loggingOut}
+          onClick={async () => {
+            setLoggingOut(true);
+            setLogoutError(undefined);
+            try {
+              await logout();
+              router.replace(storeRoutes.login);
+            } catch (error) {
+              setLogoutError(error);
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+        >
+          <LogOut size={17} aria-hidden="true" />
+          <span>{loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}</span>
+        </button>
+        {logoutError !== undefined && <ErrorBox error={logoutError} />}
+      </div>
     </aside>
   );
 }

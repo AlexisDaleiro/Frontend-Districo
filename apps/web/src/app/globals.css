@@ -1750,6 +1750,35 @@ td .button {
 .admin-sidebar[data-collapsed="true"] .admin-nav {
   display: none;
 }
+.admin-sidebar-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--on-ink-line);
+}
+.admin-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--on-ink-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.admin-logout:hover,
+.admin-logout:focus-visible {
+  color: var(--on-ink);
+  background: var(--on-ink-line);
+}
+.admin-logout:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 .admin-nav {
   position: relative;
   display: flex;
@@ -1865,6 +1894,14 @@ td .button {
   .admin-nav a {
     white-space: normal;
   }
+  .admin-sidebar-footer {
+    display: block;
+    margin-top: 18px;
+    padding-top: 12px;
+  }
+  .admin-logout {
+    width: 100%;
+  }
   .admin-sidebar[data-collapsed="true"] {
     padding: 14px 8px;
   }
@@ -1891,6 +1928,16 @@ td .button {
     height: 40px;
     justify-content: center;
     padding: 0;
+  }
+  .admin-sidebar[data-collapsed="true"] .admin-logout {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+    margin-inline: auto;
+  }
+  .admin-sidebar[data-collapsed="true"] .admin-logout span {
+    display: none;
   }
 }
 .stats {
