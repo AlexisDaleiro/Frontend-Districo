@@ -1,4 +1,14 @@
 /* Extensión institucional del sistema de movimiento de DISTRICO. */
+.site-catalog-intro > .container,
+.site-detail-grid > .site-detail-image,
+.site-detail-grid > .site-detail-copy {
+  animation: site-page-intro-in 400ms var(--ease-out) both;
+}
+.site-detail-grid > .site-detail-copy { animation-delay: 80ms; }
+@keyframes site-page-intro-in {
+  from { opacity: 0; translate: 0 28px; }
+  to { opacity: 1; translate: 0; }
+}
 .site-hero h1 span { animation: site-word-in 760ms var(--ease-out) both; }
 .site-hero h1 span:nth-child(2) { animation-delay: 110ms; }
 .site-hero h1 span:nth-child(3) { animation-delay: 220ms; }

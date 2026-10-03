@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, Facebook, Linkedin, Menu, Phone } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Picture, Modal } from "./ui";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
@@ -20,7 +20,36 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const desktopNav = useRef<HTMLElement>(null);
   const isLanding = pathname === "/";
+
+  useLayoutEffect(() => {
+    const nav = desktopNav.current;
+    if (!nav) return;
+
+    const positionIndicator = () => {
+      const active = nav.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+      nav.dataset.indicatorReady = "";
+      if (!active) {
+        nav.style.setProperty("--site-nav-indicator-opacity", "0");
+        return;
+      }
+      const navRect = nav.getBoundingClientRect();
+      const linkRect = active.getBoundingClientRect();
+      nav.style.setProperty("--site-nav-indicator-x", `${linkRect.left - navRect.left}px`);
+      nav.style.setProperty("--site-nav-indicator-width", `${linkRect.width}px`);
+      nav.style.setProperty("--site-nav-indicator-opacity", "1");
+    };
+
+    positionIndicator();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(positionIndicator);
+    if (observer) observer.observe(nav);
+    window.addEventListener("resize", positionIndicator);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", positionIndicator);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 24);
@@ -65,8 +94,9 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
               loading="eager"
             />
           </Link>
-          <nav className="site-nav" aria-label="Navegación institucional">
+          <nav ref={desktopNav} className="site-nav" aria-label="Navegación institucional">
             {nav()}
+            <span className="site-nav-indicator" aria-hidden="true" />
           </nav>
           <div className="site-header-actions">
             <Link className="site-login" href={storeRoutes.login}>
