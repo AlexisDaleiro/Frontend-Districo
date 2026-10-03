@@ -6,6 +6,7 @@ export const brandLines = [
   ["snacks-consumo", "Snacks para consumo humano"],
   ["accesorios", "Accesorios"],
   ["snacks-mascotas", "Snacks para mascotas"],
+  ["farmacia", "Farmacia y Laboratorio"],
 ] as const;
 
 export type BrandLine = (typeof brandLines)[number][0];
@@ -26,4 +27,5 @@ export const siteBrands: readonly { name: string; logo?: string; color: string; 
   { name: "Pipicat", logo: "pipicat.png", color: "#6c9ca0", line: "arenas" },
   { name: "Beny", logo: "beny.png", color: "#aa8c51", line: "alimento" },
   { name: "4 Pets", logo: "4pets.png", color: "#7a9262", line: "arenas" },
+  { name: "Raicor", color: "#7479af", line: "farmacia" },
 ];

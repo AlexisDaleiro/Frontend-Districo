@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Picture } from "./ui";
 
-type Product = { src: string; alt: string; brand: string };
+type Product = { src: string; alt: string; brand: string; brandHref?: string };
 
 const STEP_MS = 3800;
 
@@ -129,7 +129,7 @@ export function SiteLineShowcase({ products, offset }: { products: readonly Prod
           </button>
         ))}
       </div>
-      <Link className="reference-line-brand" href={`/productos?search=${encodeURIComponent(current.brand)}`}>
+      <Link className="reference-line-brand" href={current.brandHref ?? `/productos?search=${encodeURIComponent(current.brand)}`}>
         Distribuimos {current.brand} <ArrowUpRight size={14} aria-hidden="true" />
       </Link>
     </div>

@@ -94,6 +94,20 @@ const lines = [
     accent: "#9bdeef",
     contrast: "light",
   },
+  {
+    title: "Farmacia y Laboratorio",
+    description: "Productos de laboratorio y farmacia veterinaria para acompañar el cuidado profesional de animales de compañía y producción.",
+    tags: ["Veterinaria", "Producción animal"],
+    products: [
+      { src: "/images/raicor-animales-de-compania-0.png", alt: "Alizin 10 ml para uso veterinario", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria" },
+      { src: "/images/raicor-animales-de-compania-1.png", alt: "Allercalm 250 ml para animales de compañía", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria" },
+      { src: "/images/raicor-ganaderia-0.png", alt: "Adenosan en dosis para producción animal", brand: "Raicor", brandHref: "/productos?categoryId=ganaderia" },
+    ],
+    href: "/productos?categoryId=veterinaria",
+    accent: "#b9b8ed",
+    contrast: "light",
+    compactImage: true,
+  },
 ] as const;
 
 export function SiteHomeReference() {
@@ -102,7 +116,7 @@ export function SiteHomeReference() {
       <div id="lineas" className="reference-lines">
         {lines.map((line, index) => (
           <section
-            className={`reference-line reference-line--${line.contrast}`}
+            className={`reference-line reference-line--${line.contrast}${"compactImage" in line ? " reference-line--compact-image" : ""}`}
             key={line.title}
             style={{
               "--line-accent": line.accent,

@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useSession } from "./providers";
 import { Picture } from "./ui";
 import { SiteHomeReference } from "./site-home-reference";
+import { SiteBrandStrip } from "./site-brand-strip";
 import { storeRoutes } from "@/lib/store-routes";
 export function SiteHome() {
   const router = useRouter();
@@ -157,6 +158,7 @@ function SiteHomeContent() {
         </div>
       </section>
 
+      <SiteBrandStrip />
       <SiteHomeReference />
     </>
   );
