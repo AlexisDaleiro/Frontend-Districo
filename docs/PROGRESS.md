@@ -1,6 +1,13 @@
 # Registro de avance
 
-Última actualización: 2 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
+
+## Mejora: hitos de /nosotros como línea de tiempo interactiva (03/10)
+
+- Nuevo `site-milestones.tsx`, portado de `Importadora/src/components/MilestoneTimeline.astro`: pista de años como pestañas (`role="tablist"`), flechas anterior/siguiente (deshabilitadas en los extremos) y un panel con año, título, descripción y contador «05 / 13». Teclado: flechas, Home y End. El año activo se centra en la pista; el panel entra con un fundido corto que se desactiva con movimiento reducido.
+- `nosotros/page.tsx` usa el componente con los mismos datos de `content.ts`. En `site.css` se reemplazó la grilla `.site-about-history ol/li` por los estilos `.site-milestones-*`.
+- Verificado: typecheck, lint, e2e `landing` 13/13 con test nuevo (clic, flechas, teclado, 2022 visible en 390px, sin scroll horizontal).
+- Límite conocido: si cambia el ancho de la ventana, el año activo no se vuelve a centrar hasta el próximo cambio.
 
 ## Cambio: navbar sin Contacto; landing sin marcas ni «quiénes somos» (02/10)
 

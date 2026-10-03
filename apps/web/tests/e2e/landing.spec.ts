@@ -175,3 +175,28 @@ test("marcas públicas: tarjetas y acceso al catálogo", async ({
   await cards.first().click();
   await expect(page).toHaveURL(/\/productos\?search=Gran%20Plus/);
 });
+
+test("nosotros: línea de tiempo de hitos interactiva", async ({ page }) => {
+  await page.goto("/nosotros");
+  const tabs = page.getByRole("tablist", { name: "Años de la historia de DISTRICO" });
+  const panel = page.getByRole("tabpanel");
+  await expect(tabs.getByRole("tab")).toHaveCount(13);
+  await expect(tabs.getByRole("tab", { name: "1960" })).toHaveAttribute("aria-selected", "true");
+  await expect(panel).toContainText("Agropecuaria Colón");
+  await expect(page.getByRole("button", { name: "Hito anterior" })).toBeDisabled();
+  await page.getByRole("button", { name: "Hito siguiente" }).click();
+  await expect(panel).toContainText("Segunda generación");
+  await tabs.getByRole("tab", { name: "2013" }).click();
+  await expect(panel).toContainText("Se inaugura la Casa Matriz");
+  await page.keyboard.press("ArrowRight");
+  await expect(tabs.getByRole("tab", { name: "2016" })).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(panel).toContainText("Ampliación del depósito");
+  await expect(page.getByRole("button", { name: "Hito siguiente" })).toBeDisabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/nosotros");
+  await tabs.getByRole("tab", { name: "1960" }).focus();
+  await page.keyboard.press("End");
+  await expect(tabs.getByRole("tab", { name: "2022" })).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Picture } from "@/components/ui";
+import { SiteMilestones } from "@/components/site-milestones";
 import { storeRoutes } from "@/lib/store-routes";
 import { benefits, gallery, infrastructure, milestones, values } from "./content";
 
@@ -29,15 +30,7 @@ export default function Page() {
         <div className="container">
           <p className="reference-kicker">Historia</p>
           <h2 id="history-title">Los hitos de la empresa</h2>
-          <ol>
-            {milestones.map(([year, title, text]) => (
-              <li key={year}>
-                <strong>{year}</strong>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </li>
-            ))}
-          </ol>
+          <SiteMilestones milestones={milestones} />
         </div>
       </section>
 
