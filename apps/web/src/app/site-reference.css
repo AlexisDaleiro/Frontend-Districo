@@ -22,10 +22,10 @@
 .reference-line-cta { display: inline-flex; align-items: center; justify-content: space-between; gap: 26px; min-height: 52px; padding: 14px 19px; border-radius: 6px; background: white; color: #163d49; font-size: 13px; font-weight: 800; }
 .reference-line-cta:hover { background: #e8efcb; color: #163d49; }
 .reference-line-visual { position: relative; display: grid; place-items: center; min-height: 480px; isolation: isolate; }
-.reference-line-ring { position: absolute; z-index: -1; width: min(90%, 500px); aspect-ratio: 1; border: 1px solid currentColor; border-radius: 50%; opacity: .4; }
+.reference-line-ring { position: absolute; z-index: -1; width: min(90%, 500px); aspect-ratio: 1; border: 1px solid currentColor; border-radius: 50%; opacity: .4; transform: translate3d(0, var(--line-ring-y, 0px), 0) rotate(var(--line-ring-rotate, 0deg)); }
 .reference-line-ring::before, .reference-line-ring::after { content: ""; position: absolute; inset: 12%; border: 1px solid currentColor; border-radius: 50%; opacity: .55; }
 .reference-line-ring::after { inset: 26%; }
-.reference-line-visual img { display: block; width: min(80%, 500px); max-height: 550px; height: auto; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); transition: transform .5s ease; }
+.reference-line-visual img { display: block; width: min(80%, 500px); max-height: 550px; height: auto; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); translate: 0 var(--line-product-y, 0px); transition: transform .5s ease; }
 .reference-line:hover .reference-line-visual img { transform: translateY(-9px) rotate(-2deg); }
 .reference-line-brand { position: absolute; right: 0; bottom: 0; max-width: 60%; padding: 11px 18px; border: 1px solid currentColor; border-radius: 30px; font-size: 11px; font-weight: 800; text-align: center; }
 .reference-brands { overflow: hidden; background: #f8f9f5; color: #163d49; }
@@ -85,4 +85,4 @@
   .reference-about-copy { padding: 65px 20px 80px; }
   .reference-contact-grid { grid-template-columns: 1fr; gap: 30px; }
 }
-@media (prefers-reduced-motion: reduce) { .reference-line-visual img { transition: none; } .reference-line:hover .reference-line-visual img { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .reference-line-visual img { transition: none; translate: none !important; } .reference-line:hover .reference-line-visual img, .reference-line-ring { transform: none !important; } }

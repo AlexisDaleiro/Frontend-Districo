@@ -55,14 +55,17 @@ const revealSelector = [
   ".site-news-card",
   ".site-benefits > *",
   ".site-contact-grid > *",
+  ".reference-line-copy > *",
+  ".reference-line-visual",
 ].join(", ");
 
 // Entran con un pequeño rebote de escala en vez de subir.
 const popSelector = ".need, .brand-word, .stats > *, .site-line";
 const parallaxSelector =
   ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-hero-photo img, .site-story-media img, .site-operation-photo > img";
+const lineSelector = ".reference-line";
 const staggerSelector =
-  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits";
+  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";
 
 // Mientras corre la transición de página, lo que ya está en pantalla entra con
 // ella; solo las grillas escalonan por su cuenta.
@@ -102,6 +105,7 @@ export function MotionSystem() {
     const seen = new WeakSet<Element>();
     const delays = new WeakMap<Element, number>();
     const parallax = new Set<HTMLElement>();
+    const lines = new Set<HTMLElement>();
     let frame = 0;
     let observer: IntersectionObserver | null = null;
 
@@ -113,8 +117,11 @@ export function MotionSystem() {
       // "backwards" mantiene el primer cuadro durante el retraso escalonado:
       // sin él la tarjeta se ve, desaparece y recién ahí entra.
       const popping = element.matches(popSelector);
-      element.animate(popping ? pop : rise, {
-        duration: popping ? 700 : 680,
+      const lineVisual = element.matches(".reference-line-visual");
+      element.animate(lineVisual
+        ? [{ opacity: 0, translate: "0 54px", scale: "0.94" }, { opacity: 1, translate: "0 0", scale: "1" }]
+        : popping ? pop : rise, {
+        duration: lineVisual ? 850 : popping ? 700 : 680,
         delay: delays.get(element) ?? 0,
         easing: popping
           ? "cubic-bezier(0.34, 1.4, 0.64, 1)"
@@ -175,6 +182,21 @@ export function MotionSystem() {
           `${(-progress * 24).toFixed(2)}px`,
         );
       }
+      for (const line of lines) {
+        if (!line.isConnected) {
+          lines.delete(line);
+          continue;
+        }
+        const rect = line.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > innerHeight) continue;
+        const progress = Math.max(-1, Math.min(1,
+          (rect.top + rect.height / 2 - innerHeight / 2) / ((rect.height + innerHeight) / 2),
+        ));
+        const distance = innerWidth < 768 ? 22 : 38;
+        line.style.setProperty("--line-product-y", `${(-progress * distance).toFixed(2)}px`);
+        line.style.setProperty("--line-ring-y", `${(progress * distance * 0.55).toFixed(2)}px`);
+        line.style.setProperty("--line-ring-rotate", `${(progress * 7).toFixed(2)}deg`);
+      }
     };
 
     const scheduleParallax = () => {
@@ -222,6 +244,11 @@ export function MotionSystem() {
       node
         .querySelectorAll(parallaxSelector)
         .forEach((element) => parallax.add(element as HTMLElement));
+      if (node instanceof Element && node.matches(lineSelector))
+        lines.add(node as HTMLElement);
+      node
+        .querySelectorAll(lineSelector)
+        .forEach((element) => lines.add(element as HTMLElement));
       scheduleParallax();
     };
 
@@ -244,6 +271,11 @@ export function MotionSystem() {
           .forEach((animation) => animation.cancel());
         for (const element of parallax)
           element.style.removeProperty("--motion-parallax");
+        for (const line of lines) {
+          line.style.removeProperty("--line-product-y");
+          line.style.removeProperty("--line-ring-y");
+          line.style.removeProperty("--line-ring-rotate");
+        }
         if (frame) cancelAnimationFrame(frame);
         frame = 0;
       } else scheduleParallax();
@@ -275,6 +307,11 @@ export function MotionSystem() {
       revealAll();
       for (const element of parallax)
         element.style.removeProperty("--motion-parallax");
+      for (const line of lines) {
+        line.style.removeProperty("--line-product-y");
+        line.style.removeProperty("--line-ring-y");
+        line.style.removeProperty("--line-ring-rotate");
+      }
     };
   }, []);
 
