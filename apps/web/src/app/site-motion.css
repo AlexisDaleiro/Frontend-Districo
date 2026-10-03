@@ -18,7 +18,7 @@
 .site-hero-copy .actions { animation-delay: 450ms; }
 .site-hero-visual { animation: site-visual-in 900ms var(--ease-out) 180ms both; }
 .site-hero-orbit { animation: site-orbit 9s ease-in-out infinite alternate; }
-.site-hero-photo img, .site-story-media img, .site-operation-photo > img { transform: translate3d(0, var(--motion-parallax, 0px), 0) scale(1.07); }
+.site-story-media img, .site-operation-photo > img { transform: translate3d(0, var(--motion-parallax, 0px), 0) scale(1.07); }
 .site-brand-art > img, .site-brand-art .brand-mark { transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-base) var(--ease-out); }
 .site-brand-card:hover .site-brand-art.is-loaded > img, .site-brand-card:focus-visible .site-brand-art.is-loaded > img { transform: scale(1.07); opacity: .9; }
 .site-brand-card:hover .site-brand-art .brand-mark, .site-brand-card:focus-visible .site-brand-art .brand-mark { transform: scale(1.06); }

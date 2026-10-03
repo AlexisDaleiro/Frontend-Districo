@@ -62,7 +62,7 @@ const revealSelector = [
 // Entran con un pequeño rebote de escala en vez de subir.
 const popSelector = ".need, .brand-word, .stats > *, .site-line";
 const parallaxSelector =
-  ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-hero-photo img, .site-story-media img, .site-operation-photo > img";
+  ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-story-media img, .site-operation-photo > img";
 const lineSelector = ".reference-line";
 const staggerSelector =
   ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";

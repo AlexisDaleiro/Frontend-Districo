@@ -21,7 +21,7 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: /Marcas que acompañan. Un socio que responde/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Marcas que acompañan/ })).toBeVisible();
   // Líneas salió de la landing: se entra al catálogo desde el header y se filtra ahí.
   await page.locator(".site-nav").getByRole("link", { name: "Productos" }).click();
   await expect(page).toHaveURL(/productos$/);

@@ -12,7 +12,7 @@ test("el contenido institucional sigue visible sin JavaScript", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan. Un socio que responde/,
+      name: /Marcas que acompañan/,
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Alimento para mascotas" })).toBeVisible();
@@ -25,7 +25,7 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan. Un socio que responde/,
+      name: /Marcas que acompañan/,
     }),
   ).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
@@ -49,6 +49,23 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
     .getByRole("link", { name: "Ingresar" })
     .click();
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
+});
+
+test("el hero narra tres escenas sin barra de controles", async ({ page }) => {
+  await page.goto("/");
+  const hero = page.locator(".site-hero");
+  await expect(hero.locator(".site-hero-story-controls")).toHaveCount(0);
+  await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /hero-biofresh-castrados\.png/);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Llegamos a todo Uruguay.", { timeout: 7000 });
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.", { timeout: 7000 });
+});
+
+test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const hero = page.locator(".site-hero");
+  await page.waitForTimeout(5500);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.");
 });
 
 test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {
@@ -130,7 +147,7 @@ test("la tienda requiere sesión y la cuenta activa entra allí desde la raíz",
   await expect(page).toHaveURL(/\/tienda$/);
 });
 
-for (const width of [360, 390, 768, 1024, 1440]) {
+for (const width of [320, 360, 390, 768, 1024, 1440]) {
   test(`landing y catálogo sin scroll horizontal a ${width}px`, async ({
     page,
   }) => {
