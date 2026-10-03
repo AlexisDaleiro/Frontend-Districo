@@ -4,6 +4,16 @@
   background: radial-gradient(circle at 78% 36%, #194b50 0, var(--ink) 46%, var(--ink-deep) 100%);
 }
 
+.site-hero--story::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: auto 0 0;
+  height: clamp(150px, 22vh, 250px);
+  background: linear-gradient(to bottom, transparent, var(--ink));
+  pointer-events: none;
+}
+
 .site-hero--story .site-hero-grid {
   flex: 1;
   align-content: center;

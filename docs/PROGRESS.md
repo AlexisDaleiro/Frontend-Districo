@@ -2,6 +2,16 @@
 
 Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
 
+## Garantía, Nosotros, Marcas y Contacto más compactos, bloque de contacto centrado (3/10/2026)
+
+- `.site-warranty-steps` (`src/app/site.css`): relleno propio `clamp(32px, 4vw, 52px)` en lugar del de `.site-section` (76–140 px); título 26–40 px, tarjetas con relleno 20 px, número 32 px, paso 17/15 px, condiciones a 24 px.
+- Nueva variante `.reference-contact-centered` (`src/app/site-reference.css`), usada en Garantía y Nosotros: una columna centrada, sin el círculo decorativo, relleno 48–72 px, acciones en fila centrada. Marcas y Contacto conservan el bloque de dos columnas.
+- Nosotros (`src/app/site.css`, reglas `.site-about-*`): secciones con relleno propio 44–72 px en lugar de 76–140 px; títulos 26–40 px (cultura 28–48 px); márgenes de listas, valores, equipo, datos y galería a 24 px; cifras 24–32 px. Página a 1440 px: 4853 px de alto, sin desborde. La cabecera con foto sigue en 555 px (pendiente opcional).
+- Marcas (`src/app/site.css`): directorio con relleno inferior 44–72 px, filtros a 20 px, tarjetas más bajas (proporción .52/.64 → .62/.9, mínimo 280 → 220 px; a 1440 px pasan de ~489 a 347 px de alto, 4 columnas para que las 16 marcas llenen las filas). Bloque de contacto con `.reference-contact-centered`. Contenido de cada tarjeta sin recorte y sin desborde horizontal a 1440, 1024 y 390 px.
+- Contacto: el formulario deja el fondo oscuro y pasa a claro con la variante `.reference-contact.site-contact-light` (`src/app/site-reference.css`, clase en `src/components/site-contact.tsx`): fondo `--paper`, campos blancos, textos `--ink`/`--text`, recuadro «Directo» blanco, relleno 36–56 px, número 24–32 px. Puntos de venta: relleno 36–56 px, título 26–40 px, mapa 500 → 420 px. Página a 1440 px: 2074 px de alto, sin desborde.
+- E2E `landing` + `motion`: 28/28 con `E2E_PORT=3107` (servidor propio en modo demo). Con `E2E_USE_EXISTING_SERVER=1` contra el `next dev` abierto en :3000 fallan 8 por no estar en modo demo, no por estos cambios.
+- Medido con Playwright a 1440 y 390 px: título y botones a igual distancia de ambos bordes, botones de Nosotros lado a lado en escritorio y apilados en móvil, sin desborde horizontal. No se corrieron typecheck, lint ni E2E.
+
 ## Cabecera más baja en las páginas interiores (3/10/2026)
 
 - `.site-catalog-intro` (`src/app/site.css`), compartida por Productos, Marcas, Garantía, Nosotros y Contacto: opción «C · banda» elegida entre tres medidas. Relleno 145/76 → 100/36 px, título `clamp(40px, 7vw, 86px)` → `clamp(30px, 3.4vw, 46px)` (tracking -.07em → -.05em), bajada 15 px sin margen inferior.
@@ -566,6 +576,7 @@ La administración incluye solicitudes, permisos, estados de pedidos, productos,
 
 ## Pruebas ejecutadas
 
+- 03/10/2026, `/garantia`: «Alcance y condiciones completas» ahora es un botón desplegable centrado con borde azul DISTRICO (`--ink`) y flecha hacia abajo que gira al abrir; se rellena al pasar el mouse, sin marcador nativo, foco visible, respeta movimiento reducido. Archivos: `src/app/(sitio)/garantia/page.tsx`, `src/app/site.css`. `tsc --noEmit` correcto; comprobado con Playwright contra el servidor en 3000 a 390 y 1440 px: abre y cierra, sin desborde horizontal. `landing.spec.ts` no se ejecutó porque el puerto 3000 estaba ocupado.
 - `npm run typecheck`: correcto.
 - `npm run lint`: correcto, sin advertencias.
 - `npm test`: 19 pruebas correctas de simulación, reglas comerciales y política del proxy (03b).

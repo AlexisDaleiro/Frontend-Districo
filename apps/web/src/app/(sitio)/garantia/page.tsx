@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 
 const range = "400 g a 20 kg";
 const brands = ["Biofresh", "Gran Plus", "Guabi Natural", "Three Cats", "Three Dogs"];
@@ -54,7 +54,10 @@ export default function Page() {
           </ol>
 
           <details className="site-warranty-terms">
-            <summary>Alcance y condiciones completas</summary>
+            <summary>
+              <span>Alcance y condiciones completas</span>
+              <ChevronDown size={20} aria-hidden="true" />
+            </summary>
             <h3>Alcance</h3>
             <p>La garantía aplica a los productos de las marcas detalladas, en paquetería de {range}, y puede solicitarse cuando la mascota no acepta el alimento. Consiste en el cambio por otro producto DISTRICO de igual o menor valor comercial; no se devuelve el importe abonado. Si el cambio es por un producto de menor valor, la diferencia queda a favor del cliente para otra compra; si es por uno de mayor valor, se abona la diferencia.</p>
             <h3>Condiciones</h3>
@@ -80,7 +83,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="reference-contact">
+      <section className="reference-contact reference-contact-centered">
         <div className="container reference-contact-grid">
           <div>
             <p className="reference-kicker">Reclamos</p>

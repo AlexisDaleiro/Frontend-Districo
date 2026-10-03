@@ -26,7 +26,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="reference-contact">
+      <section className="reference-contact reference-contact-centered">
         <div className="container reference-contact-grid">
           <div>
             <p className="reference-kicker">Cuenta comercial</p>

@@ -12,7 +12,7 @@ test("el contenido institucional sigue visible sin JavaScript", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan/,
+      name: /Un socio que responde/,
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Alimento para mascotas" })).toBeVisible();
@@ -25,7 +25,7 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan/,
+      name: /Un socio que responde/,
     }),
   ).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
@@ -55,9 +55,10 @@ test("el hero narra tres escenas sin barra de controles", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".site-hero");
   await expect(hero.locator(".site-hero-story-controls")).toHaveCount(0);
+  await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /casa-matriz-fachada\.webp/);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.", { timeout: 7000 });
   await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /hero-biofresh-castrados\.png/);
   await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Llegamos a todo Uruguay.", { timeout: 7000 });
-  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.", { timeout: 7000 });
 });
 
 test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
@@ -65,7 +66,7 @@ test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".site-hero");
   await page.waitForTimeout(5500);
-  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.");
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.");
 });
 
 test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {
@@ -87,11 +88,11 @@ test("navbar institucional y menú móvil con Escape y foco", async ({ page }) =
   await nav.getByRole("link", { name: "Marcas" }).click();
   await expect(page).toHaveURL(/\/marcas$/);
   const brandCards = page.locator(".site-brand-grid .reference-brand-card");
-  await expect(brandCards).toHaveCount(15);
+  await expect(brandCards).toHaveCount(16);
   await page.getByRole("button", { name: "Arenas sanitarias" }).click();
   await expect(brandCards).toHaveCount(2);
   await page.getByRole("button", { name: "Todas" }).click();
-  await expect(brandCards).toHaveCount(15);
+  await expect(brandCards).toHaveCount(16);
   await nav.getByRole("link", { name: "Garantía" }).click();
   await expect(page).toHaveURL(/\/garantia$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -188,8 +189,23 @@ test("marcas públicas: tarjetas y acceso al catálogo", async ({
   await page.goto("/marcas");
   const cards = page.locator(".reference-brand-card");
   await expect(cards.first()).toBeVisible();
-  await expect(cards).toHaveCount(15);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("15 marcas");
+  await expect(cards).toHaveCount(16);
+  await expect(cards.first().locator(".reference-brand-photo")).toHaveAttribute("src", /granplus\.jpg/);
+  await expect(cards.first().locator(".reference-brand-wordmark")).toHaveText("Gran Plus");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("16 marcas");
+  await page.getByRole("button", { name: "Farmacia y Laboratorio" }).click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first().locator(".reference-brand-wordmark")).toHaveText("Laboratorios");
+  await expect(cards.first()).toHaveAttribute("href", "/productos?categoryId=veterinaria");
+  await page.getByRole("button", { name: "Todas" }).click();
+  for (const width of [768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rows = await cards.evaluateAll((nodes) => {
+      const tops = nodes.map((node) => Math.round(node.getBoundingClientRect().top));
+      return [...new Set(tops)].map((top) => tops.filter((value) => value === top).length);
+    });
+    expect(rows).toEqual([4, 4, 4, 4]);
+  }
   await cards.first().click();
   await expect(page).toHaveURL(/\/productos\?search=Gran%20Plus/);
 });
@@ -235,6 +251,38 @@ test("líneas: productos rotan de a uno con miniaturas y enlace a la marca", asy
   await expect(brand).toHaveAttribute("href", "/productos?search=Beny");
   await brand.click();
   await expect(page).toHaveURL(/\/productos\?search=Beny$/);
+});
+
+test("la cinta sigue al hero y farmacia aparece después de snacks", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const lines = page.locator(".reference-line");
+  await expect(lines).toHaveCount(7);
+  await expect(lines.nth(5).getByRole("heading", { level: 2 })).toHaveText("Snacks para mascotas");
+  const pharmacy = lines.nth(6);
+  await expect(pharmacy.getByRole("heading", { level: 2 })).toHaveText("Farmacia y Laboratorio");
+  await expect(pharmacy.locator(".reference-showcase-item.is-active img")).toHaveAttribute("src", /raicor-animales-de-compania-0\.png/);
+  await expect(pharmacy.getByRole("link", { name: "Ver productos" })).toHaveAttribute("href", "/productos?categoryId=veterinaria");
+
+  const strip = page.locator(".site-hero + .site-brand-strip");
+  await expect(strip).toHaveCount(1);
+  await expect(page.locator(".site-brand-strip + .reference-lines")).toHaveCount(1);
+  await expect(strip.locator(".reference-brand-card")).toHaveCount(16);
+  const track = strip.locator(".site-brand-strip-track");
+  await expect(strip.getByRole("group", { name: "Elegir página de marcas" }).getByRole("button")).toHaveCount(2);
+  await strip.getByRole("button", { name: "Marcas siguientes" }).click();
+  await expect.poll(() => track.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+  await expect(strip.getByRole("button", { name: "Marcas anteriores" })).toBeEnabled();
+  await expect(strip.getByRole("button", { name: "Marcas siguientes" })).toBeDisabled();
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  const dots = strip.getByRole("group", { name: "Elegir página de marcas" }).getByRole("button");
+  await expect(dots).toHaveCount(7);
+  await dots.last().click();
+  await expect(dots.last()).toHaveAttribute("aria-current", "true");
+  await dots.first().click();
+  await expect(dots.first()).toHaveAttribute("aria-current", "true");
 });
 
 test("contacto: página propia arma el mensaje para WhatsApp sin enviar datos", async ({ page }) => {

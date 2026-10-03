@@ -21,7 +21,7 @@ export function SiteBrandDirectory() {
       <p className="visually-hidden" aria-live="polite">{shown.length} marcas</p>
       <div className="site-brand-grid">
         {shown.map((brand) => (
-          <SiteBrandCard key={brand.name} brand={brand} index={siteBrands.indexOf(brand)} sizes="(max-width: 767px) 45vw, 20vw" />
+          <SiteBrandCard key={brand.name} brand={brand} sizes="(max-width: 767px) 45vw, 20vw" />
         ))}
       </div>
     </>
