@@ -37,7 +37,6 @@ const lines = [
     alt: "BIOFRESH para perros, adultos de razas grandes y gigantes",
     brand: "Biofresh",
     href: "/productos?categoryId=alimentacion",
-    color: "#003647",
     accent: "#c6df23",
     contrast: "light",
   },
@@ -49,7 +48,6 @@ const lines = [
     alt: "Arena sanitaria Pipicat Classic",
     brand: "Pipicat",
     href: "/productos?categoryId=arenas",
-    color: "#55684d",
     accent: "#d4e681",
     contrast: "light",
   },
@@ -61,7 +59,6 @@ const lines = [
     alt: "Shampoo neutro Procão",
     brand: "Procão",
     href: "/productos?categoryId=higiene",
-    color: "#3f6759",
     accent: "#9fe0be",
     contrast: "light",
   },
@@ -73,7 +70,6 @@ const lines = [
     alt: "Mega Pack de snacks Stack",
     brand: "Stack",
     href: "/productos?categoryId=snacks",
-    color: "#fac541",
     accent: "#fff0a5",
     contrast: "dark",
   },
@@ -85,7 +81,6 @@ const lines = [
     alt: "Pechera Mesh H con correa de TOH",
     brand: "TOH",
     href: "/productos",
-    color: "#a8410b",
     accent: "#ffad55",
     contrast: "light",
   },
@@ -97,7 +92,6 @@ const lines = [
     alt: "YOWUP Yogur Digestive natural para perros",
     brand: "YowUp",
     href: "/productos",
-    color: "#2e5e7e",
     accent: "#9bdeef",
     contrast: "light",
   },
@@ -132,25 +126,12 @@ export function SiteHomeReference() {
 
   return (
     <>
-      <section className="reference-stats" aria-label="Districo en cifras">
-        <div className="container reference-stats-grid">
-          <div><strong>6</strong><span>Líneas</span></div>
-          <div><strong>15</strong><span>Marcas</span></div>
-          <div><strong>1995</strong><span>Desde</span></div>
-          <div><strong>10.000 m²</strong><span>Casa Matriz</span></div>
-          <div><strong>ISO 9001</strong><span>Certificación</span></div>
-        </div>
-      </section>
-
       <div id="lineas" className="reference-lines">
         {lines.map((line, index) => (
           <section
             className={`reference-line reference-line--${line.contrast}`}
             key={line.title}
             style={{
-              "--line-color": line.color,
-              "--line-prev": lines[index - 1]?.color ?? "#002733",
-              "--line-next": lines[index + 1]?.color ?? "#ffffff",
               "--line-accent": line.accent,
               "--line-glow-x": index % 2 ? "25%" : "75%",
             } as CSSProperties}

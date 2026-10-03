@@ -8,18 +8,10 @@ import { Picture, Modal } from "./ui";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
 
-const sections = [
-  ["lineas", "Líneas"],
-  ["nosotros", "Nosotros"],
-  ["marcas", "Marcas"],
-  ["contacto", "Contacto"],
-] as const;
-
 export function PublicHeader({ solid = false }: { solid?: boolean }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState("");
   const menuButton = useRef<HTMLButtonElement>(null);
   const isLanding = pathname === "/";
 
@@ -29,40 +21,12 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
   }, []);
-  useEffect(() => {
-    if (!isLanding || !("IntersectionObserver" in window)) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const current = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (current) setActive(current.target.id);
-      },
-      { rootMargin: "-22% 0px -58% 0px", threshold: [0, 0.2, 0.5] },
-    );
-    for (const [id] of sections) {
-      const section = document.getElementById(id);
-      if (section) observer.observe(section);
-    }
-    return () => observer.disconnect();
-  }, [isLanding]);
 
   const closeMenu = () => {
     setOpen(false);
     // El diálogo conserva su animación de salida antes de devolver el foco.
     window.setTimeout(() => menuButton.current?.focus(), 400);
   };
-  const nav = (mobile = false) =>
-    sections.map(([id, label]) => (
-      <Link
-        key={id}
-        href={isLanding ? `#${id}` : `/#${id}`}
-        aria-current={isLanding && active === id ? "location" : undefined}
-        onClick={mobile ? closeMenu : undefined}
-      >
-        {label}
-      </Link>
-    ));
 
   return (
     <>
@@ -83,9 +47,6 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
               loading="eager"
             />
           </Link>
-          <nav className="site-nav" aria-label="Navegación institucional">
-            {nav()}
-          </nav>
           <div className="site-header-actions">
             <Link
               className="button secondary site-products"
@@ -119,7 +80,6 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
       </header>
       <Modal open={open} onClose={closeMenu} title="Explorá DISTRICO" sheet>
         <nav className="site-mobile-nav" aria-label="Navegación institucional">
-          {nav(true)}
           <Link href="/productos" onClick={closeMenu}>
             Productos
           </Link>
@@ -164,7 +124,6 @@ export function PublicFooter() {
           <Link href="/#nosotros">Nosotros</Link>
           <Link href="/productos">Productos</Link>
           <Link href="/#marcas">Marcas</Link>
-          <Link href="/#lineas">Líneas</Link>
         </div>
         <div>
           <h3>Casa Matriz</h3>

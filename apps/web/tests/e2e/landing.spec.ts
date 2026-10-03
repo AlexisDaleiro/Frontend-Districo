@@ -51,15 +51,8 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
 });
 
-test("anclas del header y menú móvil con Escape y foco", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+test("menú móvil con Escape y foco", async ({ page }) => {
   await page.goto("/");
-  await page
-    .locator(".site-nav")
-    .getByRole("link", { name: "Nosotros" })
-    .click();
-  await expect(page).toHaveURL(/#nosotros$/);
-  await expect(page.locator("#nosotros")).toBeInViewport();
   await page.setViewportSize({ width: 390, height: 844 });
   const trigger = page.getByRole("button", { name: "Abrir menú" });
   await trigger.click();

@@ -14,10 +14,6 @@
 .site-header-inner { min-height: 76px; display: flex; align-items: center; gap: 28px; }
 .site-logo { display: flex; flex: 0 0 auto; align-items: center; }
 .site-logo img { width: 163px; height: auto; }
-.site-nav { display: none; align-items: center; gap: clamp(14px, 1.55vw, 26px); margin-left: auto; }
-.site-nav a { position: relative; font-size: 11px; font-weight: 700; white-space: nowrap; }
-.site-nav a::after { content: ""; position: absolute; inset: auto 0 -10px; height: 2px; background: var(--lime); transform: scaleX(0); transform-origin: left; transition: transform var(--dur-base) var(--ease-out); }
-.site-nav a:hover::after, .site-nav a[aria-current]::after { transform: scaleX(1); }
 .site-header a:hover { color: var(--lime); }
 .site-header :focus-visible { outline-color: var(--lime); }
 .site-header-actions { display: none; align-items: center; gap: 12px; }
@@ -38,7 +34,7 @@
 
 .site-hero { min-height: 100svh; position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; background: var(--ink); color: white; }
 .site-hero::before { content: ""; position: absolute; width: 80vw; aspect-ratio: 1; border: 1px solid rgb(255 255 255 / .08); border-radius: 50%; right: -37vw; top: -26vw; pointer-events: none; }
-.site-hero-grain { position: absolute; inset: 0; opacity: .18; background: radial-gradient(circle at 76% 32%, rgb(177 202 0 / .34), transparent 28%), radial-gradient(circle at 10% 85%, rgb(255 255 255 / .12), transparent 32%); pointer-events: none; }
+.site-hero-grain { position: absolute; inset: 0; opacity: .18; background: radial-gradient(circle at 76% 32%, rgb(177 202 0 / .34), transparent 28%), radial-gradient(circle at 10% 85%, rgb(255 255 255 / .12), transparent 32%); mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%); pointer-events: none; }
 .site-hero-grid { position: relative; z-index: 1; display: grid; gap: 18px; width: 100%; padding-top: 112px; padding-bottom: 64px; }
 .site-hero-copy { position: relative; z-index: 2; }
 .site-hero-copy .eyebrow { color: var(--lime); font-size: 10px; }
@@ -293,8 +289,6 @@
   .site-detail-grid, .site-detail-loading { grid-template-columns: 1fr 1fr; }
 }
 @media (min-width: 1120px) {
-  .site-nav { display: flex; }
-  .site-header-actions { margin-left: clamp(20px, 2.5vw, 44px); }
   .site-menu-button { display: none; }
   .site-header-actions .site-products { display: inline-flex; }
   .site-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
