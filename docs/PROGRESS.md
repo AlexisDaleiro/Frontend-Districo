@@ -576,6 +576,7 @@ La administración incluye solicitudes, permisos, estados de pedidos, productos,
 
 ## Pruebas ejecutadas
 
+- 03/10/2026, `/garantia`: «Alcance y condiciones completas» ahora es un botón desplegable centrado con borde azul DISTRICO (`--ink`) y flecha hacia abajo que gira al abrir; se rellena al pasar el mouse, sin marcador nativo, foco visible, respeta movimiento reducido. Archivos: `src/app/(sitio)/garantia/page.tsx`, `src/app/site.css`. `tsc --noEmit` correcto; comprobado con Playwright contra el servidor en 3000 a 390 y 1440 px: abre y cierra, sin desborde horizontal. `landing.spec.ts` no se ejecutó porque el puerto 3000 estaba ocupado.
 - `npm run typecheck`: correcto.
 - `npm run lint`: correcto, sin advertencias.
 - `npm test`: 19 pruebas correctas de simulación, reglas comerciales y política del proxy (03b).

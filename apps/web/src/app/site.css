@@ -240,8 +240,15 @@
 .site-warranty-steps li > span { display: grid; place-items: center; width: 32px; height: 32px; font-size: 14px; border-radius: 50%; background: var(--lime); color: var(--ink-deep); font-weight: 850; }
 .site-warranty-steps h3 { margin-top: 12px; font-size: 17px; font-weight: 800; }
 .site-warranty-steps li p { margin-top: 6px; font-size: 15px; color: var(--text); }
-.site-warranty-terms { max-width: 780px; margin-top: 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.site-warranty-terms summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 800; }
+.site-warranty-terms { max-width: 780px; margin: 28px auto 0; }
+.site-warranty-terms summary { width: fit-content; max-width: 100%; min-height: 48px; margin: 0 auto; padding: 10px 22px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 2px solid var(--ink); border-radius: 999px; color: var(--ink); font-weight: 800; text-align: center; cursor: pointer; list-style: none; transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+.site-warranty-terms summary::-webkit-details-marker { display: none; }
+.site-warranty-terms summary:hover { background: var(--ink); color: var(--on-ink); }
+.site-warranty-terms summary:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+.site-warranty-terms summary svg { flex: none; transition: transform var(--dur-base) var(--ease-out); }
+.site-warranty-terms[open] summary svg { transform: rotate(180deg); }
+.site-warranty-terms[open] summary { margin-bottom: 8px; }
+@media (prefers-reduced-motion: reduce) { .site-warranty-terms summary, .site-warranty-terms summary svg { transition: none; } }
 .site-warranty-terms h3 { margin-top: 22px; font-size: 16px; }
 .site-warranty-terms p, .site-warranty-terms ul { margin-top: 10px; color: var(--text); line-height: 1.6; }
 .site-warranty-terms > :last-child { margin-bottom: 26px; }
