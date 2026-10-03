@@ -3375,6 +3375,8 @@ td .button {
 .contact-search-control input {
   padding-left: 40px !important;
 }
+.contact-filter-panel { display: contents; }
+.contact-filters-toggle, .contact-list-toggle { display: none; }
 .contact-filter-actions {
   grid-column: 1 / -1;
   display: flex;

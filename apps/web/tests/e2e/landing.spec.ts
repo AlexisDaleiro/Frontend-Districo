@@ -12,7 +12,7 @@ test("el contenido institucional sigue visible sin JavaScript", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan. Un socio que responde/,
+      name: /Marcas que acompañan/,
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Alimento para mascotas" })).toBeVisible();
@@ -25,7 +25,7 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan. Un socio que responde/,
+      name: /Marcas que acompañan/,
     }),
   ).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
@@ -51,6 +51,23 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
 });
 
+test("el hero narra tres escenas sin barra de controles", async ({ page }) => {
+  await page.goto("/");
+  const hero = page.locator(".site-hero");
+  await expect(hero.locator(".site-hero-story-controls")).toHaveCount(0);
+  await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /hero-biofresh-castrados\.png/);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Llegamos a todo Uruguay.", { timeout: 7000 });
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.", { timeout: 7000 });
+});
+
+test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const hero = page.locator(".site-hero");
+  await page.waitForTimeout(5500);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.");
+});
+
 test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
@@ -60,6 +77,7 @@ test("navbar institucional y menú móvil con Escape y foco", async ({ page }) =
     "Marcas",
     "Garantía",
     "Nosotros",
+    "Contacto",
   ]);
   await nav.getByRole("link", { name: "Nosotros" }).click();
   await expect(page).toHaveURL(/\/nosotros$/);
@@ -129,14 +147,14 @@ test("la tienda requiere sesión y la cuenta activa entra allí desde la raíz",
   await expect(page).toHaveURL(/\/tienda$/);
 });
 
-for (const width of [360, 390, 768, 1024, 1440]) {
+for (const width of [320, 360, 390, 768, 1024, 1440]) {
   test(`landing y catálogo sin scroll horizontal a ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    for (const route of ["/", "/productos"]) {
+    for (const route of ["/", "/productos", "/contacto"]) {
       await page.goto(route);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       expect(
@@ -217,4 +235,56 @@ test("líneas: productos rotan de a uno con miniaturas y enlace a la marca", asy
   await expect(brand).toHaveAttribute("href", "/productos?search=Beny");
   await brand.click();
   await expect(page).toHaveURL(/\/productos\?search=Beny$/);
+});
+
+test("contacto: página propia arma el mensaje para WhatsApp sin enviar datos", async ({ page }) => {
+  await page.goto("/nosotros");
+  await page.locator(".site-nav").getByRole("link", { name: "Contacto" }).click();
+  await expect(page).toHaveURL(/\/contacto$/);
+  await page.evaluate(() => {
+    window.open = ((url?: string | URL) => {
+      (window as unknown as { openedUrl: string }).openedUrl = String(url);
+      return null;
+    }) as typeof window.open;
+  });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hablemos de tu comercio.");
+  const contact = page.locator(".reference-contact");
+  await expect(contact.getByRole("link", { name: /0800 1004/ })).toHaveAttribute("href", "tel:08001004");
+  await expect(page.getByRole("heading", { name: "Puntos de venta" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "Vista de demostración" })).toBeVisible();
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+
+  await contact.getByRole("button", { name: /Enviar por WhatsApp/ }).click();
+  expect(await page.evaluate(() => (window as unknown as { openedUrl?: string }).openedUrl)).toBeUndefined();
+
+  await contact.getByLabel("Nombre y apellido").fill("Ana Pérez");
+  await contact.getByLabel("Comercio").fill("Veterinaria Sur");
+  await contact.getByRole("textbox", { name: "Consulta *" }).fill("Quiero abrir una cuenta.");
+  await contact.getByRole("button", { name: /Enviar por WhatsApp/ }).click();
+  const opened = await page.evaluate(() => (window as unknown as { openedUrl: string }).openedUrl);
+  expect(opened).toContain("https://wa.me/59895673109?text=");
+  expect(decodeURIComponent(opened)).toContain("Hola, soy Ana Pérez de Veterinaria Sur.\n\nQuiero abrir una cuenta.");
+});
+
+test("contacto: puntos de venta en un panel, plegable en móvil", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/contacto");
+  const locator = page.locator(".site-locator");
+  const list = locator.locator(".contact-store-list");
+  const map = locator.locator(".contact-map-wrap");
+  await expect(locator.getByRole("button", { name: /^Filtros/ })).toBeHidden();
+  await expect(list).toBeVisible();
+  const [listBox, mapBox] = [await list.boundingBox(), await map.boundingBox()];
+  expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(mapBox!.x + 1);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const filters = locator.getByRole("button", { name: /^Filtros/ });
+  await expect(locator.getByRole("combobox", { name: "Marca" })).toBeHidden();
+  await filters.click();
+  await expect(filters).toHaveAttribute("aria-expanded", "true");
+  await expect(locator.getByRole("combobox", { name: "Marca" })).toBeVisible();
+  await expect(list).toBeHidden();
+  await locator.getByRole("button", { name: "Mostrar listado" }).click();
+  await expect(list).toBeVisible();
+  await expect(map).toBeVisible();
 });

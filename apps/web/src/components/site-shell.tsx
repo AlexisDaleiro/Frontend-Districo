@@ -13,6 +13,7 @@ const navLinks = [
   ["/marcas", "Marcas"],
   ["/garantia", "Garantía"],
   ["/nosotros", "Nosotros"],
+  ["/contacto", "Contacto"],
 ] as const;
 
 export function PublicHeader({ solid = false }: { solid?: boolean }) {

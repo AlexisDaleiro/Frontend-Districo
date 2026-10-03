@@ -42,19 +42,33 @@
 .reference-brand-mark img { width: min(100%, 128px); max-height: 65px; object-fit: contain; filter: drop-shadow(0 2px 8px rgb(0 0 0 / .3)); }
 .reference-brand-wordmark { color: white; font-size: clamp(22px, 2.4vw, 31px); font-weight: 900; letter-spacing: -.05em; line-height: 1; text-align: center; text-shadow: 0 2px 8px rgb(0 0 0 / .25); }
 .reference-brand-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; border-top: 1px solid rgb(255 255 255 / .45); padding-top: 10px; font-size: 11px; font-weight: 850; text-transform: uppercase; text-shadow: 0 1px 5px rgb(0 0 0 / .25); }
-.reference-contact h2 { max-width: 700px; font-size: clamp(38px, 4.2vw, 62px); font-weight: 850; letter-spacing: -.06em; line-height: 1.06; text-wrap: balance; }
 .reference-contact { position: relative; isolation: isolate; overflow: hidden; padding-block: clamp(78px, 7vw, 105px); background: #001a22; color: white; }
 .reference-contact::before { content: ""; position: absolute; z-index: -1; width: 360px; aspect-ratio: 1; right: -100px; top: 40px; border-radius: 50%; background: radial-gradient(circle, #003343, rgb(0 51 67 / .55) 55%, transparent 75%); pointer-events: none; }
-.reference-contact-grid { display: grid; grid-template-columns: 1.2fr .8fr; align-items: center; gap: 50px; }
-.reference-contact .reference-kicker { color: #d3e652; }
-.reference-contact p:not(.reference-kicker) { max-width: 660px; margin-top: 23px; color: #d3dedc; font-size: 17px; line-height: 1.6; }
-.reference-contact-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.reference-contact-grid { display: grid; grid-template-columns: 1.2fr .8fr; align-items: start; gap: 50px; }
+.reference-contact p { max-width: 660px; margin-top: 23px; color: #d3dedc; font-size: 17px; line-height: 1.6; }
 .reference-contact-primary, .reference-contact-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 24px; width: min(100%, 350px); min-height: 58px; padding: 13px 20px; border-radius: 99px; font-size: 14px; font-weight: 800; }
 .reference-contact-primary { background: #c6df23; color: #001a22; }
 .reference-contact-secondary { border: 1px solid #9eb4b6; color: white; }
 .reference-contact-primary:hover { background: #e4f184; color: #163d49; }
 .reference-contact-secondary:hover { background: rgb(255 255 255 / .08); color: white; }
-.reference-contact-email { display: inline-flex; align-items: center; gap: 9px; margin-top: 12px; color: #d3dedc; font-size: 13px; }
+.reference-contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 760px; }
+.reference-contact-form .is-wide { grid-column: 1 / -1; }
+.reference-contact-form label { display: grid; gap: 6px; color: #9eb4b6; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.reference-contact-form input, .reference-contact-form textarea { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid rgb(158 180 182 / .45); border-radius: 12px; background: rgb(255 255 255 / .05); color: white; font: inherit; font-size: 15px; letter-spacing: normal; text-transform: none; transition: border-color .2s ease, background-color .2s ease; }
+.reference-contact-form textarea { resize: vertical; }
+.reference-contact-form input:hover, .reference-contact-form textarea:hover { border-color: #9eb4b6; }
+.reference-contact-form input:focus-visible, .reference-contact-form textarea:focus-visible { outline: 2px solid #c6df23; outline-offset: 1px; border-color: #c6df23; background: rgb(255 255 255 / .08); }
+.reference-contact-submit { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.reference-contact-submit button { width: auto; cursor: pointer; font: inherit; font-size: 14px; font-weight: 800; background-color: transparent; }
+.reference-contact-submit .reference-contact-primary { background: #c6df23; border: 0; }
+.reference-contact p.reference-contact-note { margin-top: 0; color: #9eb4b6; font-size: 13px; }
+.reference-contact-direct { display: grid; gap: 12px; padding: clamp(24px, 3vw, 34px); border: 1px solid rgb(158 180 182 / .3); border-radius: 24px; background: rgb(0 51 67 / .55); }
+.reference-contact-direct h3 { color: #9eb4b6; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.reference-contact-direct a { color: white; font-size: 15px; overflow-wrap: anywhere; }
+.reference-contact-direct a:hover { text-decoration: underline; }
+.reference-contact-direct .reference-contact-big { display: inline-flex; align-items: center; gap: 10px; color: #c6df23; font-size: clamp(30px, 3vw, 40px); font-weight: 850; letter-spacing: -.04em; }
+.reference-contact .reference-contact-direct p { margin-top: 4px; font-size: 14px; }
+.reference-contact-direct .reference-contact-secondary { margin-top: 10px; text-decoration: none; }
 @media (max-width: 767px) {
   .reference-line::before { left: 50%; width: min(100vw, 620px); }
   .reference-line-grid { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding-block: 70px 58px; }
@@ -67,5 +81,6 @@
   .reference-showcase-item img { height: min(280px, 72cqi); }
   .reference-showcase-thumbs button { width: 48px; height: 48px; }
   .reference-contact-grid { grid-template-columns: 1fr; gap: 30px; }
+  .reference-contact-form { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .reference-showcase { translate: none; } .reference-line::before { transform: translate3d(-50%, -50%, 0) !important; } .reference-showcase-item, .reference-showcase-item.is-active, .reference-showcase-item img { transition: none; } .reference-showcase-item.is-active img, .reference-line-ring { transform: none !important; } }
