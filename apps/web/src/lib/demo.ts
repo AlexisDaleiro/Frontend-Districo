@@ -48,6 +48,7 @@ type State = {
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess }[];
   creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
   salespeople?: Record<string, { id: string; name: string; phone: string }>;
+  consumedOrderIds?: string[];
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -77,6 +78,7 @@ export const blankState = (): State => ({
   customRoles: [],
   creditChanges: {},
   salespeople: {},
+  consumedOrderIds: [],
 });
 let memory: State | undefined;
 export function resetDemo() {
@@ -104,6 +106,7 @@ function read() {
     for (const role of data.customRoles) role.access = completeDemoRoleAccess("CUSTOM", role.access);
     data.creditChanges ??= {};
     data.salespeople ??= {};
+    data.consumedOrderIds ??= [];
     return data;
   } catch {
     throw new ApiError(
@@ -1135,10 +1138,27 @@ export async function demoRequest<T>(
           : parts[3] === "reject"
             ? "REJECTED"
             : String(b.status);
-      // Como la API: estado del enum y cualquier transición; sin observación
-      // se conserva la anterior.
       if (!orderStatuses.includes(status))
         throw new ApiError("Estado de pedido inválido.", 400);
+      if (o.status === "REJECTED" && status !== "REJECTED") {
+        if (status !== "PENDING_REVIEW") throw new ApiError("Un pedido rechazado solo puede volver a revisión.", 400);
+        if (!s.consumedOrderIds?.includes(o.id)) {
+          const variants = o.items.map((item) => ({
+            item,
+            variant: s.products.flatMap((product) => product.variants).find((variant) => variant.id === item.variantId),
+          }));
+          if (variants.some(({ item, variant }) => !variant?.active ||
+            (variant.physicalStock ?? 0) - (variant.reservedStock ?? 0) < item.quantity)) {
+            throw new ApiError("No hay stock disponible para reabrir este pedido.", 400);
+          }
+          for (const { item, variant } of variants) {
+            variant!.reservedStock = (variant!.reservedStock ?? 0) + item.quantity;
+            variant!.availableStock = (variant!.physicalStock ?? 0) - variant!.reservedStock;
+          }
+        }
+        o.requiresManualReview = true;
+        o.reviewReason = String(b.reviewReason ?? "Pedido reabierto para revisión");
+      }
       if (typeof b.reviewReason === "string") o.reviewReason = b.reviewReason;
       if (
         ["SUBMITTED", "PENDING_REVIEW"].includes(o.status) &&
@@ -1152,7 +1172,10 @@ export async function demoRequest<T>(
           v.reservedStock = Math.max(0, (v.reservedStock ?? 0) - item.quantity);
           if (["REJECTED", "CANCELLED"].includes(status))
             v.availableStock += item.quantity;
-          else v.physicalStock = (v.physicalStock ?? 0) - item.quantity;
+          else {
+            v.physicalStock = (v.physicalStock ?? 0) - item.quantity;
+            (s.consumedOrderIds ??= []).push(o.id);
+          }
         }
       }
       o.status = status;

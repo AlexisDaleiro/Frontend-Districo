@@ -28,6 +28,7 @@ describe("order progress in administration", () => {
       "PENDING_REVIEW", "APPROVED", "REJECTED", "CANCELLED",
     ]);
     expect(orderProgressChoices("DELIVERED")).toEqual(["DELIVERED"]);
+    expect(orderProgressChoices("REJECTED")).toEqual(["REJECTED", "PENDING_REVIEW"]);
     expect(orderProgressChoices("PROCESSING", 25)).toEqual(["PROCESSING", "SHIPPED"]);
     expect(orderProgressOptionLabel("PENDING_REVIEW")).toBe("Pendiente (en revisión)");
     expect(orderProgressOptionLabel("APPROVED")).toBe("Pendiente (aprobado)");

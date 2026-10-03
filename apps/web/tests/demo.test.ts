@@ -285,6 +285,12 @@ describe("Demo B2B: recorrido comercial", () => {
         )
       ).availableStock,
     ).toBe(40);
+    await api(`admin/orders/${order.id}/status`, "PATCH", { status: "PENDING_REVIEW" });
+    stock = await api("inventory/variants/variant-0/stock");
+    expect(stock.availableStock).toBe(38);
+    await api(`admin/orders/${order.id}/status`, "PATCH", { status: "APPROVED" });
+    stock = await api("inventory/variants/variant-0/stock");
+    expect(stock.availableStock).toBe(38);
   });
   it("aplica una promoción simulada sin alterar los importes históricos", async () => {
     await login("admin@districo.com");
