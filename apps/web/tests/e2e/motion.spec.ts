@@ -12,7 +12,7 @@ async function clientLogin(page: Page) {
   await page.goto("/tienda/ingresar");
   await page.getByRole("button", { name: "Cliente mayorista", exact: true }).click();
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/productos$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
 }
 
 async function adminLogin(page: Page) {
@@ -24,7 +24,8 @@ async function adminLogin(page: Page) {
     );
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
+  await page.goto("/tienda/admin");
 }
 
 // Recorre la página y anota los bloques que, estando en pantalla, pasan de

@@ -6,7 +6,8 @@ async function admin(page: Page) {
     expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
+  await page.goto("/tienda/admin");
 }
 test("administración permite cerrar sesión con el menú abierto o contraído", async ({ page }) => {
   await admin(page);

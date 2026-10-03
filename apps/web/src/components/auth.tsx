@@ -25,7 +25,7 @@ export function Login() {
     setError(undefined);
     try {
       const u = await login(data.email, data.password);
-      router.push(isStaff(u) ? storeRoutes.admin : storeRoutes.products);
+      router.push(storeRoutes.home);
     } catch (e) {
       setError(e);
     }

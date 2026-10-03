@@ -6,7 +6,7 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
   await page.goto("/tienda/ingresar");
   await page.getByRole("button", { name: "Cliente mayorista", exact: true }).click();
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/productos$/);
+  await expect(page).toHaveURL(/\/tienda$/);
   for (const width of [360, 390, 600, 767, 768, 900, 901, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/tienda");

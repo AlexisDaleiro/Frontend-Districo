@@ -149,7 +149,7 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/productos$/);
+  await expect(page).toHaveURL(/\/tienda$/);
   // Aprobada con permiso veterinario: puede comprar productos de uso profesional.
   await page.goto("/tienda/producto/alizin-10ml");
   await expect(

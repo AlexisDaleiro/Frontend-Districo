@@ -124,7 +124,7 @@ test("la tienda requiere sesión y la cuenta activa entra allí desde la raíz",
     .getByRole("button", { name: "Cliente mayorista", exact: true })
     .click();
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda\/productos$/);
+  await expect(page).toHaveURL(/\/tienda$/);
   await page.goto("/");
   await expect(page).toHaveURL(/\/tienda$/);
 });
