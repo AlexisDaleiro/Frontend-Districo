@@ -107,7 +107,8 @@ function SessionProvider({ children }: { children: ReactNode }) {
       }
     },
     retry: false,
-    staleTime: 60000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
   const expire = useCallback(() => setSessionUser(client, null), [client]);
   useEffect(() => {

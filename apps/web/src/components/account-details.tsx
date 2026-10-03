@@ -109,6 +109,11 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
           <div><span>RUT</span><strong>{customer.rut}</strong></div>
           <div><span>Correo electrónico</span><strong>{email}</strong></div>
           <div><span>Teléfono</span><strong>{customer.phone || "Sin registrar"}</strong></div>
+          <div><span>Vendedor asignado</span><strong>{customer.salesperson?.name || "Aún no asignado"}</strong></div>
+          {customer.salesperson && <>
+            <div><span>Correo del vendedor</span><strong><a href={`mailto:${customer.salesperson.user.email}`}>{customer.salesperson.user.email}</a></strong></div>
+            <div><span>Teléfono del vendedor</span><strong><a href={`tel:${customer.salesperson.phone.replace(/[^\d+]/g, "")}`}>{customer.salesperson.phone}</a></strong></div>
+          </>}
           <div><span>Productos de uso profesional</span><strong>{user?.permissions.includes("CAN_BUY_MEDICATIONS") ? "Habilitados" : "Sin habilitación"}</strong></div>
         </div>
         {profileFormOpen && <form className="account-profile-form" onSubmit={(event) => void saveProfile(event)}>

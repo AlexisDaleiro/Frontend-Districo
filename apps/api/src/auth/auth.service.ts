@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { Permission, Role } from '@prisma/client';
@@ -106,41 +106,13 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.usersService.findByEmail(dto.email);
-    if (!user || !user.active) {
-      return { success: true };
-    }
-    const resetToken = await this.jwtService.signAsync(
-      { sub: user.id, email: user.email, purpose: 'password-reset' },
-      {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'dev-refresh-secret',
-        expiresIn: '30m',
-      },
-    );
-    return { success: true, resetToken };
+    void dto;
+    throw new ServiceUnavailableException('La recuperación automática no está disponible. Contactá a DISTRICO.');
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    let payload: { sub: string; purpose?: string };
-    try {
-      payload = await this.jwtService.verifyAsync(dto.resetToken, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'dev-refresh-secret',
-      });
-    } catch {
-      throw new UnauthorizedException('Token invalido o vencido.');
-    }
-    if (payload.purpose !== 'password-reset') {
-      throw new UnauthorizedException('Token invalido.');
-    }
-    await this.prisma.user.update({
-      where: { id: payload.sub },
-      data: { passwordHash: await bcrypt.hash(dto.password, Number(this.config.get<string>('BCRYPT_SALT_ROUNDS') ?? 10)) },
-    });
-    await this.prisma.refreshToken.updateMany({
-      where: { userId: payload.sub, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    return { success: true };
+    void dto;
+    throw new ServiceUnavailableException('La recuperación automática no está disponible. Contactá a DISTRICO.');
   }
 
   async acceptStaffInvitation(dto: AcceptStaffInvitationDto) {

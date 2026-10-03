@@ -3,7 +3,7 @@ import { Role } from '@prisma/client';
 export const staffFeatures = [
   'resumen', 'ventas', 'consultas', 'solicitudes', 'clientes', 'pedidos',
   'facturacion', 'catalogo', 'marcas', 'categorias', 'promociones',
-  'banners', 'recomendaciones',
+  'banners', 'recomendaciones', 'personal', 'roles', 'vendedores',
 ] as const;
 
 export type StaffFeature = typeof staffFeatures[number];
@@ -23,6 +23,9 @@ const defaults: Record<StaffFeature, Partial<Record<Role, StaffAccess>>> = {
   promociones: { CATALOG: { canView: true, canEdit: true } },
   banners: { CATALOG: { canView: true, canEdit: true } },
   recomendaciones: { CATALOG: { canView: true, canEdit: true } },
+  personal: {},
+  roles: {},
+  vendedores: {},
 };
 
 export function defaultStaffAccess(role: Role, feature: StaffFeature): StaffAccess {
@@ -41,7 +44,10 @@ export function staffAccessMatrix(role: Role, overrides: { feature: string; canV
 
 export function staffFeatureForPath(path: string): StaffFeature | undefined {
   const clean = path.split('?')[0].replace(/^\/api\//, '/');
-  if (/^\/admin\/staff(?:\/|$)|^\/admin\/audit-logs(?:\/|$)/.test(clean)) return undefined;
+  if (/^\/admin\/audit-logs(?:\/|$)/.test(clean)) return undefined;
+  if (/^\/admin\/staff\/access(?:\/|$)|^\/admin\/staff\/roles(?:\/|$)/.test(clean)) return 'roles';
+  if (/^\/admin\/staff(?:\/|$)/.test(clean)) return 'personal';
+  if (/^\/admin\/salespeople(?:\/|$)/.test(clean)) return 'vendedores';
   if (/^\/admin\/dashboard$/.test(clean)) return 'resumen';
   if (/^\/admin\/sales$/.test(clean)) return 'ventas';
   if (/^\/admin\/contact-inquiries(?:\/|$)/.test(clean)) return 'consultas';

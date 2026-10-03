@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   BadgePercent,
+  BriefcaseBusiness,
   Images,
   ClipboardList,
   Download,
@@ -41,6 +42,7 @@ import { CountUp } from "./count-up";
 import { AdminSales } from "./admin-sales";
 import { AdminBanners } from "./admin-banners";
 import { AdminRoles, AdminStaff } from "./admin-staff";
+import { AdminSalespeople } from "./admin-salespeople";
 import { AdminPromotionForm } from "./admin-promotion-form";
 import { AdminBrandsLabs, AdminCategories } from "./admin-organization";
 import { orderBalance } from "@/lib/order-billing";
@@ -75,6 +77,7 @@ const sections: [string, string, string, LucideIcon, string?][] = [
   ["Operación", "consultas", "Consultas", Inbox, "newContactInquiries"],
   ["Operación", "solicitudes", "Solicitudes", UserPlus, "pendingApplications"],
   ["Operación", "clientes", "Clientes", Users],
+  ["Operación", "vendedores", "Vendedores", BriefcaseBusiness],
   ["Operación", "pedidos", "Pedidos", ClipboardList, "pendingReviewOrders"],
   ["Catálogo", "catalogo", "Catálogo", Package],
   ["Catálogo", "marcas", "Marcas y laboratorios", Tags],
@@ -431,6 +434,7 @@ export function customerEditor(c: Customer): Editor {
   };
 }
 function Customers() {
+  const { user } = useSession();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -448,7 +452,7 @@ function Customers() {
   return (
     <>
       <div className="admin-toolbar">
-        <h2>Clientes mayoristas</h2>
+        <h2>{user?.role === "SALES" ? "Clientes asignados" : "Clientes mayoristas"}</h2>
         <input
           className="form-input"
           aria-label="Buscar clientes"
@@ -641,7 +645,7 @@ function AdminOrders() {
   return (
     <>
       <div className="admin-toolbar">
-        <h2>Pedidos</h2>
+        <h2>{user?.role === "SALES" ? "Pedidos asignados" : "Pedidos"}</h2>
         <span className="muted small-copy">
           {q.data.meta.total} {q.data.meta.total === 1 ? "pedido" : "pedidos"}
         </span>
@@ -1484,18 +1488,20 @@ export function AdminNav({ section, email }: { section: string; email?: string }
             {sections
               .filter(([g, path]) => g === group && canSeeAdminSection(user, path))
               .map(([, path, title, Icon, countKey]) => {
-                const count = countKey ? (counts.data?.[countKey] ?? 0) : 0;
+                const visibleTitle = user?.role === "SALES" && path === "clientes" ? "Clientes asignados" :
+                  user?.role === "SALES" && path === "pedidos" ? "Pedidos asignados" : title;
+                const count = countKey && !(user?.role === "SALES" && path === "pedidos") ? (counts.data?.[countKey] ?? 0) : 0;
                 return (
                   <Link
                     className={section === path ? "active" : ""}
                     aria-current={section === path ? "page" : undefined}
-                    aria-label={title}
-                    title={collapsed ? title : undefined}
+                    aria-label={visibleTitle}
+                    title={collapsed ? visibleTitle : undefined}
                     href={path ? storeRoutes.adminSection(path) : storeRoutes.admin}
                     key={path}
                   >
                     <Icon size={17} aria-hidden="true" />
-                    <span>{title}</span>
+                    <span>{visibleTitle}</span>
                     {count > 0 && (
                       <em
                         className="admin-nav-count"
@@ -1547,6 +1553,8 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
     <Applications edit={edit} />
   ) : section === "clientes" ? (
     <Customers />
+  ) : section === "vendedores" ? (
+    <AdminSalespeople />
   ) : section === "pedidos" ? (
     <AdminOrders />
   ) : section === "catalogo" ? (

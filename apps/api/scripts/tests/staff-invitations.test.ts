@@ -14,7 +14,8 @@ function fixture() {
   let revokedTokens = 0;
   const tx = {
     user: {
-      findUnique: async ({ where }: any) => where.email ? Object.values(users).find((user: any) => user.email === where.email) ?? null : users[where.id] ?? null,
+      findUnique: async ({ where }: any) => where.email ? Object.values(users).find((user: any) => user.email === where.email) ?? null :
+        where.id === 'admin-1' || where.id === 'other-admin' ? { id: where.id, role: Role.ADMIN, customRoleId: null } : users[where.id] ?? null,
       create: async ({ data }: any) => { const user = { id: 'staff-1', customerAccountId: null, ...data }; users[user.id] = user; return user; },
       update: async ({ where, data }: any) => { Object.assign(users[where.id], data); return users[where.id]; },
       count: async () => Object.values(users).filter((user: any) => user.role === Role.ADMIN && user.active).length,

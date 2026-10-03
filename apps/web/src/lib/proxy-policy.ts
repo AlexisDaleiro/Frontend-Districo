@@ -26,6 +26,8 @@ export function allowedPath(path: string, method: string) {
       `inventory/variants/${id}/stock`,
       "admin/(dashboard|sales|customers|applications|orders|promotions|recommendations|audit-logs|banners|staff)",
       "admin/staff/access",
+      "admin/salespeople",
+      `admin/salespeople/${id}`,
       "admin/(customers|orders|applications|contact-inquiries)/page",
       `admin/customers/${id}`,
       `admin/customers/${id}/documents/${id}`,
@@ -63,6 +65,7 @@ export function allowedPath(path: string, method: string) {
       `admin/orders/${id}/(payments|invoices)/${id}/void`,
       "admin/banners",
       "admin/staff/invitations",
+      `admin/salespeople/${id}/customers`,
       "admin/staff/roles",
       "admin/(promotions|recommendations)",
     ],
@@ -77,6 +80,7 @@ export function allowedPath(path: string, method: string) {
       "admin/staff/access/(SALES|CATALOG|FINANCE)",
       `admin/staff/roles/${id}/access`,
       `admin/staff/${id}/active`,
+      `admin/salespeople/${id}`,
       `admin/contact-inquiries/${id}`,
       `admin/orders/${id}/status`,
       `admin/banners/${id}`,
@@ -87,7 +91,7 @@ export function allowedPath(path: string, method: string) {
       `recommendations/${id}/active`,
       `(brands|categories|laboratories)/${id}`,
     ],
-    DELETE: [`cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
+    DELETE: [`cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
   };
   return (rules[method] ?? []).some((pattern) =>
     new RegExp(`^${pattern}$`).test(path),

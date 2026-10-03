@@ -29,13 +29,18 @@ test('admin routes map to the section they protect', () => {
   assert.equal(staffFeatureForPath('/api/admin/contact-inquiries/page'), 'consultas');
   assert.equal(staffFeatureForPath('/api/products/admin/list'), 'catalogo');
   assert.equal(staffFeatureForPath('/api/admin/banners'), 'banners');
-  assert.equal(staffFeatureForPath('/api/admin/staff/access'), undefined);
+  assert.equal(staffFeatureForPath('/api/admin/staff/access'), 'roles');
+  assert.equal(staffFeatureForPath('/api/admin/staff/roles/123/access'), 'roles');
+  assert.equal(staffFeatureForPath('/api/admin/staff/invitations'), 'personal');
+  assert.equal(staffFeatureForPath('/api/admin/salespeople/123/customers'), 'vendedores');
   assert.equal(staffFeatureForPath('/api/admin/audit-logs'), undefined);
 });
 
-test('guard enforces saved view and edit rights and keeps staff management admin-only', async () => {
+test('guard enforces saved view and edit rights across staff sections', async () => {
   let override: { canView: boolean; canEdit: boolean } | null = null;
-  const prisma = { staffRoleAccess: { findUnique: async () => override } } as unknown as PrismaService;
+  const prisma = { staffRoleAccess: { findUnique: async () => override },
+    customerAccount: { findFirst: async () => ({ id: 'assigned-customer' }) },
+    order: { findFirst: async () => ({ id: 'assigned-order' }) } } as unknown as PrismaService;
   const reflector = { getAllAndOverride: () => [Role.ADMIN, Role.CATALOG] } as unknown as Reflector;
   const guard = new RolesGuard(reflector, prisma);
   const context = (path: string, method: string, role: Role) => ({
@@ -51,8 +56,74 @@ test('guard enforces saved view and edit rights and keeps staff management admin
   override = { canView: true, canEdit: true };
   assert.equal(await guard.canActivate(context('/api/products/123', 'PATCH', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/admin/orders/123/invoices/456', 'GET', Role.SALES)), true);
+  override = null;
   assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/staff', 'GET', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/salespeople', 'GET', Role.SALES)), false);
+  override = { canView: true, canEdit: false };
+  assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/staff/roles', 'POST', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/staff', 'GET', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/staff/invitations', 'POST', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/salespeople', 'GET', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/salespeople/123', 'PATCH', Role.SALES)), false);
+  override = { canView: true, canEdit: true };
+  assert.equal(await guard.canActivate(context('/api/admin/staff/roles', 'POST', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/staff/invitations', 'POST', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/salespeople/123', 'PATCH', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.ADMIN)), true);
+});
+
+test('seller record access follows the current customer assignment', async () => {
+  let assigned = true;
+  const prisma = {
+    staffRoleAccess: { findUnique: async () => null },
+    customerAccount: { findFirst: async ({ where }: { where: { id: string; salesperson: { is: { userId: string } } } }) => {
+      assert.equal(where.salesperson.is.userId, 'seller-1');
+      return assigned ? { id: where.id } : null;
+    } },
+    order: { findFirst: async ({ where }: { where: { id: string; customerAccount: { is: { salesperson: { is: { userId: string } } } } } }) => {
+      assert.equal(where.customerAccount.is.salesperson.is.userId, 'seller-1');
+      return assigned ? { id: where.id } : null;
+    } },
+  } as unknown as PrismaService;
+  const reflector = { getAllAndOverride: () => [Role.ADMIN, Role.SALES] } as unknown as Reflector;
+  const guard = new RolesGuard(reflector, prisma);
+  const context = (path: string, method: string) => ({
+    getHandler: () => function handler() {}, getClass: () => class Controller {},
+    switchToHttp: () => ({ getRequest: () => ({ originalUrl: path, method, user: { sub: 'seller-1', role: Role.SALES } }) }),
+  }) as unknown as ExecutionContext;
+  assert.equal(await guard.canActivate(context('/api/admin/customers/other-1', 'GET')), true);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/other-2/status', 'PATCH')), true);
+  assigned = false;
+  assert.equal(await guard.canActivate(context('/api/admin/customers/other-1', 'GET')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/customers/other-1', 'PATCH')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/other-2', 'GET')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/other-2/status', 'PATCH')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/customers/page', 'GET')), true);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/page', 'GET')), true);
+});
+
+test('seller customer and order pages are scoped before pagination', async () => {
+  let customerWhere: unknown;
+  let orderSellerId: string | undefined;
+  const prisma = {
+    customerAccount: {
+      findMany: async ({ where }: { where: unknown }) => { customerWhere = where; return []; },
+      count: async () => 0,
+    },
+    staffRoleAccess: { findUnique: async () => null },
+  } as unknown as PrismaService;
+  const orders = { findAdminOrdersPage: async (_query: unknown, salespersonUserId?: string) => {
+    orderSellerId = salespersonUserId;
+    return { items: [], meta: { total: 0, page: 1, limit: 20 } };
+  } } as unknown as OrdersService;
+  const service = new AdminService(prisma, {} as AuditService, orders, {} as ApplicationsService);
+  const seller = { sub: 'seller-1', role: Role.SALES } as never;
+  await service.customersPage({ page: 1, limit: 20 }, seller);
+  assert.deepEqual(customerWhere, { salesperson: { is: { userId: 'seller-1' } } });
+  await service.ordersPage({ page: 1, limit: 20 }, seller);
+  assert.equal(orderSellerId, 'seller-1');
 });
 
 test('custom staff roles deny by default and honor only their saved permissions', async () => {
@@ -72,7 +143,7 @@ test('custom staff roles deny by default and honor only their saved permissions'
   assert.equal(await guard.canActivate(context('/api/admin/orders/order-1/invoices/invoice-1', 'GET')), false);
   customAccess = { canView: true, canEdit: true };
   assert.equal(await guard.canActivate(context('/api/admin/orders/order-1/invoices/invoice-1', 'GET')), true);
-  assert.equal(await guard.canActivate(context('/api/admin/staff/roles', 'POST')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/staff/roles', 'POST')), true);
 });
 
 test('custom role creation starts without access and rejects duplicate names', async () => {
@@ -120,4 +191,24 @@ test('editing orders requires billing visibility', async () => {
   const service = new AdminService({} as PrismaService, {} as AuditService, {} as OrdersService, {} as ApplicationsService);
   const entries = staffFeatures.map((feature) => ({ feature, canView: feature === 'pedidos', canEdit: feature === 'pedidos' }));
   await assert.rejects(service.updateStaffRoleAccess(Role.SALES, entries, 'admin-1'), /facturación/);
+});
+
+test('delegated role editor cannot grant access beyond their own rights', async () => {
+  const prisma = {
+    user: { findUnique: async () => ({ role: Role.SALES, customRoleId: null }) },
+    staffRoleAccess: { findMany: async () => [{ feature: 'roles', canView: true, canEdit: true }] },
+  } as unknown as PrismaService;
+  const service = new AdminService(prisma, {} as AuditService, {} as OrdersService, {} as ApplicationsService);
+  const entries = staffFeatures.map((feature) => ({ feature, canView: feature === 'catalogo', canEdit: false }));
+  await assert.rejects(service.updateStaffRoleAccess(Role.CATALOG, entries, 'sales-1'), /No podés otorgar/);
+});
+
+test('delegated staff editor cannot assign an administrator role', async () => {
+  const prisma = {
+    user: { findUnique: async () => ({ role: Role.SALES, customRoleId: null }) },
+    staffRoleAccess: { findMany: async () => [{ feature: 'personal', canView: true, canEdit: true }] },
+  } as unknown as PrismaService;
+  const service = new AdminService(prisma, {} as AuditService, {} as OrdersService, {} as ApplicationsService);
+  await assert.rejects(service.updateStaffRole('target-1', Role.ADMIN, 'sales-1'), /Solo un administrador/);
+  await assert.rejects(service.inviteStaff('nuevo@example.test', Role.ADMIN, 'sales-1'), /Solo un administrador/);
 });

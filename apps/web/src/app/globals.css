@@ -2087,7 +2087,7 @@ td .button {
     margin-inline: 24px;
   }
   .admin-shell {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 272px minmax(0, 1fr);
     gap: 40px;
     align-items: start;
   }
@@ -2140,7 +2140,7 @@ td .button {
     color: var(--on-ink-muted);
   }
   .admin-nav a {
-    white-space: normal;
+    white-space: nowrap;
   }
   .admin-sidebar-footer {
     display: block;
@@ -2535,23 +2535,29 @@ td .button {
 }
 .admin-directory-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 0 24px;
 }
 .admin-directory-row {
   min-width: 0;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--line);
   padding: 3px 0 3px 10px;
 }
-.admin-directory-row span {
-  overflow-wrap: anywhere;
-}
 .admin-directory-row > span:nth-child(2) {
-  flex: 1;
+  overflow-wrap: break-word;
+}
+@media (max-width: 520px) {
+  .admin-directory-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+  .admin-directory-row .actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
 }
 .admin-directory-logo {
   width: 42px;
@@ -2752,12 +2758,50 @@ td .button {
 .admin-record-meta {
   padding: 14px 0 24px;
 }
+.admin-salespeople-table td {
+  vertical-align: middle;
+}
+.admin-salesperson-profile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 720px;
+}
+.admin-salesperson-profile .actions,
+.admin-salesperson-profile [role="alert"] {
+  grid-column: 1 / -1;
+}
+.admin-salesperson-picker {
+  display: grid;
+  max-height: 320px;
+  overflow: auto;
+  border-block: 1px solid var(--line);
+}
+.admin-salesperson-picker button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  text-align: left;
+}
+.admin-salesperson-picker button:hover,
+.admin-salesperson-picker button.selected {
+  background: var(--lime-soft);
+}
+.admin-salesperson-picker button span {
+  font-size: 12px;
+}
 @media (max-width: 780px) {
   .admin-order-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
   .admin-order-filters { grid-template-columns: minmax(0, 1fr); }
   .admin-record-list li { display: grid; }
+  .admin-salesperson-profile { grid-template-columns: minmax(0, 1fr); }
 }
 .contact-admin-filters {
   display: flex;

@@ -34,13 +34,14 @@ export function AdminCustomerPage({ id }: { id: string }) {
     <AdminNav section="clientes" email={user?.email} />
     <main className="admin-main admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : customer ? <>
-        <Link className="text-link admin-product-back" href={storeRoutes.adminSection("clientes")}><ArrowLeft size={17} /> Volver a clientes</Link>
+        <Link className="text-link admin-product-back" href={storeRoutes.adminSection("clientes")}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "clientes asignados" : "clientes"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={customer.businessName}>{customer.legalName} · RUT {customer.rut}</PageHeading>
         <div className="admin-record-summary">
           <div><span>Cuenta</span><strong>{label(customer.accountStatus)}</strong></div>
           <div><span>Situación comercial</span><strong>{label(customer.creditStatus)}</strong></div>
           <div><span>Medicamentos</span><strong>{customer.medicationPermission ? "Habilitados" : "Sin habilitación"}</strong></div>
           <div><span>Pedidos</span><strong>{customer.orderCount}</strong></div>
+          <div><span>Vendedor responsable</span><strong>{customer.salesperson ? canSeeAdminSection(user, "vendedores") ? <Link className="text-link" href={storeRoutes.adminSalesperson(customer.salesperson.userId)}>{customer.salesperson.name}</Link> : customer.salesperson.name : "Sin asignar"}</strong></div>
           {canViewBilling && customer.debt !== undefined && <div><span>Deuda pendiente</span><strong>{money(customer.debt)}</strong></div>}
           {canViewBilling && customer.creditLimit != null && <div><span>Crédito disponible</span><strong>{money(Number(customer.availableCredit ?? 0))}</strong></div>}
         </div>

@@ -9,7 +9,7 @@ import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerListQueryDto, OrderListQueryDto } from './dto/admin-list-query.dto';
-import { defaultStaffAccess, staffAccessMatrix, staffFeatures } from '../common/staff-role-access';
+import { defaultStaffAccess, staffAccessMatrix, staffFeatures, type StaffFeature } from '../common/staff-role-access';
 import { StaffAccessEntryDto } from './dto/update-staff-access.dto';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { slugify } from '../common/utils/slugify';
@@ -44,6 +44,7 @@ export class AdminService {
   async updateStaffRoleAccess(role: Role, entries: StaffAccessEntryDto[], actorId: string) {
     if (role === Role.ADMIN || role === Role.CLIENT || role === Role.CUSTOM || !Object.values(Role).includes(role)) throw new BadRequestException('Este rol no se puede configurar.');
     this.validateStaffAccess(entries);
+    await this.assertGrantBounded(actorId, entries);
     await this.prisma.$transaction(async (tx) => {
       for (const entry of entries) {
         await tx.staffRoleAccess.upsert({
@@ -78,6 +79,7 @@ export class AdminService {
   async updateCustomRoleAccess(id: string, entries: StaffAccessEntryDto[], actorId: string) {
     if (!await this.prisma.customStaffRole.findUnique({ where: { id } })) throw new NotFoundException('Rol no encontrado.');
     this.validateStaffAccess(entries);
+    await this.assertGrantBounded(actorId, entries);
     await this.prisma.$transaction(async (tx) => {
       for (const entry of entries) {
         await tx.customStaffRoleAccess.upsert({
@@ -92,6 +94,36 @@ export class AdminService {
       } });
     });
     return this.staffRoleAccess();
+  }
+
+  private async actorAccess(actorId: string) {
+    const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { role: true, customRoleId: true } });
+    if (!actor || actor.role === Role.CLIENT) throw new ForbiddenException('No tenés permiso para administrar este acceso.');
+    if (actor.role === Role.ADMIN) return null;
+    const overrides = actor.role === Role.CUSTOM
+      ? actor.customRoleId ? await this.prisma.customStaffRoleAccess.findMany({ where: { roleId: actor.customRoleId } }) : []
+      : await this.prisma.staffRoleAccess.findMany({ where: { role: actor.role } });
+    return staffAccessMatrix(actor.role, overrides);
+  }
+
+  private async assertGrantBounded(actorId: string, entries: { feature: StaffFeature; canView: boolean; canEdit: boolean }[]) {
+    const access = await this.actorAccess(actorId);
+    if (access && entries.some((entry) => (entry.canView && !access[entry.feature].canView) || (entry.canEdit && !access[entry.feature].canEdit))) {
+      throw new ForbiddenException('No podés otorgar permisos que no tenés.');
+    }
+  }
+
+  private async assertAssignableRole(actorId: string, role: Role, customRoleId?: string) {
+    const access = await this.actorAccess(actorId);
+    if (!access) return;
+    if (role === Role.ADMIN) throw new ForbiddenException('Solo un administrador puede asignar ese rol.');
+    const entries = role === Role.CUSTOM
+      ? await this.prisma.customStaffRoleAccess.findMany({ where: { roleId: customRoleId } })
+      : await this.prisma.staffRoleAccess.findMany({ where: { role } });
+    const target = staffAccessMatrix(role, entries);
+    if (staffFeatures.some((feature) => (target[feature].canView && !access[feature].canView) || (target[feature].canEdit && !access[feature].canEdit))) {
+      throw new ForbiddenException('No podés asignar un rol con permisos que no tenés.');
+    }
   }
 
   private validateStaffAccess(entries: StaffAccessEntryDto[]) {
@@ -124,8 +156,9 @@ export class AdminService {
     return { products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries };
   }
 
-  customers() {
+  customers(user?: JwtUser) {
     return this.prisma.customerAccount.findMany({
+      where: user?.role === Role.SALES ? { salesperson: { is: { userId: user.sub } } } : undefined,
       orderBy: { createdAt: 'desc' },
       include: { users: { select: { id: true, email: true, permissions: true, active: true } } },
     });
@@ -184,9 +217,11 @@ export class AdminService {
     };
   }
 
-  async customersPage(query: CustomerListQueryDto) {
+  async customersPage(query: CustomerListQueryDto, user?: JwtUser) {
     const search = query.search?.trim();
-    const where: Prisma.CustomerAccountWhereInput = search ? {
+    const where: Prisma.CustomerAccountWhereInput = {
+      salesperson: user?.role === Role.SALES ? { is: { userId: user.sub } } : undefined,
+      ...(search ? {
       OR: [
         { businessName: { contains: search, mode: 'insensitive' } },
         { legalName: { contains: search, mode: 'insensitive' } },
@@ -194,14 +229,16 @@ export class AdminService {
         { phone: { contains: search } },
         { users: { some: { email: { contains: search, mode: 'insensitive' } } } },
       ],
-    } : {};
+      } : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.customerAccount.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip: (query.page - 1) * query.limit,
         take: query.limit,
-        include: { users: { select: { id: true, email: true, permissions: true, active: true } } },
+        include: { users: { select: { id: true, email: true, permissions: true, active: true } },
+          salesperson: { select: { id: true, name: true, userId: true, user: { select: { email: true } } } } },
       }),
       this.prisma.customerAccount.count({ where }),
     ]);
@@ -215,6 +252,7 @@ export class AdminService {
         users: { select: { id: true, email: true, active: true } },
         addresses: { orderBy: { createdAt: 'asc' } },
         documents: { select: { id: true, type: true, originalName: true, mimeType: true, status: true, uploadedAt: true } },
+        salesperson: { select: { id: true, name: true, userId: true, user: { select: { email: true } } } },
       },
     });
     if (!customer) throw new NotFoundException('Cliente no encontrado.');
@@ -248,7 +286,7 @@ export class AdminService {
   async ordersPage(query: OrderListQueryDto, user: JwtUser | Role) {
     const canViewBilling = await this.canViewBilling(user);
     if (query.paymentStatus && !canViewBilling) throw new ForbiddenException('No tenés acceso a los estados de pago.');
-    const result = await this.orders.findAdminOrdersPage(query);
+    const result = await this.orders.findAdminOrdersPage(query, typeof user !== 'string' && user.role === Role.SALES ? user.sub : undefined);
     return canViewBilling ? result : { ...result, items: result.items.map((order) => this.withoutBilling(order)) };
   }
 
@@ -266,7 +304,7 @@ export class AdminService {
       if (billing) columns.push('Estado de pago', 'Abonado', 'Pendiente');
       yield `\uFEFF${columns.map(csvCell).join(',')}\r\n`;
       for (let page = 1; ; page++) {
-        const result = await orders.findAdminOrdersPage({ ...query, page, limit: 100 });
+        const result = await orders.findAdminOrdersPage({ ...query, page, limit: 100 }, user.role === Role.SALES ? user.sub : undefined);
         for (const order of result.items) {
           const fields: unknown[] = [order.id, order.orderNumber, order.createdAt.toISOString(), order.customerAccount?.businessName ?? '', order.user.email,
             order.status, order.currency, order.total.toString()];
@@ -325,7 +363,7 @@ export class AdminService {
   }
 
   async ordersAdmin(user: JwtUser | Role) {
-    const [orders, canViewBilling] = await Promise.all([this.orders.findAdminOrders(), this.canViewBilling(user)]);
+    const [orders, canViewBilling] = await Promise.all([this.orders.findAdminOrders(typeof user !== 'string' && user.role === Role.SALES ? user.sub : undefined), this.canViewBilling(user)]);
     return canViewBilling ? orders : orders.map((order) => this.withoutBilling(order));
   }
 
@@ -377,6 +415,7 @@ export class AdminService {
 
   async inviteStaff(emailInput: string, role: Role, actorId: string, customRoleId?: string) {
     await this.assertCustomRole(role, customRoleId);
+    await this.assertAssignableRole(actorId, role, customRoleId);
     const email = emailInput.trim().toLowerCase();
     const token = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(token).digest('hex');
@@ -404,12 +443,16 @@ export class AdminService {
 
   async updateStaffActive(id: string, active: boolean, actorId: string) {
     if (id === actorId && !active) throw new ForbiddenException('No podés desactivar tu propia cuenta.');
+    const actorAccess = await this.actorAccess(actorId);
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id }, select: {
         id: true, email: true, role: true, active: true, emailVerified: true, customerAccountId: true,
+        salesperson: { select: { _count: { select: { customers: true } } } },
       } });
       if (!user || user.customerAccountId) throw new NotFoundException('Usuario interno no encontrado.');
+      if (actorAccess && user.role === Role.ADMIN) throw new ForbiddenException('Solo un administrador puede gestionar otra cuenta administradora.');
       if (active && !user.emailVerified) throw new BadRequestException('La cuenta debe aceptar su invitación antes de activarse.');
+      if (!active && user.salesperson?._count.customers) throw new BadRequestException('Reasigná sus clientes antes de desactivar al vendedor.');
       if (!active && user.active && user.role === Role.ADMIN) {
         const admins = await tx.user.count({ where: { role: Role.ADMIN, active: true, customerAccountId: null } });
         if (admins <= 1) throw new BadRequestException('Debe quedar al menos un administrador activo.');
@@ -430,10 +473,15 @@ export class AdminService {
 
   async updateStaffRole(id: string, role: Role, actorId: string, customRoleId?: string) {
     await this.assertCustomRole(role, customRoleId);
-    if (id === actorId && role !== Role.ADMIN) throw new ForbiddenException('No podés quitarte tu propio acceso de administrador.');
+    const actorAccess = await this.actorAccess(actorId);
+    if (id === actorId) throw new ForbiddenException('No podés cambiar tu propio rol.');
+    await this.assertAssignableRole(actorId, role, customRoleId);
     return this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, role: true, active: true, customerAccountId: true } });
+      const user = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, role: true, active: true, customerAccountId: true,
+        salesperson: { select: { _count: { select: { customers: true } } } } } });
       if (!user || user.customerAccountId) throw new NotFoundException('Usuario interno no encontrado.');
+      if (actorAccess && user.role === Role.ADMIN) throw new ForbiddenException('Solo un administrador puede gestionar otra cuenta administradora.');
+      if (role !== Role.SALES && user.salesperson?._count.customers) throw new BadRequestException('Reasigná sus clientes antes de cambiar el rol del vendedor.');
       if (user.role === Role.ADMIN && role !== Role.ADMIN && user.active) {
         const admins = await tx.user.count({ where: { role: Role.ADMIN, active: true, customerAccountId: null } });
         if (admins <= 1) throw new BadRequestException('Debe quedar al menos un administrador activo.');

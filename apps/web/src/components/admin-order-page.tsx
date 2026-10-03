@@ -27,7 +27,7 @@ export function AdminOrderPage({ id, back }: { id: string; back?: string }) {
     <AdminNav section="pedidos" email={user?.email} />
     <main className="admin-main admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : order ? <>
-        <Link className="text-link admin-product-back" href={back ?? storeRoutes.adminSection("pedidos")}><ArrowLeft size={17} /> Volver a pedidos</Link>
+        <Link className="text-link admin-product-back" href={back ?? storeRoutes.adminSection("pedidos")}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "pedidos asignados" : "pedidos"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={`Pedido ${order.orderNumber}`}>
           {new Date(order.createdAt).toLocaleString("es-UY", { dateStyle: "short", timeStyle: "short" })}
         </PageHeading>

@@ -170,6 +170,7 @@ model User {
   permissions       UserPermission[]
   refreshTokens     RefreshToken[]
   staffInvitations  StaffInvitation[]
+  salesperson       Salesperson?
   carts             Cart[]
   priceChanges      PriceHistory[]   @relation("PriceChangedBy")
   orders            Order[]
@@ -247,12 +248,27 @@ model CustomerAccount {
   internalCreditNote   String?
   accountStatus        AccountStatus @default(PENDING)
   medicationPermission Boolean      @default(false)
+  salespersonId        String?
+  salesperson          Salesperson?  @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
   users                User[]
   addresses            CustomerAddress[]
   documents            CustomerDocument[]
   orders               Order[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+
+  @@index([salespersonId])
+}
+
+model Salesperson {
+  id        String            @id @default(cuid())
+  userId    String            @unique
+  user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name      String
+  phone     String
+  customers CustomerAccount[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 }
 
 model Brand {

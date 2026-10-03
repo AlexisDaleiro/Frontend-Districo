@@ -23,17 +23,20 @@ export class RolesGuard implements CanActivate {
         if (!user.customRoleId) return false;
         const access = await this.prisma.customStaffRoleAccess.findUnique({ where: { roleId_feature: { roleId: user.customRoleId, feature } } });
         if (!access) return false;
-        if (request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)) {
-          return access.canEdit;
-        }
-        return request.method === 'GET' ? access.canView : access.canEdit;
+        return request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)
+          ? access.canEdit : request.method === 'GET' ? access.canView : access.canEdit;
       }
       const override = await this.prisma.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature } } });
       const access = override ?? defaultStaffAccess(user.role, feature);
-      if (request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)) {
-        return access.canEdit;
-      }
-      return request.method === 'GET' ? access.canView : access.canEdit;
+      const allowed = request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)
+        ? access.canEdit : request.method === 'GET' ? access.canView : access.canEdit;
+      if (!allowed || user.role !== Role.SALES) return allowed;
+      const path = request.originalUrl.split('?')[0];
+      const customerId = /^\/api\/admin\/customers\/(?!page(?:\/|$))([^/]+)/.exec(path)?.[1];
+      if (customerId) return !!await this.prisma.customerAccount.findFirst({ where: { id: customerId, salesperson: { is: { userId: user.sub } } }, select: { id: true } });
+      const orderId = /^\/api\/admin\/orders\/(?!page(?:\/|$)|export(?:\/|$))([^/]+)/.exec(path)?.[1];
+      if (orderId) return !!await this.prisma.order.findFirst({ where: { id: orderId, customerAccount: { is: { salesperson: { is: { userId: user.sub } } } } }, select: { id: true } });
+      return true;
     }
     return Boolean(user && roles.includes(user.role));
   }

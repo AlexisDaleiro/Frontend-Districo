@@ -11,6 +11,7 @@ import type {
   User,
 } from "../src/lib/types";
 import { firstQuantity, quantityError } from "../src/lib/commerce";
+import { staffFeatures } from "../src/lib/staff-access";
 beforeEach(() => {
   const data = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -23,6 +24,22 @@ beforeEach(() => {
 const login = (email = "cliente@gmail.com") =>
   api("auth/login", "POST", { email, password: "Demo1234!" });
 describe("Demo B2B: permisos y aislamiento", () => {
+  it("aplica Ver y Editar de Personal, Roles y Vendedores a las rutas de la demo", async () => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    state.users.push({ id: "staff-permissions", email: "staff-permissions@example.test", role: "SALES", permissions: [], active: true, emailVerified: true });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    await login("admin@districo.com");
+    await api("admin/staff/access/SALES", "PATCH", { entries: staffFeatures.map(([feature]) => ({
+      feature, canView: ["personal", "vendedores"].includes(feature), canEdit: feature === "vendedores",
+    })) });
+    await api("auth/logout", "POST", {});
+    await login("staff-permissions@example.test");
+    expect(await api("admin/staff")).toBeTruthy();
+    await expect(api("admin/staff/invitations", "POST", { email: "new@example.test", role: "SALES" })).rejects.toMatchObject({ status: 403 });
+    await expect(api("admin/staff/access")).rejects.toMatchObject({ status: 403 });
+    expect(await api("admin/salespeople?page=1&limit=20")).toBeTruthy();
+    await expect(api("admin/salespeople/does-not-exist", "PATCH", { name: "Test", phone: "099123456" })).rejects.toMatchObject({ status: 404 });
+  });
   it("expone las categorías del catálogo en modo demo", async () => {
     expect(await api("categories/catalog")).toEqual(await api("categories"));
   });
@@ -81,6 +98,56 @@ describe("Demo B2B: permisos y aislamiento", () => {
   });
 });
 describe("Demo B2B: recorrido comercial", () => {
+  it("limita clientes y pedidos del vendedor a sus asignaciones", async () => {
+    await login();
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 1 });
+    const own = await api<Order>("checkout", "POST", {});
+    await login("clientemed@gmail.com");
+    await api("cart/items", "POST", { variantId: "variant-0", quantity: 1 });
+    const other = await api<Order>("checkout", "POST", {});
+    await login("admin@districo.com");
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    state.users.push({ id: "seller-assigned", email: "assigned@example.test", role: "SALES", permissions: [], active: true, emailVerified: true });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    await api("admin/salespeople/seller-assigned", "PATCH", { name: "Vendedor asignado", phone: "099123456" });
+    await api("admin/salespeople/seller-assigned/customers", "POST", { customerId: "account-normal" });
+    await login("assigned@example.test");
+    const customers = await api<{ items: CustomerDetail[] }>("admin/customers/page?page=1&limit=20");
+    expect(customers.items.map((customer) => customer.id)).toEqual(["account-normal"]);
+    const orders = await api<{ items: Order[] }>("admin/orders/page?page=1&limit=20");
+    expect(orders.items.map((order) => order.id)).toEqual([own.id]);
+    await expect(api("admin/customers/account-med")).rejects.toMatchObject({ status: 403 });
+    await expect(api(`admin/orders/${other.id}`)).rejects.toMatchObject({ status: 403 });
+    await expect(api(`admin/orders/${other.id}/status`, "PATCH", { status: "APPROVED" })).rejects.toMatchObject({ status: 403 });
+  });
+  it("gestiona vendedores y un único responsable por cliente", async () => {
+    await login("admin@districo.com");
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}");
+    state.users.push(
+      { id: "seller-1", email: "uno@example.test", role: "SALES", permissions: [], active: true, emailVerified: true },
+      { id: "seller-2", email: "dos@example.test", role: "SALES", permissions: [], active: true, emailVerified: true },
+    );
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    const list = await api<{ items: { id: string; profile: unknown }[] }>("admin/salespeople?page=1&limit=20");
+    expect(list.items.map((seller) => seller.id)).toEqual(["seller-2", "seller-1"]);
+    await expect(api("admin/salespeople/seller-1/customers", "POST", { customerId: "account-normal" })).rejects.toMatchObject({ status: 400 });
+    await api("admin/salespeople/seller-1", "PATCH", { name: "Vendedor Uno", phone: "099 123 456" });
+    await api("admin/salespeople/seller-2", "PATCH", { name: "Vendedor Dos", phone: "098 765 432" });
+    await api("admin/salespeople/seller-1/customers", "POST", { customerId: "account-normal" });
+    expect((await api<{ customers: { id: string }[] }>("admin/salespeople/seller-1")).customers.map((customer) => customer.id)).toEqual(["account-normal"]);
+    await login();
+    expect((await api<{ customerAccount: CustomerDetail }>("auth/me")).customerAccount.salesperson).toMatchObject({
+      name: "Vendedor Uno", phone: "099 123 456", user: { email: "uno@example.test" },
+    });
+    await login("admin@districo.com");
+    await expect(api("admin/staff/seller-1/active", "PATCH", { active: false })).rejects.toMatchObject({ status: 400 });
+    await expect(api("admin/staff/seller-1/role", "PATCH", { role: "CATALOG" })).rejects.toMatchObject({ status: 400 });
+    await api("admin/salespeople/seller-2/customers", "POST", { customerId: "account-normal" });
+    expect((await api<{ customers: unknown[] }>("admin/salespeople/seller-1")).customers).toHaveLength(0);
+    expect((await api<{ salesperson: { name: string } }>("admin/customers/account-normal")).salesperson.name).toBe("Vendedor Dos");
+    await api("admin/salespeople/seller-2/customers/account-normal", "DELETE");
+    expect((await api<{ salesperson: unknown }>("admin/customers/account-normal")).salesperson).toBeNull();
+  });
   it("completa solicitudes antiguas y muestra la ficha integral y filtros de pedidos", async () => {
     await login("admin@districo.com");
     const state = JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}");

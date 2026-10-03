@@ -7,10 +7,12 @@ import { PromotionsModule } from '../promotions/promotions.module';
 import { RecommendationsModule } from '../recommendations/recommendations.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { SalespeopleController } from './salespeople.controller';
+import { SalespeopleService } from './salespeople.service';
 
 @Module({
   imports: [PrismaModule, AuditModule, OrdersModule, ApplicationsModule, PromotionsModule, RecommendationsModule],
-  controllers: [AdminController],
-  providers: [AdminService],
+  controllers: [AdminController, SalespeopleController],
+  providers: [AdminService, SalespeopleService],
 })
 export class AdminModule {}

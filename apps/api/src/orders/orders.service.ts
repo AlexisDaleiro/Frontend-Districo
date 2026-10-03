@@ -225,8 +225,9 @@ export class OrdersService {
     return order;
   }
 
-  findAdminOrders() {
+  findAdminOrders(salespersonUserId?: string) {
     return this.prisma.order.findMany({
+      where: salespersonUserId ? { customerAccount: { salesperson: { is: { userId: salespersonUserId } } } } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         items: true,
@@ -240,7 +241,7 @@ export class OrdersService {
     });
   }
 
-  async findAdminOrdersPage(query: OrderListQueryDto) {
+  async findAdminOrdersPage(query: OrderListQueryDto, salespersonUserId?: string) {
     const search = query.search?.trim();
     if ((query.dateFrom && !/^\d{4}-\d{2}-\d{2}$/.test(query.dateFrom)) ||
         (query.dateTo && !/^\d{4}-\d{2}-\d{2}$/.test(query.dateTo)) ||
@@ -251,6 +252,7 @@ export class OrdersService {
     const until = query.dateTo ? new Date(new Date(`${query.dateTo}T00:00:00-03:00`).getTime() + 86400000) : undefined;
     if ((from && Number.isNaN(from.getTime())) || (until && Number.isNaN(until.getTime()))) throw new BadRequestException('Fecha inválida.');
     const where: Prisma.OrderWhereInput = {
+      customerAccount: salespersonUserId ? { salesperson: { is: { userId: salespersonUserId } } } : undefined,
       status: query.status,
       customerAccountId: query.customerId,
       createdAt: from || until ? { gte: from, lt: until } : undefined,
@@ -272,6 +274,7 @@ export class OrdersService {
     let total: number;
     if (query.paymentStatus) {
       const terms: Prisma.Sql[] = [];
+      if (salespersonUserId) terms.push(Prisma.sql`EXISTS (SELECT 1 FROM "CustomerAccount" c JOIN "Salesperson" s ON s."id" = c."salespersonId" WHERE c."id" = o."customerAccountId" AND s."userId" = ${salespersonUserId})`);
       if (query.status) terms.push(Prisma.sql`o."status"::text = ${query.status}`);
       if (query.customerId) terms.push(Prisma.sql`o."customerAccountId" = ${query.customerId}`);
       if (query.customer) {

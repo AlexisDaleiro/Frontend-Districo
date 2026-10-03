@@ -32,6 +32,19 @@ export type Customer = {
   creditLimit?: number;
   internalCreditNote?: string;
   users?: { id: string; email: string }[];
+  salespersonId?: string | null;
+  salesperson?: { id: string; name: string; phone: string; userId: string; user: { email: string } } | null;
+};
+export type SalespersonSummary = {
+  id: string;
+  email: string;
+  active: boolean;
+  emailVerified: boolean;
+  profile: { id: string; name: string; phone: string; customerCount: number } | null;
+};
+export type SalespersonDetail = Omit<SalespersonSummary, "profile"> & {
+  profile: { id: string; name: string; phone: string } | null;
+  customers: { id: string; businessName: string; legalName: string; rut: string; accountStatus: string; users: { email: string }[] }[];
 };
 export type CustomerDetail = Customer & {
   debt?: number;

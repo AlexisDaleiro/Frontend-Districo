@@ -57,7 +57,7 @@ test('business permits are validated by content and saved privately with the app
   } as unknown as InvoiceStorageService;
   const prisma = {
     user: { findUnique: async () => null },
-    customerApplication: { create: async ({ data }: { data: Record<string, unknown> }) => {
+    customerApplication: { findFirst: async () => null, create: async ({ data }: { data: Record<string, unknown> }) => {
       createdCalls += 1;
       if (failCreation) throw new Error('database unavailable');
       created = data;
@@ -89,6 +89,30 @@ test('applications without business permits cannot be approved', async () => {
   const prisma = { customerApplication: { findUnique: async () => ({ status: 'PENDING', documents: [] }) } } as unknown as PrismaService;
   const service = new ApplicationsService(prisma, {} as never, {} as never, {} as never);
   await assert.rejects(() => service.approve('application-1', 'reviewer-1', true), BadRequestException);
+});
+
+test('a second pending application with the same email or RUT is rejected before upload', async () => {
+  let uploaded = false;
+  const prisma = {
+    user: { findUnique: async () => null },
+    customerApplication: { findFirst: async () => ({ id: 'pending-1' }) },
+  } as unknown as PrismaService;
+  const storage = { upload: async () => { uploaded = true; } } as unknown as InvoiceStorageService;
+  const service = new ApplicationsService(prisma, {} as never, {} as never, storage);
+  const dto = { businessName: 'Prueba', legalName: 'Prueba SA', rut: '123456789012', email: 'test@example.com', password: 'password123' };
+  await assert.rejects(() => service.create(dto, [{ buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' }]), BadRequestException);
+  assert.equal(uploaded, false);
+});
+
+test('an approved application cannot be rejected afterward', async () => {
+  let updated = false;
+  const prisma = { customerApplication: {
+    findUnique: async () => ({ status: 'APPROVED' }),
+    update: async () => { updated = true; },
+  } } as unknown as PrismaService;
+  const service = new ApplicationsService(prisma, {} as never, {} as never, {} as never);
+  await assert.rejects(() => service.reject('application-1', 'admin-1'), BadRequestException);
+  assert.equal(updated, false);
 });
 
 test('admin attaches a missing permit privately and rolls back a failed database write', async () => {
@@ -166,7 +190,8 @@ test('only existing internal accounts can be assigned a staff role', async () =>
     userPermission: { deleteMany: async () => { removedPermissions = true; } },
     auditLog: { create: async () => ({}) },
   };
-  const prisma = { $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const prisma = { user: { findUnique: async () => ({ role: Role.ADMIN, customRoleId: null }) },
+    $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
   const service = new AdminService(prisma, {} as never, {} as never, {} as never);
   await assert.rejects(() => service.updateStaffRole('internal-1', Role.SALES, 'admin-1'));
   accountId = null;

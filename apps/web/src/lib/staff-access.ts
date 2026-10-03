@@ -11,15 +11,16 @@ export const staffFeatures = [
   ["facturacion", "Pagos y facturas"], ["catalogo", "Catálogo"],
   ["marcas", "Marcas y laboratorios"], ["categorias", "Categorías"],
   ["promociones", "Promociones"], ["banners", "Banners"],
-  ["recomendaciones", "Recomendaciones"],
+  ["recomendaciones", "Recomendaciones"], ["personal", "Personal"],
+  ["roles", "Roles"], ["vendedores", "Vendedores"],
 ] as const;
 export type StaffFeature = typeof staffFeatures[number][0];
 
-const sectionFeature: Record<string, StaffFeature | "personal"> = {
+const sectionFeature: Record<string, StaffFeature> = {
   "": "resumen", consultas: "consultas", solicitudes: "solicitudes", clientes: "clientes",
   pedidos: "pedidos", catalogo: "catalogo", marcas: "marcas", categorias: "categorias",
   promociones: "promociones", banners: "banners", recomendaciones: "recomendaciones",
-  personal: "personal", roles: "personal", organizacion: "catalogo",
+  personal: "personal", roles: "roles", vendedores: "vendedores", organizacion: "catalogo",
 };
 
 const defaultSections: Record<BuiltInStaffRole, string[]> = {
@@ -45,7 +46,6 @@ export function canSeeAdminSection(user: User | null | undefined, section: strin
   if (!user || !isStaff(user)) return false;
   const feature = sectionFeature[section];
   if (!feature) return false;
-  if (feature === "personal") return user.role === "ADMIN";
   return canViewAdminFeature(user, feature);
 }
 

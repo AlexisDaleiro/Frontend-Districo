@@ -10,6 +10,7 @@ describe("configurable staff access", () => {
     expect(canSeeAdminSection(sales, "catalogo")).toBe(false);
     expect(canEditAdminFeature(sales, "pedidos")).toBe(true);
     expect(staffFeatures.map(([feature]) => feature)).toContain("facturacion");
+    expect(staffFeatures.map(([feature]) => feature)).toEqual(expect.arrayContaining(["personal", "roles", "vendedores"]));
   });
 
   it("uses the saved view and edit rights", () => {
@@ -23,7 +24,22 @@ describe("configurable staff access", () => {
     expect(canEditAdminFeature(custom, "catalogo")).toBe(true);
     expect(canSeeAdminSection(custom, "personal")).toBe(false);
     expect(canSeeAdminSection(custom, "roles")).toBe(false);
+    expect(canSeeAdminSection(custom, "vendedores")).toBe(false);
     expect(canSeeAdminSection({ ...custom, role: "ADMIN" }, "roles")).toBe(true);
+  });
+
+  it("separates read and edit access for people, roles and salespeople", () => {
+    const delegated: User = { ...sales, staffAccess: {
+      personal: { canView: true, canEdit: false },
+      roles: { canView: false, canEdit: false },
+      vendedores: { canView: true, canEdit: true },
+    } };
+    expect(canSeeAdminSection(delegated, "personal")).toBe(true);
+    expect(canEditAdminFeature(delegated, "personal")).toBe(false);
+    expect(canSeeAdminSection(delegated, "roles")).toBe(false);
+    expect(canSeeAdminSection(delegated, "vendedores")).toBe(true);
+    expect(canEditAdminFeature(delegated, "vendedores")).toBe(true);
+    expect(canSeeAdminSection({ ...delegated, staffAccess: { ...delegated.staffAccess, vendedores: { canView: false, canEdit: false } } }, "vendedores")).toBe(false);
   });
 
   it("custom roles have no fallback permissions", () => {

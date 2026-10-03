@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Copy, Plus, Save, UserCheck, UserX } from "lucide-react";
 import { request, useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
-import { staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
+import { canEditAdminFeature, canViewAdminFeature, staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
 import type { User } from "@/lib/types";
 
 type StaffMember = { id: string; email: string; role: User["role"]; customRoleId?: string | null; customRole?: { id: string; name: string } | null; active: boolean; emailVerified: boolean; invitationPending: boolean };
@@ -27,8 +28,8 @@ const roleOptions = (access: RoleAccess[] = []) => [
   ...access.filter((item) => item.role === "CUSTOM" && item.id).map((item) => ({ value: `custom:${item.id}`, label: item.name ?? "Rol sin nombre" })),
 ];
 
-function StaffRow({ member, options, onUpdated, ownId, onReinvite }: {
-  member: StaffMember; options: { value: string; label: string }[]; onUpdated: () => Promise<unknown>; ownId?: string; onReinvite: (member: StaffMember) => void;
+function StaffRow({ member, options, onUpdated, ownId, onReinvite, canEdit }: {
+  member: StaffMember; options: { value: string; label: string }[]; onUpdated: () => Promise<unknown>; ownId?: string; onReinvite: (member: StaffMember) => void; canEdit: boolean;
 }) {
   const [role, setRole] = useState(roleValue(member));
   const [busy, setBusy] = useState(false);
@@ -61,26 +62,27 @@ function StaffRow({ member, options, onUpdated, ownId, onReinvite }: {
   return <tr>
     <td><strong>{member.email}</strong>{error && <p className="error" role="alert">{error}</p>}</td>
     <td><span className="status-pill">{member.active ? "Activo" : member.invitationPending ? "Invitación pendiente" : member.emailVerified ? "Desactivado" : "Sin activar"}</span></td>
-    <td><select className="form-input" aria-label={`Rol de ${member.email}`} value={role} disabled={busy || member.id === ownId} onChange={(event) => setRole(event.target.value)}>
+    <td><select className="form-input" aria-label={`Rol de ${member.email}`} value={role} disabled={!canEdit || busy || member.id === ownId} onChange={(event) => setRole(event.target.value)}>
       {member.role === "CLIENT" && <option value="CLIENT" disabled>Sin rol interno</option>}
       {options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
     </select></td>
-    <td><div className="actions admin-staff-actions">
+    <td><div className="actions admin-staff-actions">{canEdit && <>
       <button className="icon-button" type="button" title="Guardar rol" aria-label={`Guardar rol de ${member.email}`} disabled={busy || role === "CLIENT" || role === roleValue(member) || member.id === ownId} onClick={() => void save()}><Save size={17} /></button>
       {!member.emailVerified ? <button className="button small secondary" type="button" disabled={busy} onClick={() => onReinvite(member)}>Nuevo enlace</button> :
         <button className="button small secondary" type="button" disabled={busy || member.id === ownId} onClick={() => void changeActive()}>
           {member.active ? <UserX size={16} /> : <UserCheck size={16} />}{member.active ? "Desactivar" : "Activar"}
         </button>}
-    </div></td>
+    </>}</div></td>
   </tr>;
 }
 
-function RoleAccessEditor({ item, onSaved }: { item: RoleAccess; onSaved: () => Promise<unknown> }) {
+function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSaved: () => Promise<unknown>; canEdit: boolean }) {
+  const client = useQueryClient();
   const [draft, setDraft] = useState(item.access);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const { notify } = useSession();
-  const locked = item.role === "ADMIN";
+  const locked = item.role === "ADMIN" || !canEdit;
   const dirty = staffFeatures.some(([feature]) =>
     draft[feature].canView !== item.access[feature].canView || draft[feature].canEdit !== item.access[feature].canEdit);
   function toggle(feature: StaffFeature, key: "canView" | "canEdit", value: boolean) {
@@ -117,6 +119,7 @@ function RoleAccessEditor({ item, onSaved }: { item: RoleAccess; onSaved: () => 
         entries: staffFeatures.map(([feature]) => ({ feature, ...draft[feature] })),
       });
       await onSaved();
+      await client.invalidateQueries({ queryKey: ["session"] });
       notify(`Permisos de ${item.name ?? builtInRoles.find((entry) => entry.value === item.role)?.label} actualizados.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudieron guardar los permisos.");
@@ -137,8 +140,10 @@ function RoleAccessEditor({ item, onSaved }: { item: RoleAccess; onSaved: () => 
 
 export function AdminStaff() {
   const { user, notify } = useSession();
+  const canEdit = canEditAdminFeature(user, "personal");
   const q = useApi<StaffMember[]>("admin/staff");
-  const access = useApi<RoleAccess[]>("admin/staff/access");
+  const canViewRoles = canViewAdminFeature(user, "roles");
+  const access = useApi<RoleAccess[]>("admin/staff/access", canViewRoles);
   const options = roleOptions(access.data);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -163,12 +168,12 @@ export function AdminStaff() {
   }
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  if (access.isPending) return <Loading />;
-  if (access.error) return <ErrorBox error={access.error} retry={() => void access.refetch()} />;
+  if (canViewRoles && access.isPending) return <Loading />;
+  if (canViewRoles && access.error) return <ErrorBox error={access.error} retry={() => void access.refetch()} />;
   return <section>
-    <div className="admin-toolbar"><h2>Equipo</h2><button className="button small" onClick={() => setOpen(true)}><Plus size={16} /> Invitar persona</button></div>
+    <div className="admin-toolbar"><h2>Equipo</h2>{canEdit && <button className="button small" onClick={() => setOpen(true)}><Plus size={16} /> Invitar persona</button>}</div>
     {q.data.length ? <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>CORREO</th><th>ACCESO</th><th>ROL</th><th>ACCIONES</th></tr></thead>
-      <tbody>{q.data.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={options} ownId={user?.id} onUpdated={() => q.refetch()} onReinvite={(item) => {
+      <tbody>{q.data.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={member.role === "CUSTOM" && member.customRoleId && !options.some((option) => option.value === roleValue(member)) ? [...options, { value: roleValue(member), label: member.customRole?.name ?? "Rol personalizado" }] : options} ownId={user?.id} canEdit={canEdit} onUpdated={() => q.refetch()} onReinvite={(item) => {
         setEmail(item.email); setRole(item.role === "CLIENT" ? "SALES" : roleValue(item)); setInvitation(null); setOpen(true);
       }} />)}</tbody></table></div> : <Empty title="Todavía no hay personal" />}
     <Modal open={open} onClose={close} title={invitation ? "Compartir invitación" : "Invitar personal"}>
@@ -190,7 +195,8 @@ export function AdminStaff() {
 }
 
 export function AdminRoles() {
-  const { notify } = useSession();
+  const { user, notify } = useSession();
+  const canEdit = canEditAdminFeature(user, "roles");
   const access = useApi<RoleAccess[]>("admin/staff/access");
   const [selectedRole, setSelectedRole] = useState("SALES");
   const [creating, setCreating] = useState(false);
@@ -217,10 +223,10 @@ export function AdminRoles() {
       <select className="form-input" aria-label="Rol a configurar" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}>
         {roleOptions(access.data).map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
       </select>
-      <button className="button small" type="button" onClick={() => setCreating(true)}><Plus size={16} /> Crear rol</button>
+      {canEdit && <button className="button small" type="button" onClick={() => setCreating(true)}><Plus size={16} /> Crear rol</button>}
     </div></div>
     {access.isPending ? <Loading /> : access.error ? <ErrorBox error={access.error} retry={() => void access.refetch()} /> : selectedAccess ? (
-      <RoleAccessEditor key={`${selectedRole}-${JSON.stringify(selectedAccess.access)}`} item={selectedAccess} onSaved={() => access.refetch()} />
+      <RoleAccessEditor key={`${selectedRole}-${JSON.stringify(selectedAccess.access)}`} item={selectedAccess} canEdit={canEdit} onSaved={() => access.refetch()} />
     ) : <Empty title="No hay permisos configurados para este rol" />}
     <Modal open={creating} onClose={() => { setCreating(false); setError(""); }} title="Crear rol">
       <form className="stack" onSubmit={(event) => { event.preventDefault(); void createRole(); }}>

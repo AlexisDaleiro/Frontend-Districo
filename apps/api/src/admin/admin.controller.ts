@@ -62,14 +62,14 @@ export class AdminController {
 
   @Get('customers')
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
-  customers() {
-    return this.admin.customers();
+  customers(@CurrentUser() user: JwtUser) {
+    return this.admin.customers(user);
   }
 
   @Get('customers/page')
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
-  customersPage(@Query() query: CustomerListQueryDto) {
-    return this.admin.customersPage(query);
+  customersPage(@Query() query: CustomerListQueryDto, @CurrentUser() user: JwtUser) {
+    return this.admin.customersPage(query, user);
   }
 
   @Get('customers/:id')

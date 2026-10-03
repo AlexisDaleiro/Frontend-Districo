@@ -24,6 +24,9 @@ function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
     canEdit: !["resumen", "ventas"].includes(feature) && canEditAdminFeature(user, feature),
   }])) as DemoRoleAccess;
 }
+function completeDemoRoleAccess(role: StaffRole, saved?: Partial<DemoRoleAccess>): DemoRoleAccess {
+  return { ...defaultDemoRoleAccess(role), ...saved };
+}
 type State = {
   version: number;
   session: string | null;
@@ -44,6 +47,7 @@ type State = {
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess }[];
   creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
+  salespeople?: Record<string, { id: string; name: string; phone: string }>;
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -72,6 +76,7 @@ export const blankState = (): State => ({
   staffRoleAccess: {},
   customRoles: [],
   creditChanges: {},
+  salespeople: {},
 });
 let memory: State | undefined;
 export function resetDemo() {
@@ -95,7 +100,10 @@ function read() {
     data.staffInvitations ??= [];
     data.staffRoleAccess ??= {};
     data.customRoles ??= [];
+    for (const role of staffRoles) data.staffRoleAccess[role] = completeDemoRoleAccess(role, data.staffRoleAccess[role]);
+    for (const role of data.customRoles) role.access = completeDemoRoleAccess("CUSTOM", role.access);
     data.creditChanges ??= {};
+    data.salespeople ??= {};
     return data;
   } catch {
     throw new ApiError(
@@ -290,6 +298,12 @@ export async function demoRequest<T>(
   const [route, search = ""] = path.split("?");
   const query = new URLSearchParams(search);
   const b = body instanceof FormData ? Object.fromEntries(body.entries()) : (body ?? {}) as Record<string, unknown>;
+  const salespersonFor = (account?: Customer) => {
+    if (!account?.salespersonId) return null;
+    const staff = s.users.find((entry) => s.salespeople?.[entry.id]?.id === account.salespersonId);
+    const profile = staff && s.salespeople?.[staff.id];
+    return staff && profile ? { ...profile, userId: staff.id, user: { email: staff.email } } : null;
+  };
   const user = s.users.find((u) => u.id === s.session);
   const needUser = () => {
     if (!user || user.active === false) throw new ApiError("Ingresá para continuar.", 401);
@@ -299,9 +313,23 @@ export async function demoRequest<T>(
     const member = needUser();
     if (member.role === "ADMIN") return;
     if (member.role === "CLIENT") throw new ApiError("No tenés permiso para esta acción.", 403);
+    if (member.role === "SALES") {
+      const profileId = s.salespeople?.[member.id]?.id;
+      const assigned = (accountId?: string) => !!profileId && !!accountId && s.users.some((entry) => entry.customerAccount?.id === accountId && entry.customerAccount?.salespersonId === profileId);
+      const customerId = /^admin\/customers\/(?!page(?:\/|$))([^/]+)/.exec(route)?.[1];
+      if (customerId && !assigned(customerId)) throw new ApiError("No tenés permiso para esta acción.", 403);
+      const orderId = /^admin\/orders\/(?!page(?:\/|$)|export(?:\/|$))([^/]+)/.exec(route)?.[1];
+      if (orderId) {
+        const order = s.orders.find((entry) => entry.id === orderId);
+        if (!order || !assigned(order.customerAccount?.id)) throw new ApiError("No tenés permiso para esta acción.", 403);
+      }
+    }
     const feature = route.startsWith("admin/orders/") && /\/(payments|invoices|credit-notes|refunds)(\/|$)/.test(route) ? "facturacion" :
       route.startsWith("admin/contact-inquiries") ? "consultas" :
       route.startsWith("admin/applications") ? "solicitudes" :
+      route.startsWith("admin/staff/access") || route.startsWith("admin/staff/roles") ? "roles" :
+      route.startsWith("admin/staff") ? "personal" :
+      route.startsWith("admin/salespeople") ? "vendedores" :
       route.startsWith("admin/customers") ? "clientes" :
       route.startsWith("admin/orders") ? "pedidos" :
       route === "admin/dashboard" ? "resumen" : route === "admin/sales" ? "ventas" :
@@ -342,7 +370,8 @@ export async function demoRequest<T>(
     result = { user: found };
   } else if (route === "auth/me") {
     const current = needUser();
-    result = current.role === "CLIENT" ? current : { ...current, staffAccess: current.role === "CUSTOM"
+    result = current.role === "CLIENT" ? { ...current, customerAccount: current.customerAccount
+      ? { ...current.customerAccount, salesperson: salespersonFor(current.customerAccount) } : undefined } : { ...current, staffAccess: current.role === "CUSTOM"
       ? s.customRoles?.find((item) => item.id === current.customRoleId)?.access ?? defaultDemoRoleAccess("CUSTOM")
       : s.staffRoleAccess?.[current.role] ?? defaultDemoRoleAccess(current.role) };
   }
@@ -811,6 +840,46 @@ export async function demoRequest<T>(
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     }
+    else if (route === "admin/salespeople" && method === "GET") {
+      const term = (query.get("search") ?? "").trim().toLowerCase();
+      const all = s.users.filter((entry) => entry.role === "SALES" && !entry.customerAccount)
+        .filter((entry) => !term || [entry.email, s.salespeople?.[entry.id]?.name, s.salespeople?.[entry.id]?.phone].some((value) => value?.toLowerCase().includes(term)))
+        .sort((a, b) => a.email.localeCompare(b.email))
+        .map((entry) => {
+          const profile = s.salespeople?.[entry.id];
+          return { id: entry.id, email: entry.email, active: entry.active !== false, emailVerified: entry.emailVerified !== false,
+            profile: profile ? { ...profile, customerCount: s.users.filter((client) => client.customerAccount?.salespersonId === profile.id).length } : null };
+        });
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
+      result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
+    }
+    else if (route.startsWith("admin/salespeople/")) {
+      const seller = s.users.find((entry) => entry.id === parts[2] && entry.role === "SALES" && !entry.customerAccount);
+      if (!seller) throw new ApiError("Vendedor no encontrado.", 404);
+      const profile = s.salespeople?.[seller.id] ?? null;
+      if (method === "GET") {
+        result = { id: seller.id, email: seller.email, active: seller.active !== false, emailVerified: seller.emailVerified !== false,
+          profile, customers: profile ? s.users.filter((entry) => entry.customerAccount?.salespersonId === profile.id)
+            .map((entry) => ({ ...entry.customerAccount, users: [{ email: entry.email }] })) : [] };
+      } else if (method === "PATCH" && parts.length === 3) {
+        const name = String(b.name ?? "").trim(), phone = String(b.phone ?? "").trim();
+        if (name.length < 2 || name.length > 100 || !/^\+?[\d\s().-]{6,30}$/.test(phone) || phone.replace(/\D/g, "").length < 6) throw new ApiError("Revisá el nombre y el teléfono.", 400);
+        (s.salespeople ??= {})[seller.id] = { id: profile?.id ?? id(), name, phone };
+        result = { id: seller.id, email: seller.email, profile: s.salespeople[seller.id] };
+      } else if (method === "POST" && parts[3] === "customers") {
+        if (seller.active === false || seller.emailVerified === false) throw new ApiError("Activá la cuenta del vendedor antes de asignarle clientes.", 400);
+        if (!profile) throw new ApiError("Completá el nombre y el teléfono del vendedor antes de asignarle clientes.", 400);
+        const customer = s.users.find((entry) => entry.customerAccount?.id === b.customerId)?.customerAccount;
+        if (!customer) throw new ApiError("Cliente no encontrado.", 404);
+        for (const entry of s.users) if (entry.customerAccount?.id === customer.id) entry.customerAccount.salespersonId = profile.id;
+        result = { customerId: customer.id, salespersonId: profile.id };
+      } else if (method === "DELETE" && parts[3] === "customers") {
+        const customer = s.users.find((entry) => entry.customerAccount?.id === parts[4])?.customerAccount;
+        if (!profile || !customer || customer.salespersonId !== profile.id) throw new ApiError("Este cliente ya no está asignado al vendedor.", 409);
+        for (const entry of s.users) if (entry.customerAccount?.id === customer.id) entry.customerAccount.salespersonId = null;
+        result = { customerId: customer.id, salespersonId: null };
+      } else throw new ApiError("Acción no disponible.", 404);
+    }
     else if (route === "admin/staff") result = s.users.filter((u) => !u.customerAccount).map(({ id, email, role, customRoleId, active, emailVerified }) => ({
       id, email, role, customRoleId, customRole: s.customRoles?.find((item) => item.id === customRoleId) ?? null, active: active !== false, emailVerified: emailVerified !== false,
       invitationPending: emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString()),
@@ -875,6 +944,7 @@ export async function demoRequest<T>(
       if (!member) throw new ApiError("Usuario interno no encontrado.", 404);
       if (member.id === user!.id && b.active === false) throw new ApiError("No podés desactivar tu cuenta.", 403);
       if (b.active === true && member.emailVerified === false) throw new ApiError("Debe aceptar la invitación.", 400);
+      if (b.active === false && s.salespeople?.[member.id] && s.users.some((entry) => entry.customerAccount?.salespersonId === s.salespeople?.[member.id]?.id)) throw new ApiError("Reasigná sus clientes antes de desactivar al vendedor.", 400);
       if (b.active === false && member.role === "ADMIN" && s.users.filter((item) => item.role === "ADMIN" && item.active !== false && !item.customerAccount).length <= 1) throw new ApiError("Debe quedar al menos un administrador activo.", 400);
       member.active = b.active === true;
       if (!member.active) for (const item of s.staffInvitations ?? []) if (item.userId === member.id && !item.accepted) item.revoked = true;
@@ -884,6 +954,7 @@ export async function demoRequest<T>(
       const member = s.users.find((u) => u.id === parts[2] && !u.customerAccount);
       if (!member) throw new ApiError("Usuario interno no encontrado.", 404);
       if (member.id === user!.id && b.role !== "ADMIN") throw new ApiError("No podés quitarte tu acceso de administrador.", 403);
+      if (b.role !== "SALES" && s.salespeople?.[member.id] && s.users.some((entry) => entry.customerAccount?.salespersonId === s.salespeople?.[member.id]?.id)) throw new ApiError("Reasigná sus clientes antes de cambiar el rol del vendedor.", 400);
       if (![...staffRoles, "CUSTOM"].includes(String(b.role) as StaffRole) ||
           (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId))) throw new ApiError("Rol inválido.", 400);
       member.role = b.role as typeof member.role;
@@ -936,15 +1007,17 @@ export async function demoRequest<T>(
       }
     } else if (route === "admin/customers/page") {
       const term = (query.get("search") ?? "").toLowerCase();
-      const all = s.users.filter((u) => u.customerAccount).filter((u) => !term || [u.email, u.customerAccount?.businessName, u.customerAccount?.legalName, u.customerAccount?.rut, u.customerAccount?.phone].some((value) => value?.toLowerCase().includes(term))).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }] }));
+      const sellerId = user?.role === "SALES" ? s.salespeople?.[user.id]?.id : undefined;
+      const all = s.users.filter((u) => u.customerAccount && (user?.role !== "SALES" || !!sellerId && u.customerAccount.salespersonId === sellerId)).filter((u) => !term || [u.email, u.customerAccount?.businessName, u.customerAccount?.legalName, u.customerAccount?.rut, u.customerAccount?.phone].some((value) => value?.toLowerCase().includes(term))).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(u.customerAccount) }));
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/customers")
       result = s.users
-        .filter((u) => u.customerAccount)
+        .filter((u) => u.customerAccount && (user?.role !== "SALES" || !!s.salespeople?.[user.id] && u.customerAccount.salespersonId === s.salespeople[user.id].id))
         .map((u) => ({
           ...u.customerAccount,
           users: [{ id: u.id, email: u.email }],
+          salesperson: salespersonFor(u.customerAccount),
         }));
     else if (route.startsWith("admin/customers/")) {
       const u = s.users.find((u) => u.customerAccount?.id === parts[2]);
@@ -954,7 +1027,7 @@ export async function demoRequest<T>(
         const orders = s.orders.filter((o) => o.customerAccount?.id === account.id || o.userId === u.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const debt = orders.filter((o) => !["CANCELLED", "REJECTED"].includes(o.status)).reduce((sum, o) => sum + orderBalance(o).due, 0);
         const application = s.applications.find((a) => a.email.toLowerCase() === u.email.toLowerCase() && a.status === "APPROVED");
-        result = { ...account, users: [{ id: u.id, email: u.email }], addresses: account.addresses ?? [], documents: (application?.documents ?? []).map((d) => ({ ...d, mimeType: "application/pdf", status: "ACTIVE", uploadedAt: new Date().toISOString() })), orderCount: orders.length, recentOrders: orders.slice(0, 10).map(({ id, orderNumber, createdAt, status, total, currency }) => ({ id, orderNumber, createdAt, status, total, currency })), debt, availableCredit: account.creditLimit == null ? null : Math.max(0, Number(account.creditLimit) - debt), creditChanges: s.creditChanges?.[account.id] ?? [] };
+        result = { ...account, users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(account), addresses: account.addresses ?? [], documents: (application?.documents ?? []).map((d) => ({ ...d, mimeType: "application/pdf", status: "ACTIVE", uploadedAt: new Date().toISOString() })), orderCount: orders.length, recentOrders: orders.slice(0, 10).map(({ id, orderNumber, createdAt, status, total, currency }) => ({ id, orderNumber, createdAt, status, total, currency })), debt, availableCredit: account.creditLimit == null ? null : Math.max(0, Number(account.creditLimit) - debt), creditChanges: s.creditChanges?.[account.id] ?? [] };
       } else {
       const previousCredit = { creditLimit: u.customerAccount?.creditLimit ?? null, creditStatus: u.customerAccount?.creditStatus, internalCreditNote: u.customerAccount?.internalCreditNote };
       Object.assign(u.customerAccount!, b);
@@ -981,6 +1054,7 @@ export async function demoRequest<T>(
       const dateTo = query.get("dateTo");
       const paymentStatus = query.get("paymentStatus");
       const all = s.orders.filter((o) => {
+        if (user?.role === "SALES" && !s.users.some((entry) => entry.customerAccount?.id === o.customerAccount?.id && entry.customerAccount?.salespersonId === s.salespeople?.[user.id]?.id && !!s.salespeople?.[user.id])) return false;
         const email = s.users.find((u) => u.id === o.userId)?.email ?? "";
         const payment = orderBalance(o).status;
         return (!status || o.status === status) && (!term || [o.id, o.orderNumber, o.customerAccount?.businessName, email].some((value) => value?.toLowerCase().includes(term))) &&
@@ -991,7 +1065,7 @@ export async function demoRequest<T>(
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/orders")
-      result = s.orders.map((o) => ({
+      result = s.orders.filter((o) => user?.role !== "SALES" || s.users.some((entry) => entry.customerAccount?.id === o.customerAccount?.id && entry.customerAccount?.salespersonId === s.salespeople?.[user.id]?.id && !!s.salespeople?.[user.id])).map((o) => ({
         ...o,
         user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" },
       }));

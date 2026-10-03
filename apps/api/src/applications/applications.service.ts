@@ -41,6 +41,11 @@ export class ApplicationsService {
     if (existingUser) {
       throw new BadRequestException('Ya existe un usuario con ese email.');
     }
+    const pending = await this.prisma.customerApplication.findFirst({ where: {
+      status: CustomerApplicationStatus.PENDING,
+      OR: [{ email: { equals: dto.email.toLowerCase(), mode: 'insensitive' } }, { rut: dto.rut }],
+    }, select: { id: true } });
+    if (pending) throw new BadRequestException('Ya existe una solicitud pendiente para ese correo o RUT.');
 
     const documents = files.map(validatedPermit);
     const id = randomUUID();
@@ -231,6 +236,9 @@ export class ApplicationsService {
     const application = await this.prisma.customerApplication.findUnique({ where: { id } });
     if (!application) {
       throw new NotFoundException('Solicitud no encontrada.');
+    }
+    if (application.status !== CustomerApplicationStatus.PENDING) {
+      throw new BadRequestException('La solicitud ya fue revisada.');
     }
     const updated = await this.prisma.customerApplication.update({
       where: { id },

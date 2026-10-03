@@ -21,6 +21,7 @@ export const storeRoutes = {
   admin: `${root}/admin`,
   adminSection: (section: string) => `${root}/admin/${encodeURIComponent(section)}`,
   adminCustomer: (id: string) => `${root}/admin/clientes/${encodeURIComponent(id)}`,
+  adminSalesperson: (id: string) => `${root}/admin/vendedores/${encodeURIComponent(id)}`,
   adminOrder: (id: string) => `${root}/admin/pedidos/${encodeURIComponent(id)}`,
   adminProduct: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}`,
   adminProductPreview: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}/vista-previa`,
