@@ -233,17 +233,22 @@
 .site-warranty-brands ul { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .site-warranty-brands a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 18px; border: 1px solid var(--line); border-radius: 99px; background: white; font-size: 14px; font-weight: 700; transition: border-color var(--dur-base) var(--ease-out); }
 .site-warranty-brands a:hover { border-color: var(--lime); }
-.site-warranty-steps h2 { font-size: clamp(32px, 5vw, 56px); font-weight: 800; letter-spacing: -.06em; line-height: 1.06; }
-.site-warranty-steps ol { display: grid; gap: 18px; margin: 36px 0 0; padding: 0; list-style: none; }
-.site-warranty-steps li { padding: 26px; border: 1px solid var(--line); border-radius: var(--radius); }
-.site-warranty-steps li > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--lime); color: var(--ink-deep); font-weight: 850; }
-.site-warranty-steps h3 { margin-top: 18px; font-size: 20px; font-weight: 800; }
-.site-warranty-steps li p { margin-top: 8px; color: var(--text); }
-.site-warranty-terms { max-width: 780px; margin-top: 48px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.site-warranty-terms summary { min-height: 56px; display: flex; align-items: center; cursor: pointer; font-weight: 800; }
+.site-warranty-steps { padding-block: clamp(32px, 4vw, 52px); }
+.site-warranty-steps h2 { font-size: clamp(26px, 3.6vw, 40px); font-weight: 800; letter-spacing: -.06em; line-height: 1.06; }
+.site-warranty-steps ol { display: grid; gap: 14px; margin: 24px 0 0; padding: 0; list-style: none; }
+.site-warranty-steps li { padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); }
+.site-warranty-steps li > span { display: grid; place-items: center; width: 32px; height: 32px; font-size: 14px; border-radius: 50%; background: var(--lime); color: var(--ink-deep); font-weight: 850; }
+.site-warranty-steps h3 { margin-top: 12px; font-size: 17px; font-weight: 800; }
+.site-warranty-steps li p { margin-top: 6px; font-size: 15px; color: var(--text); }
+.site-warranty-terms { max-width: 780px; margin-top: 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.site-warranty-terms summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 800; }
 .site-warranty-terms h3 { margin-top: 22px; font-size: 16px; }
 .site-warranty-terms p, .site-warranty-terms ul { margin-top: 10px; color: var(--text); line-height: 1.6; }
 .site-warranty-terms > :last-child { margin-bottom: 26px; }
+.reference-contact.site-warranty-contact { padding-block: clamp(48px, 5vw, 72px); }
+.reference-contact.site-warranty-contact::before { display: none; }
+.site-warranty-contact .reference-contact-grid { grid-template-columns: 1fr; justify-items: center; gap: 24px; text-align: center; }
+.reference-contact.site-warranty-contact p { margin-inline: auto; margin-top: 14px; }
 @media (min-width: 768px) {
   .site-warranty-hero { grid-template-columns: auto 1fr; gap: 48px; }
   .site-warranty-seal { width: 170px; }
