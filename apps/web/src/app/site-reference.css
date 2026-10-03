@@ -96,6 +96,30 @@
 .reference-contact-direct .reference-contact-big { display: inline-flex; align-items: center; gap: 10px; color: #c6df23; font-size: clamp(30px, 3vw, 40px); font-weight: 850; letter-spacing: -.04em; }
 .reference-contact .reference-contact-direct p { margin-top: 4px; font-size: 14px; }
 .reference-contact-direct .reference-contact-secondary { margin-top: 10px; text-decoration: none; }
+.reference-contact-centered { padding-block: clamp(48px, 5vw, 72px); }
+.reference-contact-centered::before { display: none; }
+.reference-contact-centered .reference-contact-grid { grid-template-columns: 1fr; justify-items: center; gap: 24px; text-align: center; }
+.reference-contact-centered p { margin-inline: auto; margin-top: 14px; }
+.reference-contact-centered .reference-contact-actions { justify-self: stretch; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.reference-contact.site-contact-light { padding-block: clamp(36px, 4vw, 56px); background: var(--paper); color: var(--ink); }
+.reference-contact.site-contact-light::before { display: none; }
+.reference-contact.site-contact-light .reference-contact-grid { gap: 28px; }
+.reference-contact.site-contact-light .reference-contact-form { gap: 12px; }
+.reference-contact.site-contact-light .reference-contact-form label { color: var(--text); }
+.reference-contact.site-contact-light .reference-contact-form input, .reference-contact.site-contact-light .reference-contact-form textarea { min-height: 44px; padding: 10px 12px; border-color: var(--line); background: white; color: var(--ink); }
+.reference-contact.site-contact-light .reference-contact-form input:hover, .reference-contact.site-contact-light .reference-contact-form textarea:hover { border-color: var(--text); }
+.reference-contact.site-contact-light .reference-contact-form input:focus-visible, .reference-contact.site-contact-light .reference-contact-form textarea:focus-visible { outline-color: var(--ink); border-color: var(--ink); background: white; }
+.reference-contact.site-contact-light .reference-contact-primary, .reference-contact.site-contact-light .reference-contact-secondary { min-height: 48px; gap: 14px; }
+.reference-contact.site-contact-light .reference-contact-submit .reference-contact-primary { background: var(--lime); color: var(--ink-deep); }
+.reference-contact.site-contact-light .reference-contact-primary:hover { background: #c6df23; color: var(--ink-deep); }
+.reference-contact.site-contact-light .reference-contact-secondary { border-color: var(--line); background: white; color: var(--ink); }
+.reference-contact.site-contact-light .reference-contact-secondary:hover { border-color: var(--ink); background: white; color: var(--ink); }
+.reference-contact.site-contact-light p.reference-contact-note { color: var(--text); }
+.reference-contact.site-contact-light .reference-contact-direct { gap: 10px; padding: clamp(20px, 2.4vw, 28px); border-color: var(--line); border-radius: var(--radius); background: white; }
+.reference-contact.site-contact-light .reference-contact-direct h3 { color: var(--text); }
+.reference-contact.site-contact-light .reference-contact-direct a { color: var(--ink); }
+.reference-contact.site-contact-light .reference-contact-direct .reference-contact-big { color: var(--ink); font-size: clamp(24px, 2.4vw, 32px); }
+.reference-contact.site-contact-light .reference-contact-direct p { color: var(--text); }
 @media (max-width: 767px) {
   .reference-line::before { left: 50%; width: min(100vw, 620px); }
   .reference-line-grid { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding-block: 70px 58px; }

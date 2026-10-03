@@ -24,7 +24,7 @@ function sendContact(event: FormEvent<HTMLFormElement>) {
 
 export function SiteContact() {
   return (
-    <section className="reference-contact" aria-label="Formulario y contacto directo">
+    <section className="reference-contact site-contact-light" aria-label="Formulario y contacto directo">
       <div className="container reference-contact-grid">
         <form className="reference-contact-form" aria-label="Formulario de consulta" onSubmit={sendContact}>
           <label>
