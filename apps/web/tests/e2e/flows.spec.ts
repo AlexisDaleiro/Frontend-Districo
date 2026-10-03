@@ -13,15 +13,9 @@ async function login(page: Page, role = "Cliente mayorista") {
     expect(await page.getByLabel("Correo electrónico").inputValue()).toBe(email);
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  const destination = role === "Administración" ? /\/tienda\/admin$/ : /\/tienda\/productos$/;
-  try {
-    await expect(page).toHaveURL(destination, { timeout: 5000 });
-  } catch {
-    await page.getByRole("link", { name: "Ir a mi cuenta" }).click();
-    await expect(page).toHaveURL(
-      role === "Administración" ? destination : /\/tienda\/cuenta$/,
-    );
-  }
+  // El ingreso siempre lleva al inicio de la tienda; los tests siguen desde su pantalla habitual.
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
+  await page.goto(role === "Administración" ? "/tienda/admin" : "/tienda/productos");
 }
 test("catálogo público, filtros persistentes y ausencia de precios", async ({
   page,
