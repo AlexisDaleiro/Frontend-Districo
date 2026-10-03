@@ -33,6 +33,15 @@ export type Customer = {
   internalCreditNote?: string;
   users?: { id: string; email: string }[];
 };
+export type CustomerDetail = Customer & {
+  debt?: number;
+  availableCredit?: number | null;
+  updatedAt?: string;
+  orderCount: number;
+  recentOrders: (Pick<Order, "id" | "orderNumber" | "createdAt" | "status"> & Partial<Pick<Order, "total" | "currency">>)[];
+  documents: { id: string; type: string; originalName: string; mimeType: string; status: string; uploadedAt: string }[];
+  creditChanges?: { id: string; action: string; createdAt: string; metadata: unknown; user?: { email: string } | null }[];
+};
 export type User = {
   id: string;
   email: string;
@@ -171,7 +180,6 @@ export type Application = {
   department?: string;
   city?: string;
   businessType?: string;
-  requestedMedicationPermission: boolean;
   status: string;
   rejectionReason?: string;
   documents?: { id: string; type: string; originalName: string }[];

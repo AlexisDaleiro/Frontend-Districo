@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateApplicationDto {
   @ApiProperty()
@@ -43,8 +42,4 @@ export class CreateApplicationDto {
   @IsString()
   businessType?: string;
 
-  @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
-  @IsBoolean()
-  requestedMedicationPermission?: boolean;
 }

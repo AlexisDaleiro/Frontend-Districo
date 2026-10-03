@@ -13,6 +13,7 @@ import {
   BadgePercent,
   Images,
   ClipboardList,
+  Download,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -37,14 +38,13 @@ import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { CountUp } from "./count-up";
-import { OrderItems } from "./orders";
-import { OrderBilling } from "./order-billing";
 import { AdminSales } from "./admin-sales";
 import { AdminBanners } from "./admin-banners";
 import { AdminRoles, AdminStaff } from "./admin-staff";
 import { AdminPromotionForm } from "./admin-promotion-form";
 import { AdminBrandsLabs, AdminCategories } from "./admin-organization";
 import { orderBalance } from "@/lib/order-billing";
+import { downloadPrivateFile } from "@/lib/http";
 import { orderProgressChoices, orderProgressOptionLabel } from "@/lib/order-progress";
 import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
@@ -267,11 +267,46 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
   );
 }
 function Applications({ edit }: { edit: OpenEditor }) {
-  const { user } = useSession();
+  const { user, notify } = useSession();
+  const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("PENDING");
   const [page, setPage] = useState(1);
+  const [reviewing, setReviewing] = useState<Application | null>(null);
+  const [medicationAccess, setMedicationAccess] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<unknown>();
+  async function upload(application: Application, file?: File) {
+    if (!file) return;
+    setActionError(undefined);
+    if (!file.size || file.size > 5_000_000 || !["application/pdf", "image/png", "image/jpeg"].includes(file.type)) {
+      setActionError(new Error("Adjuntá un PDF, PNG o JPG de hasta 5 MB."));
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = new FormData();
+      data.set("file", file);
+      await request(`admin/applications/${application.id}/documents`, "POST", data);
+      await invalidateAdminMutation(client, "admin/applications");
+      notify("Habilitación adjuntada.");
+    } catch (error) { setActionError(error); }
+    finally { setBusy(false); }
+  }
+  async function approve() {
+    if (!reviewing || !medicationAccess) return;
+    setBusy(true);
+    setActionError(undefined);
+    try {
+      await request(`admin/applications/${reviewing.id}/approve`, "POST", { medicationPermission: medicationAccess === "allow" });
+      await invalidateAdminMutation(client, "admin/applications");
+      setReviewing(null);
+      setMedicationAccess("");
+      notify("Solicitud aprobada.");
+    } catch (error) { setActionError(error); }
+    finally { setBusy(false); }
+  }
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
@@ -317,34 +352,24 @@ function Applications({ edit }: { edit: OpenEditor }) {
               <p>
                 {[a.address, a.city, a.department].filter(Boolean).join(", ")}
               </p>
-              <p>
-                Permiso para medicamentos:{" "}
-                {a.requestedMedicationPermission
-                  ? "Solicitado"
-                  : "No solicitado"}
-              </p>
+              <p>Permisos o habilitaciones del negocio:</p>
+              {!a.documents?.length && <p className="muted">Sin habilitaciones adjuntas. No se puede aprobar.</p>}
               {a.documents?.map((d) => (
-                <p key={d.id}>{DEMO ? d.originalName : <a className="text-link" href={`/api/backend/admin/applications/${a.id}/documents/${d.id}`} download>{d.originalName} ↗</a>}</p>
+                <p key={d.id}>{DEMO ? d.originalName : <a className="text-link" href={`/api/backend/admin/applications/${a.id}/documents/${d.id}?preview=1`} target="_blank" rel="noopener noreferrer">{d.originalName} ↗</a>}</p>
               ))}
               {a.status === "PENDING" && canEditAdminFeature(user, "solicitudes") && (
                 <div className="actions">
+                  {(a.documents?.length ?? 0) < 3 && <label className="field application-document-upload">
+                    Adjuntar habilitación
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" disabled={busy} onChange={(event) => {
+                      void upload(a, event.target.files?.[0]);
+                      event.target.value = "";
+                    }} />
+                  </label>}
                   <button
                     className="button small"
-                    onClick={() =>
-                      edit({
-                        title: `Aprobar ${a.businessName}`,
-                        path: `admin/applications/${a.id}/approve`,
-                        fields: [
-                          bool(
-                            "medicationPermission",
-                            "Habilitar compra de medicamentos",
-                          ),
-                        ],
-                        initial: { medicationPermission: false },
-                        description:
-                          "La cuenta podrá ver precios y enviar pedidos. Habilitá medicamentos solo cuando corresponda.",
-                      })
-                    }
+                    disabled={!a.documents?.length || busy}
+                    onClick={() => { setActionError(undefined); setMedicationAccess(""); setReviewing(a); }}
                   >
                     Aprobar
                   </button>
@@ -366,12 +391,46 @@ function Applications({ edit }: { edit: OpenEditor }) {
           ))}
         </div>
       )}
+      {actionError !== undefined && <ErrorBox error={actionError} />}
       <AdminPagination meta={q.data.meta} onPage={setPage} />
+      <Modal open={!!reviewing} onClose={() => setReviewing(null)} title={reviewing ? `Aprobar ${reviewing.businessName}` : "Aprobar solicitud"}>
+        {reviewing && <form className="stack" onSubmit={(event) => { event.preventDefault(); void approve(); }}>
+          <div><strong>Habilitaciones adjuntas</strong>
+            {reviewing.documents?.map((document) => <p key={document.id}>{DEMO ? document.originalName :
+              <a className="text-link" href={`/api/backend/admin/applications/${reviewing.id}/documents/${document.id}?preview=1`} target="_blank" rel="noopener noreferrer">{document.originalName} ↗</a>}</p>)}
+          </div>
+          <label className="field">Acceso a medicamentos veterinarios restringidos *
+            <select value={medicationAccess} required onChange={(event) => setMedicationAccess(event.target.value)}>
+              <option value="">Seleccionar</option>
+              <option value="deny">No habilitar</option>
+              <option value="allow">Habilitar</option>
+            </select>
+          </label>
+          <div className="actions"><button className="button" disabled={busy}>Aprobar solicitud</button><button className="button secondary" type="button" onClick={() => setReviewing(null)}>Cancelar</button></div>
+          {actionError !== undefined && <ErrorBox error={actionError} />}
+        </form>}
+      </Modal>
     </>
   );
 }
-function Customers({ edit }: { edit: OpenEditor }) {
-  const { user } = useSession();
+export function customerEditor(c: Customer): Editor {
+  return {
+    title: c.businessName,
+    path: `admin/customers/${c.id}`,
+    method: "PATCH",
+    initial: { ...c },
+    fields: [
+      { ...text("phone", "Teléfono", false), allowEmpty: true },
+      select("accountStatus", "Estado de cuenta", options(["PENDING", "APPROVED", "REJECTED", "SUSPENDED"])),
+      select("creditStatus", "Situación comercial", options(["GOOD_STANDING", "PAYMENT_DELAY", "PAYMENT_PENDING", "RESTRICTED"])),
+      { ...number("creditLimit", "Límite de crédito", 0, "any"), required: false },
+      { key: "internalCreditNote", label: "Nota interna de crédito", type: "textarea", required: false, allowEmpty: true },
+      bool("medicationPermission", "Habilitar compra de medicamentos"),
+    ],
+    description: "Una cuenta suspendida puede ingresar y consultar su historial, pero no enviar pedidos nuevos.",
+  };
+}
+function Customers() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -408,59 +467,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
             <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
             <td>{label(c.creditStatus)}</td>
             <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
-            <td>{canEditAdminFeature(user, "clientes") && (
-              <button
-                className="button secondary small"
-                onClick={() =>
-                  edit({
-                    title: c.businessName,
-                    path: `admin/customers/${c.id}`,
-                    method: "PATCH",
-                    initial: { ...c },
-                    fields: [
-                      { ...text("phone", "Teléfono", false), allowEmpty: true },
-                      select(
-                        "accountStatus",
-                        "Estado de cuenta",
-                        options([
-                          "PENDING",
-                          "APPROVED",
-                          "REJECTED",
-                          "SUSPENDED",
-                        ]),
-                      ),
-                      select(
-                        "creditStatus",
-                        "Situación comercial",
-                        options([
-                          "GOOD_STANDING",
-                          "PAYMENT_DELAY",
-                          "PAYMENT_PENDING",
-                          "RESTRICTED",
-                        ]),
-                      ),
-                      {
-                        ...number("creditLimit", "Límite de crédito", 0, "any"),
-                        required: false,
-                      },
-                      {
-                        key: "internalCreditNote",
-                        label: "Nota interna de crédito",
-                        type: "textarea",
-                      },
-                      bool(
-                        "medicationPermission",
-                        "Habilitar compra de medicamentos",
-                      ),
-                    ],
-                    description: "Una cuenta suspendida puede ingresar y consultar su historial, pero no enviar pedidos nuevos.",
-                  })
-                }
-              >
-                <Pencil size={14} />
-                Editar
-              </button>
-            )}</td>
+            <td><Link className="button secondary small" href={storeRoutes.adminCustomer(c.id)}>Ver ficha</Link></td>
           </tr>
         ))}</tbody></table>
       </div>}
@@ -480,7 +487,7 @@ function AdminPagination({ meta, onPage }: { meta: { total: number; page: number
     </div>
   );
 }
-function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
+export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
   const { notify } = useSession();
   const [selected, setSelected] = useState(order.status);
   const [reviewReason, setReviewReason] = useState("");
@@ -552,24 +559,85 @@ function AdminOrders() {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [customer, setCustomer] = useState("");
+  const [debouncedCustomer, setDebouncedCustomer] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<unknown>();
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      setCustomerId(params.get("customerId") ?? "");
+      setSearch(params.get("search") ?? "");
+      setCustomer(params.get("customer") ?? "");
+      setStatus(params.get("status") ?? "");
+      setDateFrom(params.get("dateFrom") ?? "");
+      setDateTo(params.get("dateTo") ?? "");
+      setPaymentStatus(params.get("paymentStatus") ?? "");
+      setPage(Number(params.get("page")) || 1);
+    }, 0);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCustomer(customer.trim()); }, 250);
+    return () => clearTimeout(timer);
+  }, [search, customer]);
+  const params = new URLSearchParams({ page: String(page), limit: "20" });
+  if (debouncedSearch) params.set("search", debouncedSearch);
+  if (debouncedCustomer) params.set("customer", debouncedCustomer);
+  if (customerId) params.set("customerId", customerId);
+  if (status) params.set("status", status);
+  if (dateFrom) params.set("dateFrom", dateFrom);
+  if (dateTo) params.set("dateTo", dateTo);
+  if (paymentStatus && canViewBilling) params.set("paymentStatus", paymentStatus);
   const q = useApi<{ items: Order[]; meta: { total: number; page: number; limit: number } }>(
-    `admin/orders/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}${status ? `&status=${status}` : ""}`,
+    `admin/orders/page?${params}`,
   );
-  const detailQuery = useApi<{ items: Order[]; meta: { total: number; page: number; limit: number } }>(
-    `admin/orders/page?page=1&limit=20&search=${encodeURIComponent(detailId ?? "")}`,
-    !!detailId,
-  );
+  const back = `${storeRoutes.adminSection("pedidos")}?${params}`;
+  async function exportCsv() {
+    setExporting(true);
+    setExportError(undefined);
+    try {
+      if (DEMO) {
+        const columns = ["ID", "Número", "Fecha", "Cliente", "Correo", "Estado", "Moneda", "Total", ...(canViewBilling ? ["Estado de pago", "Abonado", "Pendiente"] : [])];
+        const cell = (value: unknown) => {
+          const raw = String(value ?? "");
+          const safe = /^[=+@\-\t\r]/.test(raw) ? `'${raw}` : raw;
+          return `"${safe.replace(/"/g, '""')}"`;
+        };
+        const lines = [columns.map(cell).join(",")];
+        for (let exportPage = 1; ; exportPage++) {
+          const exportParams = new URLSearchParams(params);
+          exportParams.set("page", String(exportPage));
+          exportParams.set("limit", "100");
+          const batch = await request<{ items: Order[]; meta: { total: number } }>(`admin/orders/page?${exportParams}`);
+          for (const order of batch.items) {
+            const balance = orderBalance(order);
+            const values: unknown[] = [order.id, order.orderNumber, order.createdAt, order.customerAccount?.businessName, order.user?.email, order.status, order.currency, order.total];
+            if (canViewBilling) values.push(balance.status, balance.paid, balance.due);
+            lines.push(values.map(cell).join(","));
+          }
+          if (exportPage * 100 >= batch.meta.total) break;
+        }
+        const url = URL.createObjectURL(new Blob([`\uFEFF${lines.join("\r\n")}\r\n`], { type: "text/csv;charset=utf-8" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "pedidos.csv";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else await downloadPrivateFile(`admin/orders/export?${params}`, "pedidos.csv");
+    }
+    catch (error) { setExportError(error); }
+    finally { setExporting(false); }
+  }
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const rows = q.data.items;
-  const detail = detailQuery.data?.items.find((order) => order.id === detailId) ?? rows.find((order) => order.id === detailId);
   return (
     <>
       <div className="admin-toolbar">
@@ -577,6 +645,7 @@ function AdminOrders() {
         <span className="muted small-copy">
           {q.data.meta.total} {q.data.meta.total === 1 ? "pedido" : "pedidos"}
         </span>
+        <button className="button small secondary" disabled={exporting} onClick={() => void exportCsv()}><Download size={16} /> {exporting ? "Exportando…" : "Exportar CSV"}</button>
         <div className="admin-order-filters">
           <input
             className="form-input"
@@ -599,8 +668,16 @@ function AdminOrders() {
                 </option>
               ))}
           </select>
+          <input className="form-input" type="search" aria-label="Filtrar cliente" placeholder={customerId ? "Cliente seleccionado" : "Cliente o correo"} value={customer} onChange={(event) => { setCustomer(event.target.value); setCustomerId(""); setPage(1); }} />
+          {customerId && <button className="button small secondary" type="button" onClick={() => { setCustomerId(""); setPage(1); }}>Todos los clientes</button>}
+          <label className="field">Desde<input className="form-input" type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(1); }} /></label>
+          <label className="field">Hasta<input className="form-input" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(1); }} /></label>
+          {canViewBilling && <select className="form-input" aria-label="Filtrar estado de pago" value={paymentStatus} onChange={(event) => { setPaymentStatus(event.target.value); setPage(1); }}>
+            <option value="">Todos los pagos</option><option value="PENDING">Pendiente</option><option value="PARTIAL">Parcial</option><option value="PAID">Completo</option><option value="CREDITED">Acreditado</option>
+          </select>}
         </div>
       </div>
+      {exportError !== undefined && <ErrorBox error={exportError} />}
       {rows.length ? (
         <div className="table-wrap">
           <table>
@@ -618,12 +695,7 @@ function AdminOrders() {
               {rows.map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <button
-                      className="text-link"
-                      onClick={() => setDetailId(o.id)}
-                    >
-                      {o.orderNumber}
-                    </button>
+                    <Link className="text-link" href={`${storeRoutes.adminOrder(o.id)}?back=${encodeURIComponent(back)}`}>{o.orderNumber}</Link>
                     <br />
                     {new Date(o.createdAt).toLocaleDateString("es-UY")}
                   </td>
@@ -634,13 +706,7 @@ function AdminOrders() {
                   <td>{money(o.total, o.currency)}</td>
                   {canViewBilling && <td>{money(orderBalance(o).paid, o.currency)}</td>}
                   <td>
-                    <button
-                      className="button small secondary"
-                      aria-label={`Gestionar ${o.orderNumber}`}
-                      onClick={() => setDetailId(o.id)}
-                    >
-                      Gestionar
-                    </button>
+                    <Link className="button small secondary" aria-label={`Gestionar ${o.orderNumber}`} href={`${storeRoutes.adminOrder(o.id)}?back=${encodeURIComponent(back)}`}>Gestionar</Link>
                   </td>
                 </tr>
               ))}
@@ -655,76 +721,6 @@ function AdminOrders() {
         />
       )}
       <AdminPagination meta={q.data.meta} onPage={setPage} />
-      <Modal
-        open={!!detailId}
-        onClose={() => setDetailId(null)}
-        title={detail ? `Gestionar ${detail.orderNumber}` : "Gestionar pedido"}
-      >
-        {detail && (
-          <>
-            <dl className="order-meta">
-              <div>
-                <dt>Cliente</dt>
-                <dd>
-                  {detail.user?.email || detail.customerAccount?.businessName || "Sin correo"}
-                </dd>
-              </div>
-              <div>
-                <dt>Fecha</dt>
-                <dd>
-                  {new Date(detail.createdAt).toLocaleString("es-UY", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </dd>
-              </div>
-              {detail.requiresManualReview && (
-                <div>
-                  <dt>Revisión manual</dt>
-                  <dd>
-                    {detail.acceptedManualReview === false
-                      ? "Requerida"
-                      : "Aceptada por el cliente"}
-                  </dd>
-                </div>
-              )}
-              {detail.reviewReason && (
-                <div>
-                  <dt>Observación actual</dt>
-                  <dd>{label(detail.reviewReason)}</dd>
-                </div>
-              )}
-              {detail.deliveryAddress && (
-                <div>
-                  <dt>Entrega{detail.deliveryLabel ? ` · ${detail.deliveryLabel}` : ""}</dt>
-                  <dd>{[detail.deliveryAddress, detail.deliveryCity, detail.deliveryDepartment].filter(Boolean).join(", ")}</dd>
-                </div>
-              )}
-            </dl>
-            {canEditAdminFeature(user, "pedidos") && <OrderProgressControl
-              key={`${detail.id}-${detail.status}`}
-              order={detail}
-              onUpdated={async () => { await Promise.all([q.refetch(), detailQuery.refetch()]); }}
-            />}
-            {canViewBilling && <OrderBilling
-              key={detail.id}
-              order={detail}
-              readOnly={!canEditAdminFeature(user, "facturacion")}
-              onUpdated={async () => {
-                await Promise.all([q.refetch(), detailQuery.refetch()]);
-              }}
-            />}
-            <p className="muted small-copy" style={{ marginTop: 12 }}>
-              Importes registrados al confirmar el pedido; no cambian con
-              precios posteriores.
-            </p>
-            <section className="order-management-items">
-              <h3>Productos del pedido</h3>
-              <OrderItems order={detail} />
-            </section>
-          </>
-        )}
-      </Modal>
     </>
   );
 }
@@ -1550,7 +1546,7 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
   ) : section === "solicitudes" ? (
     <Applications edit={edit} />
   ) : section === "clientes" ? (
-    <Customers edit={edit} />
+    <Customers />
   ) : section === "pedidos" ? (
     <AdminOrders />
   ) : section === "catalogo" ? (

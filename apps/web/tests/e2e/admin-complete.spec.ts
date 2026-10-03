@@ -68,7 +68,7 @@ test("administración conserva búsqueda, roles y aviso de suspensión", async (
   await page.goto("/tienda/admin/solicitudes");
   await expect(page.getByRole("searchbox", { name: "Buscar solicitudes" })).toBeVisible();
   await page.goto("/tienda/admin/clientes");
-  await page.getByRole("button", { name: "Editar", exact: true }).first().click();
+  await page.getByRole("link", { name: "Ver ficha" }).first().click();
   await expect(page.getByText("Una cuenta suspendida puede ingresar y consultar su historial, pero no enviar pedidos nuevos.")).toBeVisible();
   await page.goto("/tienda/admin/personal");
   await expect(page.getByRole("heading", { name: "Equipo" })).toBeVisible();

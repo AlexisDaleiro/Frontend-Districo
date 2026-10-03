@@ -4,6 +4,7 @@ import type {
   Application,
   Cart,
   ContactInquiry,
+  CustomerDetail,
   Order,
   ProductCardList,
   ProductList,
@@ -80,6 +81,34 @@ describe("Demo B2B: permisos y aislamiento", () => {
   });
 });
 describe("Demo B2B: recorrido comercial", () => {
+  it("completa solicitudes antiguas y muestra la ficha integral y filtros de pedidos", async () => {
+    await login("admin@districo.com");
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}");
+    state.applications.push({ id: "old-application", email: "old@example.test", businessName: "Comercio antiguo", legalName: "Comercio antiguo", rut: "123456789012", status: "PENDING", documents: [] });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    await expect(api("admin/applications/old-application/approve", "POST", { medicationPermission: false })).rejects.toMatchObject({ status: 400 });
+    const upload = new FormData();
+    upload.append("file", new File(["%PDF-1.7"], "habilitacion.pdf", { type: "application/pdf" }));
+    await api("admin/applications/old-application/documents", "POST", upload);
+    const applications = await api<{ items: Application[] }>("admin/applications/page?status=PENDING");
+    expect(applications.items.find((item) => item.id === "old-application")?.documents?.[0]?.originalName).toBe("habilitacion.pdf");
+    await api("admin/applications/old-application/approve", "POST", { medicationPermission: false });
+    const customer = (await api<CustomerDetail[]>("admin/customers")).find((item) => item.users?.[0]?.email === "old@example.test")!;
+    await api(`admin/customers/${customer.id}`, "PATCH", { creditLimit: 1500 });
+    const detail = await api<CustomerDetail>(`admin/customers/${customer.id}`);
+    expect(detail.documents[0].originalName).toBe("habilitacion.pdf");
+    expect(detail.creditChanges?.[0].action).toBe("CUSTOMER_CREDIT_UPDATED");
+    expect(detail.availableCredit).toBe(1500);
+
+    const saved = JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}");
+    saved.orders.push({ id: "old-order", orderNumber: "DIS-OLD", createdAt: "2026-01-12T12:00:00.000Z", status: "SUBMITTED", userId: saved.users.find((item: User) => item.email === "old@example.test").id, customerAccount: saved.users.find((item: User) => item.email === "old@example.test").customerAccount, total: 100, paidTotal: 40, creditedTotal: 0, refundedTotal: 0, currency: "UYU", items: [] });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(saved));
+    const orders = await api<{ items: Order[]; meta: { total: number } }>(`admin/orders/page?customerId=${customer.id}&dateFrom=2026-01-01&dateTo=2026-01-31&paymentStatus=PARTIAL`);
+    expect(orders.meta.total).toBe(1);
+    expect(orders.items[0].orderNumber).toBe("DIS-OLD");
+    expect((await api<Order>("admin/orders/old-order")).user?.email).toBe("old@example.test");
+    expect((await api<CustomerDetail>(`admin/customers/${customer.id}`)).debt).toBe(60);
+  });
   it("registra y gestiona una consulta comercial", async () => {
     const created = await api<{ id: string; received: true }>(
       "contact-inquiries",
@@ -111,14 +140,18 @@ describe("Demo B2B: recorrido comercial", () => {
     });
   });
   it("solicitud, aprobación, login y pedido", async () => {
-    const a = await api<Application>("applications", "POST", {
+    const application = new FormData();
+    for (const [key, value] of Object.entries({
       email: "comercio@example.test",
       password: "NoGuardarEstaClave",
       businessName: "Comercio ficticio",
       legalName: "Ficticio SRL",
       rut: "123456789012",
-      requestedMedicationPermission: true,
-    });
+    })) application.append(key, value);
+    await expect(api("applications", "POST", application)).rejects.toMatchObject({ status: 400 });
+    application.append("documents", new File(["%PDF-1.7"], "permiso.pdf", { type: "application/pdf" }));
+    const a = await api<Application>("applications", "POST", application);
+    expect(a.documents?.[0]?.originalName).toBe("permiso.pdf");
     expect(localStorage.getItem("districo-demo-v1")).not.toContain(
       "NoGuardarEstaClave",
     );

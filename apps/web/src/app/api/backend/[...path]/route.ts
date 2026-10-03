@@ -49,17 +49,20 @@ async function handle(
     /^products\/[a-zA-Z0-9_-]+\/media\/upload$/.test(path) ||
     /^(brands|laboratories)\/[a-zA-Z0-9_-]+\/logo$/.test(path)
   );
-  const applicationUpload = request.method === "POST" && path === "applications" && request.headers.get("content-type")?.startsWith("multipart/form-data;");
+  const applicationUpload = request.method === "POST" && (
+    path === "applications" || /^admin\/applications\/[a-zA-Z0-9_-]+\/documents$/.test(path)
+  ) && request.headers.get("content-type")?.startsWith("multipart/form-data;");
   const multipartUpload = invoiceUpload || bannerUpload || catalogUpload || applicationUpload;
-  const invoiceDownload = request.method === "GET" && (
+  const privateDownload = request.method === "GET" && (
     /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path) ||
-    /^admin\/applications\/[a-zA-Z0-9_-]+\/documents\/[a-zA-Z0-9_-]+$/.test(path)
+    /^admin\/(applications|customers)\/[a-zA-Z0-9_-]+\/documents\/[a-zA-Z0-9_-]+$/.test(path)
   );
+  const csvDownload = request.method === "GET" && path === "admin/orders/export";
   let body: BodyInit | undefined;
   if (multipartUpload) {
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))
       return reply({ message: "Adjuntá un archivo válido." }, 415);
-    const limit = applicationUpload ? 16_000_000 : bannerUpload ? 11_000_000 : catalogUpload && path.startsWith("products/") ? 41_000_000 : 5_500_000;
+    const limit = applicationUpload && path === "applications" ? 16_000_000 : bannerUpload ? 11_000_000 : catalogUpload && path.startsWith("products/") ? 41_000_000 : 5_500_000;
     if (Number(request.headers.get("content-length") ?? 0) > limit)
       return reply({ message: "El archivo supera el tamaño permitido." }, 413);
     const bytes = await request.arrayBuffer();
@@ -101,10 +104,10 @@ async function handle(
         body,
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(catalogUpload || applicationUpload ? 90000 : 20000),
+        signal: AbortSignal.timeout(catalogUpload || applicationUpload || csvDownload ? 90000 : 20000),
       },
     );
-    if (invoiceDownload && upstream.ok) {
+    if ((privateDownload || csvDownload) && upstream.ok) {
       return new NextResponse(upstream.body, {
         status: upstream.status,
         headers: {

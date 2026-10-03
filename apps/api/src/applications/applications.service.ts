@@ -17,6 +17,14 @@ export function permitFileType(bytes: Buffer) {
 }
 export type PermitFile = { buffer: Buffer; size: number; originalname: string; mimetype: string };
 
+function validatedPermit(file: PermitFile) {
+  if (!file.buffer?.length || file.size > 5_000_000) throw new BadRequestException('Cada archivo debe pesar menos de 5 MB.');
+  const kind = permitFileType(file.buffer);
+  if (file.mimetype !== kind.mimeType && !(kind.mimeType === 'image/jpeg' && file.mimetype === 'image/jpg'))
+    throw new BadRequestException('El formato del archivo no coincide con su contenido.');
+  return { ...kind, originalName: file.originalname.slice(0, 200), bytes: file.buffer };
+}
+
 @Injectable()
 export class ApplicationsService {
   constructor(
@@ -27,19 +35,14 @@ export class ApplicationsService {
   ) {}
 
   async create(dto: CreateApplicationDto, files: PermitFile[] = []) {
+    if (!files.length) throw new BadRequestException('Adjuntá al menos un permiso o habilitación del negocio.');
+    if (files.length > 3) throw new BadRequestException('Podés adjuntar hasta 3 archivos.');
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (existingUser) {
       throw new BadRequestException('Ya existe un usuario con ese email.');
     }
 
-    if (files.length > 3) throw new BadRequestException('Podés adjuntar hasta 3 archivos.');
-    const documents = files.map((file) => {
-      if (!file.buffer?.length || file.size > 5_000_000) throw new BadRequestException('Cada archivo debe pesar menos de 5 MB.');
-      const kind = permitFileType(file.buffer);
-      if (file.mimetype !== kind.mimeType && !(kind.mimeType === 'image/jpeg' && file.mimetype === 'image/jpg'))
-        throw new BadRequestException('El formato del archivo no coincide con su contenido.');
-      return { ...kind, originalName: file.originalname.slice(0, 200), bytes: file.buffer };
-    });
+    const documents = files.map(validatedPermit);
     const id = randomUUID();
     const paths: string[] = [];
     let application: { id: string; email: string; status: CustomerApplicationStatus };
@@ -51,33 +54,30 @@ export class ApplicationsService {
       }
 
       application = await this.prisma.customerApplication.create({
-      data: {
-        id,
-        businessName: dto.businessName,
-        legalName: dto.legalName,
-        rut: dto.rut,
-        contactName: dto.contactName,
-        phone: dto.phone,
-        email: dto.email.toLowerCase(),
-        passwordHash: await bcrypt.hash(dto.password, 10),
-        address: dto.address,
-        department: dto.department,
-        city: dto.city,
-        businessType: dto.businessType,
-        requestedMedicationPermission: dto.requestedMedicationPermission ?? false,
-        documents: documents.length
-          ? {
-              create: documents.map((document, index) => ({
-                type: 'BUSINESS_PERMIT',
-                fileUrl: paths[index],
-                originalName: document.originalName,
-                mimeType: document.mimeType,
-              })),
-            }
-          : undefined,
-      },
-      select: { id: true, email: true, status: true },
-    });
+        data: {
+          id,
+          businessName: dto.businessName,
+          legalName: dto.legalName,
+          rut: dto.rut,
+          contactName: dto.contactName,
+          phone: dto.phone,
+          email: dto.email.toLowerCase(),
+          passwordHash: await bcrypt.hash(dto.password, 10),
+          address: dto.address,
+          department: dto.department,
+          city: dto.city,
+          businessType: dto.businessType,
+          documents: {
+            create: documents.map((document, index) => ({
+              type: 'BUSINESS_PERMIT',
+              fileUrl: paths[index],
+              originalName: document.originalName,
+              mimeType: document.mimeType,
+            })),
+          },
+        },
+        select: { id: true, email: true, status: true },
+      });
 
     } catch (error) {
       await Promise.all(paths.map((path) => this.storage.remove(path)));
@@ -92,6 +92,39 @@ export class ApplicationsService {
     if (!document || !document.fileUrl.startsWith(`applications/${applicationId}/`))
       throw new NotFoundException('Documento no encontrado.');
     return { bytes: await this.storage.download(document.fileUrl), mimeType: document.mimeType, name: document.originalName };
+  }
+
+  async customerDocument(customerId: string, documentId: string) {
+    const document = await this.prisma.customerDocument.findFirst({ where: { id: documentId, customerAccountId: customerId } });
+    if (!document || !document.fileUrl.startsWith('applications/'))
+      throw new NotFoundException('Documento no encontrado.');
+    return { bytes: await this.storage.download(document.fileUrl), mimeType: document.mimeType, name: document.originalName };
+  }
+
+  async addDocument(applicationId: string, file: PermitFile | undefined, actorId: string) {
+    if (!file) throw new BadRequestException('Adjuntá un permiso o habilitación del negocio.');
+    const document = validatedPermit(file);
+    const application = await this.prisma.customerApplication.findUnique({
+      where: { id: applicationId },
+      select: { status: true, _count: { select: { documents: true } } },
+    });
+    if (!application) throw new NotFoundException('Solicitud no encontrada.');
+    if (application.status !== CustomerApplicationStatus.PENDING) throw new BadRequestException('Sólo se pueden completar solicitudes pendientes.');
+    if (application._count.documents >= 3) throw new BadRequestException('La solicitud ya tiene 3 archivos adjuntos.');
+    const path = `applications/${applicationId}/${randomUUID()}.${document.extension}`;
+    await this.storage.upload(path, document.bytes, document.mimeType);
+    let saved: { id: string; type: string; originalName: string };
+    try {
+      saved = await this.prisma.customerDocument.create({
+        data: { applicationId, type: 'BUSINESS_PERMIT', fileUrl: path, originalName: document.originalName, mimeType: document.mimeType },
+        select: { id: true, type: true, originalName: true },
+      });
+    } catch (error) {
+      await this.storage.remove(path);
+      throw error;
+    }
+    await this.audit.log('APPLICATION_DOCUMENT_ADDED', 'CustomerApplication', applicationId, actorId, { documentId: saved.id, originalName: saved.originalName });
+    return saved;
   }
 
   findMany() {
@@ -119,7 +152,7 @@ export class ApplicationsService {
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         skip: (query.page - 1) * query.limit,
         take: query.limit,
-        select: { id: true, businessName: true, legalName: true, rut: true, email: true, contactName: true, phone: true, address: true, city: true, department: true, businessType: true, requestedMedicationPermission: true, status: true, rejectionReason: true, createdAt: true, documents: { select: { id: true, type: true, originalName: true } } },
+        select: { id: true, businessName: true, legalName: true, rut: true, email: true, contactName: true, phone: true, address: true, city: true, department: true, businessType: true, status: true, rejectionReason: true, createdAt: true, documents: { select: { id: true, type: true, originalName: true } } },
       }),
       this.prisma.customerApplication.count({ where }),
     ]);
@@ -133,6 +166,9 @@ export class ApplicationsService {
     }
     if (application.status !== CustomerApplicationStatus.PENDING) {
       throw new BadRequestException('La solicitud ya fue revisada.');
+    }
+    if (!application.documents.length) {
+      throw new BadRequestException('La solicitud no tiene permisos o habilitaciones adjuntos.');
     }
 
     const permissions: Permission[] = [Permission.CAN_VIEW_PRICES, Permission.CAN_PLACE_ORDERS];

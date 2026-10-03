@@ -148,7 +148,6 @@ const applicationSchema = z.object({
   department: z.string().min(2, "Ingresá el departamento."),
   city: z.string().min(2, "Ingresá la ciudad."),
   businessType: z.string().min(1, "Elegí el tipo de comercio."),
-  requestedMedicationPermission: z.boolean(),
 });
 type ApplicationInput = z.infer<typeof applicationSchema>;
 export function Apply() {
@@ -158,13 +157,14 @@ export function Apply() {
   const [permits, setPermits] = useState<File[]>([]);
   const form = useForm<ApplicationInput>({
     resolver: zodResolver(applicationSchema),
-    defaultValues: { requestedMedicationPermission: false },
   });
   async function submit(values: ApplicationInput) {
     setError(undefined);
     // Igual que la API: correo en minúsculas; RUT solo con dígitos.
     const email = values.email.trim().toLowerCase();
     try {
+      if (!permits.length)
+        throw new Error("Adjuntá al menos un permiso o habilitación del negocio.");
       if (permits.length > 3 || permits.some((file) => file.size > 5_000_000 || !["application/pdf", "image/png", "image/jpeg"].includes(file.type)))
         throw new Error("Adjuntá hasta 3 archivos PDF, PNG o JPG de menos de 5 MB cada uno.");
       const data = new FormData();
@@ -274,17 +274,9 @@ export function Apply() {
             {form.formState.errors.businessType?.message}
           </span>
         </label>
-        <label className="check-field span-2">
-          <input
-            type="checkbox"
-            {...form.register("requestedMedicationPermission")}
-          />
-          Quiero solicitar habilitación para productos veterinarios
-          restringidos. DISTRICO revisará este permiso.
-        </label>
         <label className="field span-2">
-          Permisos o habilitaciones del negocio (opcional)
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple onChange={(event) => {
+          Permisos o habilitaciones del negocio *
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple aria-required="true" onChange={(event) => {
             setPermits(Array.from(event.target.files ?? []));
             setError(undefined);
           }} />

@@ -10,6 +10,17 @@ import { OrderListQueryDto } from '../admin/dto/admin-list-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromotionsService } from '../promotions/promotions.service';
 
+const adminOrderInclude = {
+  items: true,
+  user: { select: { email: true } },
+  customerAccount: true,
+  payments: { orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, createdAt: true, recordedById: true, voidedAt: true, voidedById: true, voidReason: true } },
+  invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true, uploadedById: true, voidedAt: true, voidedById: true, voidReason: true, replacesInvoiceId: true, replacementReason: true } },
+  creditNotes: { orderBy: { createdAt: 'desc' } },
+  refunds: { orderBy: { createdAt: 'desc' } },
+} as const satisfies Prisma.OrderInclude;
+type AdminOrder = Prisma.OrderGetPayload<{ include: typeof adminOrderInclude }>;
+
 const cartForCheckoutInclude = {
   items: {
     include: {
@@ -231,8 +242,24 @@ export class OrdersService {
 
   async findAdminOrdersPage(query: OrderListQueryDto) {
     const search = query.search?.trim();
+    if ((query.dateFrom && !/^\d{4}-\d{2}-\d{2}$/.test(query.dateFrom)) ||
+        (query.dateTo && !/^\d{4}-\d{2}-\d{2}$/.test(query.dateTo)) ||
+        (query.dateFrom && query.dateTo && query.dateFrom > query.dateTo)) {
+      throw new BadRequestException('Revisá el rango de fechas.');
+    }
+    const from = query.dateFrom ? new Date(`${query.dateFrom}T00:00:00-03:00`) : undefined;
+    const until = query.dateTo ? new Date(new Date(`${query.dateTo}T00:00:00-03:00`).getTime() + 86400000) : undefined;
+    if ((from && Number.isNaN(from.getTime())) || (until && Number.isNaN(until.getTime()))) throw new BadRequestException('Fecha inválida.');
     const where: Prisma.OrderWhereInput = {
       status: query.status,
+      customerAccountId: query.customerId,
+      createdAt: from || until ? { gte: from, lt: until } : undefined,
+      AND: query.customer ? [{ OR: [
+        { customerAccount: { businessName: { contains: query.customer, mode: 'insensitive' } } },
+        { customerAccount: { legalName: { contains: query.customer, mode: 'insensitive' } } },
+        { customerAccount: { rut: { contains: query.customer } } },
+        { user: { email: { contains: query.customer, mode: 'insensitive' } } },
+      ] }] : undefined,
       OR: search ? [
         { orderNumber: { contains: search, mode: 'insensitive' } },
         { id: { contains: search } },
@@ -241,24 +268,60 @@ export class OrdersService {
         { customerAccount: { legalName: { contains: search, mode: 'insensitive' } } },
       ] : undefined,
     };
-    const [items, total] = await Promise.all([
-      this.prisma.order.findMany({
+    let items: AdminOrder[];
+    let total: number;
+    if (query.paymentStatus) {
+      const terms: Prisma.Sql[] = [];
+      if (query.status) terms.push(Prisma.sql`o."status"::text = ${query.status}`);
+      if (query.customerId) terms.push(Prisma.sql`o."customerAccountId" = ${query.customerId}`);
+      if (query.customer) {
+        const customer = `%${query.customer}%`;
+        terms.push(Prisma.sql`(EXISTS (SELECT 1 FROM "User" u WHERE u."id" = o."userId" AND u."email" ILIKE ${customer})
+          OR EXISTS (SELECT 1 FROM "CustomerAccount" c WHERE c."id" = o."customerAccountId" AND (c."businessName" ILIKE ${customer} OR c."legalName" ILIKE ${customer} OR c."rut" ILIKE ${customer})))`);
+      }
+      if (from) terms.push(Prisma.sql`o."createdAt" >= ${from}`);
+      if (until) terms.push(Prisma.sql`o."createdAt" < ${until}`);
+      if (search) {
+        const pattern = `%${search}%`;
+        terms.push(Prisma.sql`(o."orderNumber" ILIKE ${pattern} OR o."id" ILIKE ${pattern}
+          OR EXISTS (SELECT 1 FROM "User" u WHERE u."id" = o."userId" AND u."email" ILIKE ${pattern})
+          OR EXISTS (SELECT 1 FROM "CustomerAccount" c WHERE c."id" = o."customerAccountId" AND (c."businessName" ILIKE ${pattern} OR c."legalName" ILIKE ${pattern})))`);
+      }
+      const netTotal = Prisma.sql`GREATEST(o."total" - o."creditedTotal", 0)`;
+      const netPaid = Prisma.sql`GREATEST(o."paidTotal" - o."refundedTotal", 0)`;
+      if (query.paymentStatus === 'CREDITED') terms.push(Prisma.sql`${netTotal} = 0`);
+      if (query.paymentStatus === 'PENDING') terms.push(Prisma.sql`${netTotal} > 0 AND ${netPaid} = 0`);
+      if (query.paymentStatus === 'PARTIAL') terms.push(Prisma.sql`${netTotal} > 0 AND ${netPaid} > 0 AND ${netPaid} < ${netTotal}`);
+      if (query.paymentStatus === 'PAID') terms.push(Prisma.sql`${netTotal} > 0 AND ${netPaid} >= ${netTotal}`);
+      const predicate = Prisma.join(terms, ' AND ');
+      const skip = (query.page - 1) * query.limit;
+      const [ids, count] = await Promise.all([
+        this.prisma.$queryRaw<{ id: string }[]>`SELECT o."id" FROM "Order" o WHERE ${predicate} ORDER BY o."createdAt" DESC, o."id" DESC LIMIT ${query.limit} OFFSET ${skip}`,
+        this.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::integer AS total FROM "Order" o WHERE ${predicate}`,
+      ]);
+      total = count[0]?.total ?? 0;
+      const found = ids.length ? await this.prisma.order.findMany({ where: { id: { in: ids.map((row) => row.id) } }, include: adminOrderInclude }) : [];
+      const byId = new Map(found.map((order) => [order.id, order]));
+      items = ids.flatMap((row) => { const order = byId.get(row.id); return order ? [order] : []; });
+    } else {
+      [items, total] = await Promise.all([this.prisma.order.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.limit,
         take: query.limit,
-        include: {
-          items: true,
-          user: { select: { email: true } },
-          customerAccount: true,
-          payments: { orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, createdAt: true, recordedById: true, voidedAt: true, voidedById: true, voidReason: true } },
-          invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true, uploadedById: true, voidedAt: true, voidedById: true, voidReason: true, replacesInvoiceId: true, replacementReason: true } },
-          creditNotes: { orderBy: { createdAt: 'desc' } },
-          refunds: { orderBy: { createdAt: 'desc' } },
-        },
-      }),
-      this.prisma.order.count({ where }),
-    ]);
+        include: adminOrderInclude,
+      }), this.prisma.order.count({ where })]);
+    }
+    return { items: await this.withAdminActors(items), meta: { total, page: query.page, limit: query.limit } };
+  }
+
+  async findAdminOrder(id: string) {
+    const order = await this.prisma.order.findUnique({ where: { id }, include: adminOrderInclude });
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    return (await this.withAdminActors([order]))[0];
+  }
+
+  private async withAdminActors(items: AdminOrder[]) {
     const actorIds = [...new Set(items.flatMap((order) => [
       ...order.payments.flatMap((payment) => [payment.recordedById, payment.voidedById]),
       ...order.invoices.flatMap((invoice) => [invoice.uploadedById, invoice.voidedById]),
@@ -267,13 +330,13 @@ export class OrdersService {
     ]).filter((id): id is string => !!id))];
     const actors = actorIds.length ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true } }) : [];
     const emails = new Map(actors.map((actor) => [actor.id, actor.email]));
-    return { items: items.map((order) => ({
+    return items.map((order) => ({
       ...order,
       payments: order.payments.map((payment) => ({ ...payment, recordedByEmail: emails.get(payment.recordedById) ?? null, voidedByEmail: payment.voidedById ? emails.get(payment.voidedById) ?? null : null })),
       invoices: order.invoices.map((invoice) => ({ ...invoice, uploadedByEmail: emails.get(invoice.uploadedById) ?? null, voidedByEmail: invoice.voidedById ? emails.get(invoice.voidedById) ?? null : null })),
       creditNotes: order.creditNotes.map((note) => ({ ...note, recordedByEmail: emails.get(note.recordedById) ?? null, storagePath: undefined })),
       refunds: order.refunds.map((refund) => ({ ...refund, recordedByEmail: emails.get(refund.recordedById) ?? null })),
-    })), meta: { total, page: query.page, limit: query.limit } };
+    }));
   }
 
   async updateStatus(id: string, status: OrderStatus, userId?: string, reviewReason?: string) {

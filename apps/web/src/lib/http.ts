@@ -69,7 +69,7 @@ export async function http<T>(
 export async function downloadPrivateFile(path: string, filename: string) {
   await http("auth/me");
   const response = await fetch(`/api/backend/${path}`, { cache: "no-store" });
-  if (!response.ok) throw new ApiError("No se pudo descargar la factura.", response.status);
+  if (!response.ok) throw new ApiError("No se pudo descargar el archivo.", response.status);
   const url = URL.createObjectURL(await response.blob());
   const anchor = document.createElement("a");
   anchor.href = url;

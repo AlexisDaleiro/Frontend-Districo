@@ -72,6 +72,26 @@ export class AdminController {
     return this.admin.customersPage(query);
   }
 
+  @Get('customers/:id')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  customerDetail(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.admin.customerDetail(id, user);
+  }
+
+  @Get('customers/:id/documents/:documentId')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  async downloadCustomerDocument(@Param('id') id: string, @Param('documentId') documentId: string, @Query('preview') preview: string | undefined, @Res({ passthrough: true }) response: Response) {
+    const document = await this.applications.customerDocument(id, documentId);
+    response.set({
+      'Content-Type': document.mimeType,
+      'Content-Disposition': `${preview === '1' ? 'inline' : 'attachment'}; filename="permiso"; filename*=UTF-8''${encodeURIComponent(document.name)}`,
+      'Content-Length': String(document.bytes.length),
+      'Cache-Control': 'no-store, private',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(document.bytes);
+  }
+
   @Patch('customers/:id')
   updateCustomer(@Param('id') id: string, @Body() dto: UpdateCustomerDto, @CurrentUser() user: JwtUser) {
     return this.admin.updateCustomer(id, dto, user.sub);
@@ -91,16 +111,23 @@ export class AdminController {
 
   @Get('applications/:id/documents/:documentId')
   @Roles(Role.ADMIN, Role.SALES)
-  async downloadApplicationDocument(@Param('id') id: string, @Param('documentId') documentId: string, @Res({ passthrough: true }) response: Response) {
+  async downloadApplicationDocument(@Param('id') id: string, @Param('documentId') documentId: string, @Query('preview') preview: string | undefined, @Res({ passthrough: true }) response: Response) {
     const document = await this.applications.document(id, documentId);
     response.set({
       'Content-Type': document.mimeType,
-      'Content-Disposition': `attachment; filename="permiso"; filename*=UTF-8''${encodeURIComponent(document.name)}`,
+      'Content-Disposition': `${preview === '1' ? 'inline' : 'attachment'}; filename="permiso"; filename*=UTF-8''${encodeURIComponent(document.name)}`,
       'Content-Length': String(document.bytes.length),
       'Cache-Control': 'no-store, private',
       'X-Content-Type-Options': 'nosniff',
     });
     return new StreamableFile(document.bytes);
+  }
+
+  @Post('applications/:id/documents')
+  @Roles(Role.ADMIN, Role.SALES)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5_000_000, files: 1 } }))
+  addApplicationDocument(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; size: number; originalname: string; mimetype: string } | undefined, @CurrentUser() user: JwtUser) {
+    return this.applications.addDocument(id, file, user.sub);
   }
 
   @Post('applications/:id/approve')
@@ -123,6 +150,21 @@ export class AdminController {
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
   ordersPage(@Query() query: OrderListQueryDto, @CurrentUser() user: JwtUser) {
     return this.admin.ordersPage(query, user);
+  }
+
+  @Get('orders/export')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  async exportOrders(@Query() query: OrderListQueryDto, @CurrentUser() user: JwtUser, @Res({ passthrough: true }) response: Response) {
+    const csv = await this.admin.ordersCsv(query, user);
+    const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Montevideo' }).format(new Date());
+    response.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="pedidos-${date}.csv"`, 'Cache-Control': 'no-store, private' });
+    return new StreamableFile(csv);
+  }
+
+  @Get('orders/:id')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  orderDetail(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.admin.orderDetail(id, user);
   }
 
   @Post('orders/:id/payments')

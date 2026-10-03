@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
+import { orderBalance } from "./order-billing";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
@@ -42,6 +43,7 @@ type State = {
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess }[];
+  creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -69,6 +71,7 @@ export const blankState = (): State => ({
   staffInvitations: [],
   staffRoleAccess: {},
   customRoles: [],
+  creditChanges: {},
 });
 let memory: State | undefined;
 export function resetDemo() {
@@ -92,6 +95,7 @@ function read() {
     data.staffInvitations ??= [];
     data.staffRoleAccess ??= {};
     data.customRoles ??= [];
+    data.creditChanges ??= {};
     return data;
   } catch {
     throw new ApiError(
@@ -422,18 +426,20 @@ export async function demoRequest<T>(
         "Ya existe una cuenta o solicitud con ese correo.",
         400,
       );
-    const { password: _password, documents: _documents, ...safe } = b;
+    const { password: _password, documents: _documents, requestedMedicationPermission: _requestedMedicationPermission, ...safe } = b;
     void _password;
     void _documents;
+    void _requestedMedicationPermission;
     const documents = body instanceof FormData
       ? body.getAll("documents").filter((entry): entry is File => entry instanceof File).map((file) => ({ id: id(), type: "BUSINESS_PERMIT", originalName: file.name }))
       : [];
+    if (!documents.length) throw new ApiError("Adjuntá al menos un permiso o habilitación del negocio.", 400);
+    if (documents.length > 3) throw new ApiError("Podés adjuntar hasta 3 archivos.", 400);
     const application = {
       ...safe,
       email,
       id: id(),
       status: "PENDING",
-      requestedMedicationPermission: b.requestedMedicationPermission === true || b.requestedMedicationPermission === "true",
       documents,
     } as Application;
     s.applications.push(application);
@@ -889,6 +895,17 @@ export async function demoRequest<T>(
       const a = s.applications.find((a) => a.id === parts[2]);
       if (!a || a.status !== "PENDING")
         throw new ApiError("La solicitud ya fue revisada o no existe.", 400);
+      if (parts[3] === "documents" && method === "POST") {
+        const file = b.file instanceof File ? b.file : null;
+        if (!file || !["application/pdf", "image/png", "image/jpeg"].includes(file.type) || file.size > 5_000_000 || !file.size)
+          throw new ApiError("Adjuntá un PDF, PNG o JPG de hasta 5 MB.", 400);
+        if ((a.documents?.length ?? 0) >= 3) throw new ApiError("La solicitud ya tiene el máximo de tres archivos.", 400);
+        const document = { id: id(), type: "BUSINESS_PERMIT", originalName: file.name };
+        (a.documents ??= []).push(document);
+        result = document;
+      } else {
+      if (parts[3] === "approve" && !a.documents?.length)
+        throw new ApiError("La solicitud no tiene permisos o habilitaciones adjuntos.", 400);
       a.status = parts[3] === "approve" ? "APPROVED" : "REJECTED";
       a.rejectionReason = String(b.rejectionReason ?? "");
       if (a.status === "APPROVED") {
@@ -916,6 +933,7 @@ export async function demoRequest<T>(
         });
       }
       result = a;
+      }
     } else if (route === "admin/customers/page") {
       const term = (query.get("search") ?? "").toLowerCase();
       const all = s.users.filter((u) => u.customerAccount).filter((u) => !term || [u.email, u.customerAccount?.businessName, u.customerAccount?.legalName, u.customerAccount?.rut, u.customerAccount?.phone].some((value) => value?.toLowerCase().includes(term))).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }] }));
@@ -931,6 +949,14 @@ export async function demoRequest<T>(
     else if (route.startsWith("admin/customers/")) {
       const u = s.users.find((u) => u.customerAccount?.id === parts[2]);
       if (!u) throw new ApiError("Cliente no encontrado.", 404);
+      if (method === "GET") {
+        const account = u.customerAccount!;
+        const orders = s.orders.filter((o) => o.customerAccount?.id === account.id || o.userId === u.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        const debt = orders.filter((o) => !["CANCELLED", "REJECTED"].includes(o.status)).reduce((sum, o) => sum + orderBalance(o).due, 0);
+        const application = s.applications.find((a) => a.email.toLowerCase() === u.email.toLowerCase() && a.status === "APPROVED");
+        result = { ...account, users: [{ id: u.id, email: u.email }], addresses: account.addresses ?? [], documents: (application?.documents ?? []).map((d) => ({ ...d, mimeType: "application/pdf", status: "ACTIVE", uploadedAt: new Date().toISOString() })), orderCount: orders.length, recentOrders: orders.slice(0, 10).map(({ id, orderNumber, createdAt, status, total, currency }) => ({ id, orderNumber, createdAt, status, total, currency })), debt, availableCredit: account.creditLimit == null ? null : Math.max(0, Number(account.creditLimit) - debt), creditChanges: s.creditChanges?.[account.id] ?? [] };
+      } else {
+      const previousCredit = { creditLimit: u.customerAccount?.creditLimit ?? null, creditStatus: u.customerAccount?.creditStatus, internalCreditNote: u.customerAccount?.internalCreditNote };
       Object.assign(u.customerAccount!, b);
       if (b.medicationPermission !== undefined) {
         u.permissions = u.permissions.filter(
@@ -938,11 +964,30 @@ export async function demoRequest<T>(
         );
         if (b.medicationPermission) u.permissions.push("CAN_BUY_MEDICATIONS");
       }
+      if ((b.creditLimit !== undefined && Number(previousCredit.creditLimit ?? 0) !== Number(b.creditLimit ?? 0)) ||
+          (b.creditStatus !== undefined && b.creditStatus !== previousCredit.creditStatus) ||
+          (b.internalCreditNote !== undefined && b.internalCreditNote !== previousCredit.internalCreditNote)) {
+        (s.creditChanges ??= {})[u.customerAccount!.id] ??= [];
+        s.creditChanges[u.customerAccount!.id].unshift({ id: id(), action: "CUSTOMER_CREDIT_UPDATED", createdAt: new Date().toISOString(), metadata: { before: previousCredit, after: { creditLimit: u.customerAccount?.creditLimit ?? null, creditStatus: u.customerAccount?.creditStatus, internalCreditNote: u.customerAccount?.internalCreditNote } }, user: { email: user!.email } });
+      }
       result = u.customerAccount;
+      }
     } else if (route === "admin/orders/page") {
       const term = (query.get("search") ?? "").toLowerCase();
       const status = query.get("status");
-      const all = s.orders.filter((o) => (!status || o.status === status) && (!term || [o.id, o.orderNumber, o.customerAccount?.businessName, s.users.find((u) => u.id === o.userId)?.email].some((value) => value?.toLowerCase().includes(term)))).map((o) => ({ ...o, user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" } }));
+      const customer = (query.get("customer") ?? "").toLowerCase();
+      const customerId = query.get("customerId");
+      const dateFrom = query.get("dateFrom");
+      const dateTo = query.get("dateTo");
+      const paymentStatus = query.get("paymentStatus");
+      const all = s.orders.filter((o) => {
+        const email = s.users.find((u) => u.id === o.userId)?.email ?? "";
+        const payment = orderBalance(o).status;
+        return (!status || o.status === status) && (!term || [o.id, o.orderNumber, o.customerAccount?.businessName, email].some((value) => value?.toLowerCase().includes(term))) &&
+          (!customer || [o.customerAccount?.businessName, o.customerAccount?.legalName, email].some((value) => value?.toLowerCase().includes(customer))) &&
+          (!customerId || o.customerAccount?.id === customerId) && (!dateFrom || o.createdAt.slice(0, 10) >= dateFrom) && (!dateTo || o.createdAt.slice(0, 10) <= dateTo) &&
+          (!paymentStatus || ({ PENDING: "Pendiente", PARTIAL: "Parcial", PAID: "Completo", CREDITED: "Acreditado" } as Record<string, string>)[paymentStatus] === payment);
+      }).map((o) => ({ ...o, user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" } }));
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/orders")
@@ -1003,6 +1048,10 @@ export async function demoRequest<T>(
         order.invoices!.unshift(invoice);
         result = invoice;
       } else throw new ApiError("Acción no disponible en la demo.", 400);
+    } else if (route.startsWith("admin/orders/") && parts.length === 3 && method === "GET") {
+      const order = s.orders.find((item) => item.id === parts[2]);
+      if (!order) throw new ApiError("Pedido no encontrado.", 404);
+      result = { ...order, user: { email: s.users.find((u) => u.id === order.userId)?.email ?? "" } };
     } else if (route.startsWith("admin/orders/")) {
       const o = s.orders.find((o) => o.id === parts[2]);
       if (!o) throw new ApiError("Pedido no encontrado.", 404);

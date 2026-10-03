@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus, Permission, Prisma, Role } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
+import { Readable } from 'node:stream';
 import * as bcrypt from 'bcryptjs';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService } from '../audit/audit.service';
@@ -12,6 +13,12 @@ import { defaultStaffAccess, staffAccessMatrix, staffFeatures } from '../common/
 import { StaffAccessEntryDto } from './dto/update-staff-access.dto';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { slugify } from '../common/utils/slugify';
+
+function csvCell(value: unknown) {
+  const raw = String(value ?? '');
+  const safe = /^[=+@\-\t\r]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
 
 @Injectable()
 export class AdminService {
@@ -201,9 +208,80 @@ export class AdminService {
     return { items, meta: { total, page: query.page, limit: query.limit } };
   }
 
+  async customerDetail(id: string, user: JwtUser) {
+    const customer = await this.prisma.customerAccount.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, email: true, active: true } },
+        addresses: { orderBy: { createdAt: 'asc' } },
+        documents: { select: { id: true, type: true, originalName: true, mimeType: true, status: true, uploadedAt: true } },
+      },
+    });
+    if (!customer) throw new NotFoundException('Cliente no encontrado.');
+    const billing = await this.canViewBilling(user);
+    const openStatuses = [OrderStatus.SUBMITTED, OrderStatus.PENDING_REVIEW, OrderStatus.APPROVED, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED];
+    const [recentOrders, orderCount, openOrders, audit] = await Promise.all([
+      this.prisma.order.findMany({ where: { customerAccountId: id }, orderBy: { createdAt: 'desc' }, take: 10,
+        select: { id: true, orderNumber: true, createdAt: true, status: true, total: true, currency: true } }),
+      this.prisma.order.count({ where: { customerAccountId: id } }),
+      billing ? this.prisma.order.findMany({ where: { customerAccountId: id, status: { in: openStatuses } },
+        select: { total: true, creditedTotal: true, paidTotal: true, refundedTotal: true } }) : Promise.resolve([]),
+      billing ? this.prisma.auditLog.findMany({ where: { entityType: 'CustomerAccount', entityId: id, action: { in: ['CUSTOMER_CREDIT_UPDATED', 'CUSTOMER_UPDATED'] } },
+        orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, action: true, createdAt: true, metadata: true, user: { select: { email: true } } } }) : Promise.resolve([]),
+    ]);
+    const debt = openOrders.reduce((sum, order) => sum.plus(Prisma.Decimal.max(0, order.total.minus(order.creditedTotal).minus(order.paidTotal).plus(order.refundedTotal))), new Prisma.Decimal(0));
+    const creditChanges = audit.filter((entry) => {
+      if (entry.action === 'CUSTOMER_CREDIT_UPDATED') return true;
+      const metadata = entry.metadata;
+      return metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata) &&
+        ['creditLimit', 'creditStatus', 'internalCreditNote'].some((key) => key in metadata);
+    });
+    const { creditLimit, internalCreditNote, ...basic } = customer;
+    return {
+      ...basic,
+      ...(billing ? { creditLimit, internalCreditNote, debt: Number(debt), availableCredit: creditLimit === null ? null : Math.max(0, Number(creditLimit.minus(debt))), creditChanges } : {}),
+      recentOrders: recentOrders.map((order) => billing ? order : { id: order.id, orderNumber: order.orderNumber, createdAt: order.createdAt, status: order.status }),
+      orderCount,
+    };
+  }
+
   async ordersPage(query: OrderListQueryDto, user: JwtUser | Role) {
-    const [result, canViewBilling] = await Promise.all([this.orders.findAdminOrdersPage(query), this.canViewBilling(user)]);
+    const canViewBilling = await this.canViewBilling(user);
+    if (query.paymentStatus && !canViewBilling) throw new ForbiddenException('No tenés acceso a los estados de pago.');
+    const result = await this.orders.findAdminOrdersPage(query);
     return canViewBilling ? result : { ...result, items: result.items.map((order) => this.withoutBilling(order)) };
+  }
+
+  async orderDetail(id: string, user: JwtUser) {
+    const [order, billing] = await Promise.all([this.orders.findAdminOrder(id), this.canViewBilling(user)]);
+    return billing ? order : this.withoutBilling(order);
+  }
+
+  async ordersCsv(query: OrderListQueryDto, user: JwtUser) {
+    const billing = await this.canViewBilling(user);
+    if (query.paymentStatus && !billing) throw new ForbiddenException('No tenés acceso a los estados de pago.');
+    const orders = this.orders;
+    async function* rows() {
+      const columns = ['ID', 'Número', 'Fecha', 'Cliente', 'Correo', 'Estado', 'Moneda', 'Total'];
+      if (billing) columns.push('Estado de pago', 'Abonado', 'Pendiente');
+      yield `\uFEFF${columns.map(csvCell).join(',')}\r\n`;
+      for (let page = 1; ; page++) {
+        const result = await orders.findAdminOrdersPage({ ...query, page, limit: 100 });
+        for (const order of result.items) {
+          const fields: unknown[] = [order.id, order.orderNumber, order.createdAt.toISOString(), order.customerAccount?.businessName ?? '', order.user.email,
+            order.status, order.currency, order.total.toString()];
+          if (billing) {
+            const netTotal = Prisma.Decimal.max(0, order.total.minus(order.creditedTotal));
+            const netPaid = Prisma.Decimal.max(0, order.paidTotal.minus(order.refundedTotal));
+            const state = netTotal.eq(0) ? 'Acreditado' : netPaid.gte(netTotal) ? 'Completo' : netPaid.gt(0) ? 'Parcial' : 'Pendiente';
+            fields.push(state, netPaid.toString(), Prisma.Decimal.max(0, netTotal.minus(netPaid)).toString());
+          }
+          yield `${fields.map(csvCell).join(',')}\r\n`;
+        }
+        if (page * 100 >= result.meta.total) break;
+      }
+    }
+    return Readable.from(rows());
   }
 
   async updateCustomer(id: string, dto: UpdateCustomerDto, userId?: string) {
@@ -237,7 +315,12 @@ export class AdminService {
       }
     }
 
-    await this.audit.log('CUSTOMER_UPDATED', 'CustomerAccount', id, userId, { ...dto } as Prisma.InputJsonObject);
+    const creditChanged = (dto.creditStatus !== undefined && dto.creditStatus !== customer.creditStatus) ||
+      (dto.creditLimit !== undefined && (customer.creditLimit === null || Number(dto.creditLimit) !== Number(customer.creditLimit))) ||
+      (dto.internalCreditNote !== undefined && dto.internalCreditNote !== customer.internalCreditNote);
+    await this.audit.log(creditChanged ? 'CUSTOMER_CREDIT_UPDATED' : 'CUSTOMER_UPDATED', 'CustomerAccount', id, userId,
+      creditChanged ? { before: { creditStatus: customer.creditStatus, creditLimit: customer.creditLimit?.toString() ?? null, internalCreditNote: customer.internalCreditNote },
+        after: { creditStatus: updated.creditStatus, creditLimit: updated.creditLimit?.toString() ?? null, internalCreditNote: updated.internalCreditNote } } : { ...dto } as Prisma.InputJsonObject);
     return updated;
   }
 

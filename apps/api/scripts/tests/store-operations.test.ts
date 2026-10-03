@@ -48,6 +48,7 @@ test('business permits are validated by content and saved privately with the app
   const uploads: string[] = [];
   const removed: string[] = [];
   let created: Record<string, unknown> | undefined;
+  let createdCalls = 0;
   let failCreation = false;
   const storage = {
     upload: async (path: string) => { uploads.push(path); },
@@ -57,6 +58,7 @@ test('business permits are validated by content and saved privately with the app
   const prisma = {
     user: { findUnique: async () => null },
     customerApplication: { create: async ({ data }: { data: Record<string, unknown> }) => {
+      createdCalls += 1;
       if (failCreation) throw new Error('database unavailable');
       created = data;
       return { id: data.id, email: data.email, status: 'PENDING' };
@@ -67,6 +69,8 @@ test('business permits are validated by content and saved privately with the app
   } as unknown as PrismaService;
   const service = new ApplicationsService(prisma, {} as never, { notify: async () => undefined } as never, storage);
   const dto = { businessName: 'Prueba', legalName: 'Prueba SA', rut: '123456789012', email: 'test@example.com', password: 'password123' };
+  await assert.rejects(() => service.create(dto), BadRequestException);
+  assert.equal(createdCalls, 0);
   await assert.rejects(() => service.create(dto, [{ buffer: Buffer.from('<script>'), size: 8, mimetype: 'application/pdf', originalname: 'falso.pdf' }]), BadRequestException);
   assert.equal(uploads.length, 0);
   const application = await service.create(dto, [{ buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' }]);
@@ -79,6 +83,76 @@ test('business permits are validated by content and saved privately with the app
   await assert.rejects(() => service.create(dto, [{ buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' }]), /database unavailable/);
   assert.equal(uploads.length, 1);
   assert.equal(removed.length, 1);
+});
+
+test('applications without business permits cannot be approved', async () => {
+  const prisma = { customerApplication: { findUnique: async () => ({ status: 'PENDING', documents: [] }) } } as unknown as PrismaService;
+  const service = new ApplicationsService(prisma, {} as never, {} as never, {} as never);
+  await assert.rejects(() => service.approve('application-1', 'reviewer-1', true), BadRequestException);
+});
+
+test('admin attaches a missing permit privately and rolls back a failed database write', async () => {
+  const uploaded: string[] = [];
+  const removed: string[] = [];
+  let count = 0;
+  let fail = false;
+  const storage = {
+    upload: async (path: string) => { uploaded.push(path); },
+    remove: async (path: string) => { removed.push(path); },
+    download: async () => Buffer.from('%PDF-1.7'),
+  } as unknown as InvoiceStorageService;
+  const prisma = {
+    customerApplication: { findUnique: async () => ({ status: 'PENDING', _count: { documents: count } }) },
+    customerDocument: {
+      create: async ({ data }: { data: { originalName: string } }) => {
+        if (fail) throw new Error('database unavailable');
+        count += 1;
+        return { id: `document-${count}`, type: 'BUSINESS_PERMIT', originalName: data.originalName };
+      },
+      findFirst: async ({ where }: { where: { customerAccountId: string } }) => where.customerAccountId === 'customer-1'
+        ? { fileUrl: uploaded[0], mimeType: 'application/pdf', originalName: 'permiso.pdf' } : null,
+    },
+  } as unknown as PrismaService;
+  const audit: string[] = [];
+  const service = new ApplicationsService(prisma, { log: async (action: string) => { audit.push(action); } } as never, {} as never, storage);
+  const file = { buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' };
+  await assert.rejects(() => service.addDocument('application-1', { ...file, buffer: Buffer.from('<script>') }, 'admin-1'), BadRequestException);
+  assert.equal(uploaded.length, 0);
+  assert.equal((await service.addDocument('application-1', file, 'admin-1')).originalName, 'permiso.pdf');
+  assert.match(uploaded[0], /^applications\/application-1\//);
+  assert.deepEqual(audit, ['APPLICATION_DOCUMENT_ADDED']);
+  assert.equal((await service.customerDocument('customer-1', 'document-1')).name, 'permiso.pdf');
+  await assert.rejects(() => service.customerDocument('customer-2', 'document-1'), NotFoundException);
+  fail = true;
+  await assert.rejects(() => service.addDocument('application-1', file, 'admin-1'), /database unavailable/);
+  assert.equal(removed.length, 1);
+  assert.equal(removed[0], uploaded[1]);
+  fail = false;
+  count = 3;
+  await assert.rejects(() => service.addDocument('application-1', file, 'admin-1'), BadRequestException);
+});
+
+test('order CSV exports every filtered page and escapes spreadsheet formulas', async () => {
+  const seen: number[] = [];
+  const base = {
+    id: 'order-1', orderNumber: '=SUM(1,1)', createdAt: new Date('2026-01-12T12:00:00Z'),
+    customerAccount: { businessName: 'Comercio' }, user: { email: 'client@example.test' },
+    status: 'SUBMITTED', currency: 'UYU', total: new Prisma.Decimal(100),
+    creditedTotal: new Prisma.Decimal(0), paidTotal: new Prisma.Decimal(40), refundedTotal: new Prisma.Decimal(0),
+  };
+  const orders = { findAdminOrdersPage: async (query: { page: number }) => {
+    seen.push(query.page);
+    return { items: query.page === 1 ? Array.from({ length: 100 }, (_, index) => ({ ...base, id: `order-${index}` })) : [{ ...base, id: 'order-last' }],
+      meta: { total: 101 } };
+  } } as unknown as OrdersService;
+  const service = new AdminService({} as PrismaService, {} as never, orders, {} as never);
+  const stream = await service.ordersCsv({ page: 1, limit: 20, paymentStatus: 'PARTIAL' }, { role: Role.ADMIN } as never);
+  let csv = '';
+  for await (const chunk of stream) csv += chunk.toString();
+  assert.deepEqual(seen, [1, 2]);
+  assert.equal(csv.trimEnd().split('\r\n').length, 102);
+  assert.match(csv, /"'=SUM\(1,1\)"/);
+  assert.match(csv, /"Parcial","40","60"/);
 });
 
 test('only existing internal accounts can be assigned a staff role', async () => {

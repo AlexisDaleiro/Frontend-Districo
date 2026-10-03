@@ -15,6 +15,9 @@ test("la solicitud mayorista acepta un permiso PDF", async ({ page }) => {
     ["Contraseña", "Demo1234!"],
   ]) await page.getByLabel(label, { exact: false }).fill(value);
   await page.getByLabel("Tipo de comercio").selectOption("Pet shop");
+  await expect(page.getByText("Quiero solicitar habilitación")).toHaveCount(0);
+  await page.getByRole("button", { name: "Enviar solicitud" }).click();
+  await expect(page.getByText("Adjuntá al menos un permiso o habilitación del negocio.")).toBeVisible();
   await page.getByLabel("Permisos o habilitaciones del negocio").setInputFiles({
     name: "habilitacion.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\npermiso de prueba"),
   });

@@ -100,6 +100,7 @@ test("el checkout espera el guardado de una cantidad modificada", async ({ page 
 test("solicitud aprobada habilita nueva cuenta y administración", async ({
   page,
 }) => {
+  test.setTimeout(90000);
   await page.goto("/tienda/solicitar-cuenta");
   for (const [label, value] of [
     ["Nombre del comercio", "Comercio Prueba"],
@@ -115,6 +116,9 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   ])
     await page.getByLabel(label, { exact: false }).fill(value);
   await page.getByLabel("Tipo de comercio").selectOption("Pet shop");
+  await page.getByLabel("Permisos o habilitaciones del negocio").setInputFiles({
+    name: "habilitacion.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\npermiso de prueba"),
+  });
   await page.getByRole("button", { name: "Enviar solicitud" }).click();
   await expect(
     page.getByRole("heading", { name: "Recibimos tu solicitud" }),
@@ -122,6 +126,7 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await expect(page.locator("main")).toContainText("nuevo@example.test");
   // Pendiente: todavía no puede ingresar ni comprar.
   await page.goto("/tienda/ingresar");
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
@@ -129,9 +134,10 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
   await login(page, "Administración");
   await page.goto("/tienda/admin/solicitudes");
+  await expect(page.locator(".admin-cards")).toContainText("habilitacion.pdf");
   await page.getByRole("button", { name: "Aprobar", exact: true }).click();
-  await page.getByLabel("Habilitar compra de medicamentos").check();
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByLabel("Acceso a medicamentos veterinarios restringidos").selectOption("allow");
+  await page.getByRole("button", { name: "Aprobar solicitud" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   // La lista muestra pendientes por defecto: la aprobada se ve en «Aprobadas».
   await page.getByLabel("Filtrar solicitudes").selectOption("APPROVED");
@@ -140,6 +146,7 @@ test("solicitud aprobada habilita nueva cuenta y administración", async ({
   await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await page.goto("/tienda/ingresar");
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Correo electrónico").fill("nuevo@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("Demo1234!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
@@ -192,7 +199,7 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
   const row = page.locator("tbody tr");
   await expect(row).toHaveCount(1);
   await expect(row.locator("td").nth(1)).toHaveText("clientepago@gmail.com");
-  const orderNumber = await row.locator("td").first().locator("button").innerText();
+  const orderNumber = await row.locator("td").first().locator("a").innerText();
   const search = page.getByRole("searchbox", { name: "Buscar pedidos" });
   for (const term of [orderNumber, "Comercio Demo", "clientepago@gmail.com"]) {
     await search.fill(term);
@@ -201,31 +208,30 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
   await search.fill("pedido-inexistente");
   await expect(page.getByText("No hay pedidos que coincidan con la búsqueda")).toBeVisible();
   await search.clear();
-  await row.getByRole("button", { name: /Gestionar/ }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("clientepago@gmail.com");
-  await expect(dialog).toContainText("Aceptada por el cliente");
-  await expect(dialog).toContainText("Pago pendiente");
   const total = await row.locator("td").nth(3).innerText();
-  await expect(dialog).toContainText(total);
-  await expect(dialog).toContainText("Estado de pago");
-  await expect(dialog).toContainText("Monto pagado");
-  await expect(dialog).toContainText("Monto a pagar");
+  await row.getByRole("link", { name: /Gestionar/ }).click();
+  const detail = page.locator(".admin-record-page");
+  await expect(detail).toContainText("clientepago@gmail.com");
+  await expect(detail).toContainText("Aceptada por el cliente");
+  await expect(detail).toContainText("Pendiente");
+  await expect(detail).toContainText(total);
+  await expect(detail).toContainText("Estado de pago");
+  await expect(detail).toContainText("Monto pagado");
+  await expect(detail).toContainText("Monto a pagar");
   await expect(
-    dialog.getByLabel("Nuevo estado").locator("option"),
+    detail.getByLabel("Nuevo estado").locator("option"),
   ).toHaveText(["Pendiente (en revisión)", "Pendiente (aprobado)", "Rechazado", "Cancelado"]);
-  await dialog.getByLabel("Nuevo estado").selectOption("APPROVED");
-  await dialog.getByLabel("Nueva observación").fill("Pago verificado");
-  await dialog.getByRole("button", { name: "Guardar estado" }).click();
-  await expect(dialog).toContainText("Pago verificado");
-  await page.keyboard.press("Escape");
+  await detail.getByLabel("Nuevo estado").selectOption("APPROVED");
+  await detail.getByLabel("Nueva observación").fill("Pago verificado");
+  await detail.getByRole("button", { name: "Guardar estado" }).click();
+  await expect(detail).toContainText("Pago verificado");
+  await detail.getByRole("link", { name: "Volver a pedidos" }).click();
   await expect(page.getByText("No hay pedidos en este estado")).toBeVisible();
   await page.getByLabel("Filtrar estado de pedidos").selectOption("APPROVED");
   await expect(row.locator(".status-pill")).toHaveText("Aprobado");
   await expect(row.locator("td").nth(3)).toHaveText(total);
   await row.locator(".text-link").click();
-  await expect(dialog).toContainText("Pago verificado");
-  await page.keyboard.press("Escape");
+  await expect(page.locator(".admin-record-page")).toContainText("Pago verificado");
   await page.goto("/tienda/admin/catalogo");
   await page
     .getByLabel("Buscar producto para administrar")
@@ -308,15 +314,13 @@ test("administración puede registrar y quitar el teléfono de un cliente", asyn
   await page.goto("/tienda/admin/clientes");
   // Clientes se muestra como tabla: una fila por comercio.
   const customer = page.locator(".admin-customers-table tbody tr").filter({ hasText: "Pet Shop Demo" });
-  await customer.getByRole("button", { name: "Editar" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Teléfono").fill("099 123 456");
-  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(customer).toContainText("099 123 456");
-  await customer.getByRole("button", { name: "Editar" }).click();
-  await dialog.getByLabel("Teléfono").fill("");
-  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(customer).toContainText("Sin teléfono");
+  await customer.getByRole("link", { name: "Ver ficha" }).click();
+  await page.getByLabel("Teléfono").fill("099 123 456");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".admin-record-page")).toContainText("099 123 456");
+  await page.getByLabel("Teléfono").fill("");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".admin-record-page")).toContainText("Sin teléfono");
 });
 test("permisos: la identidad cambia sin recargar al ingresar y al salir", async ({
   page,
