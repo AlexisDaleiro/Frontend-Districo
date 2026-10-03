@@ -200,3 +200,21 @@ test("nosotros: línea de tiempo de hitos interactiva", async ({ page }) => {
   await expect(tabs.getByRole("tab", { name: "2022" })).toBeInViewport({ ratio: 1 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
+
+test("líneas: productos rotan de a uno con miniaturas y enlace a la marca", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const line = page.locator(".reference-line").first();
+  await line.scrollIntoViewIfNeeded();
+  await expect(line.locator(".reference-showcase-item")).toHaveCount(5);
+  const active = line.locator(".reference-showcase-item.is-active img");
+  await expect(active).toHaveAttribute("alt", /BIOFRESH/);
+  const dots = line.getByRole("group", { name: "Elegir producto" }).getByRole("button");
+  await dots.nth(1).click();
+  await expect(active).toHaveAttribute("alt", /BENY/);
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+  const brand = line.getByRole("link", { name: "Distribuimos Beny" });
+  await expect(brand).toHaveAttribute("href", "/productos?search=Beny");
+  await brand.click();
+  await expect(page).toHaveURL(/\/productos\?search=Beny$/);
+});

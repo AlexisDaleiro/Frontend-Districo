@@ -2,6 +2,18 @@
 
 Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
 
+## Mejora: varios productos por línea en la landing, de a uno con fundido (03/10)
+
+- Nuevo `site-line-showcase.tsx` (opción A, elegida tras probar un giradiscos): cada `.reference-line-visual` muestra un producto por vez sobre el anillo. El que sale baja y se desvanece (420 ms); el que entra sube con leve escala (850 ms, 200 ms de retardo). Cambia cada 3,8 s; cada línea con 650 ms de desfase.
+- Rota solo con la sección visible al 35 %; se frena con puntero o foco adentro y con la pestaña oculta. Debajo de la foto, una miniatura por producto (56px, 48px en mobile): elegir una lleva a ese producto y detiene la rotación. Sin botón de pausa (pedido explícito). Con movimiento reducido arranca detenido y sin transiciones.
+- «Distribuimos {marca}» es un enlace a `/productos?search={marca}` del producto activo, debajo de las miniaturas. El anillo pasó adentro del componente para quedar centrado con la foto.
+- Corrección: las fotos de las miniaturas medían 72 px dentro de botones de 56 px (el `height: 100%` no se resolvía en el botón `grid`) y tapaban el enlace de la marca. Botón `block` + imagen `block`: ahora 42 px (34 px en móvil). Separación 18 px entre foto y miniaturas, 24 px hasta el enlace. Medido a 1440 y 390 px, e2e `landing` + `motion` 22/22.
+- `site-home-reference.tsx`: `image/alt/brand` pasan a `products[]` (4–5 por línea). El primero es la imagen que ya estaba; el resto son PNG con transparencia de `Importadora/src/assets/products`, recortados y normalizados a 520px de alto, en `public/images/landing-lines/products/` (webp con alfa, 13–41 KB). Se corrigió «PIRMOGATO» → «PRIMOGATO».
+- `site-reference.css`: reglas `.reference-showcase*` en lugar de `.reference-line-visual img`; el parallax `--line-product-y` mueve el bloque.
+- `motion.spec.ts`: el control de bloques invisibles ignora los productos inactivos (`.reference-showcase-item[aria-hidden="true"]`), igual que ya ignoraba `.site-brand-art.is-loaded`.
+- Verificado: typecheck, lint, e2e `landing` + `motion` 22/22 (test: miniatura, enlace a la marca). Foto, miniaturas y enlace sin solaparse a 360, 390 y 1440px; sin scroll horizontal. En una corrida previa «el banner conserva su posición…» (/tienda, no tocado) falló una vez y pasó 3/3 solo: intermitente.
+- Respaldo de la opción B (giradiscos) en el scratchpad de la sesión: `opcion-b/` (archivos y diff).
+
 ## Mejora: hitos de /nosotros como línea de tiempo interactiva (03/10)
 
 - Nuevo `site-milestones.tsx`, portado de `Importadora/src/components/MilestoneTimeline.astro`: pista de años como pestañas (`role="tablist"`), flechas anterior/siguiente (deshabilitadas en los extremos) y un panel con año, título, descripción y contador «05 / 13». Teclado: flechas, Home y End. El año activo se centra en la pista; el panel entra con un fundido corto que se desactiva con movimiento reducido.
