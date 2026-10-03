@@ -51,8 +51,37 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
 });
 
-test("menú móvil con Escape y foco", async ({ page }) => {
+test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
+  const nav = page.locator(".site-nav");
+  await expect(nav.getByRole("link")).toHaveText([
+    "Productos",
+    "Marcas",
+    "Garantía",
+    "Nosotros",
+  ]);
+  await nav.getByRole("link", { name: "Nosotros" }).click();
+  await expect(page).toHaveURL(/\/nosotros$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Una empresa uruguaya con 30 años de ruta.",
+  );
+  await nav.getByRole("link", { name: "Marcas" }).click();
+  await expect(page).toHaveURL(/\/marcas$/);
+  const brandCards = page.locator(".site-brand-grid .reference-brand-card");
+  await expect(brandCards).toHaveCount(15);
+  await page.getByRole("button", { name: "Arenas sanitarias" }).click();
+  await expect(brandCards).toHaveCount(2);
+  await page.getByRole("button", { name: "Todas" }).click();
+  await expect(brandCards).toHaveCount(15);
+  await nav.getByRole("link", { name: "Garantía" }).click();
+  await expect(page).toHaveURL(/\/garantia$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Si tu mascota no lo acepta, lo cambiamos.",
+  );
+  await expect(
+    page.locator(".site-nav").getByRole("link", { name: "Garantía" }),
+  ).toHaveAttribute("aria-current", "page");
   await page.setViewportSize({ width: 390, height: 844 });
   const trigger = page.getByRole("button", { name: "Abrir menú" });
   await trigger.click();
@@ -125,17 +154,9 @@ for (const width of [360, 390, 768, 1024, 1440]) {
   });
 }
 
-test("movimiento reducido deja marcas estáticas y sin bucles", async ({
-  page,
-}) => {
+test("movimiento reducido deja el hero sin bucles", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".reference-brand-card").first()).toBeVisible();
-  const initialScroll = await page
-    .locator(".reference-brands-rail")
-    .evaluate((node) => node.scrollLeft);
-  await page.waitForTimeout(450);
-  expect(await page.locator(".reference-brands-rail").evaluate((node) => node.scrollLeft)).toBe(initialScroll);
   await expect(page.locator(".site-hero-orbit")).toHaveCSS(
     "animation-name",
     "none",
@@ -146,11 +167,11 @@ test("marcas públicas: tarjetas y acceso al catálogo", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/marcas");
   const cards = page.locator(".reference-brand-card");
   await expect(cards.first()).toBeVisible();
   await expect(cards).toHaveCount(15);
-  await expect(page.locator("#brands-title")).toContainText("15 marcas");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("15 marcas");
   await cards.first().click();
   await expect(page).toHaveURL(/\/productos\?search=Gran%20Plus/);
 });

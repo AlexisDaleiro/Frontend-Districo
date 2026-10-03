@@ -62,7 +62,7 @@ function SiteHomeContent() {
                 Solicitar cuenta <ArrowRight size={18} />
               </Link>
             </div>
-            <a className="site-scroll-cue" href="#nosotros">
+            <a className="site-scroll-cue" href="#lineas">
               Descubrí DISTRICO <ArrowDown size={17} />
             </a>
           </div>

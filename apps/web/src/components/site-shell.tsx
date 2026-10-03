@@ -8,6 +8,13 @@ import { Picture, Modal } from "./ui";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
 
+const navLinks = [
+  ["/productos", "Productos"],
+  ["/marcas", "Marcas"],
+  ["/garantia", "Garantía"],
+  ["/nosotros", "Nosotros"],
+] as const;
+
 export function PublicHeader({ solid = false }: { solid?: boolean }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -27,6 +34,17 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
     // El diálogo conserva su animación de salida antes de devolver el foco.
     window.setTimeout(() => menuButton.current?.focus(), 400);
   };
+  const nav = (mobile = false) =>
+    navLinks.map(([href, label]) => (
+      <Link
+        key={href}
+        href={href}
+        aria-current={pathname.startsWith(href) ? "page" : undefined}
+        onClick={mobile ? closeMenu : undefined}
+      >
+        {label}
+      </Link>
+    ));
 
   return (
     <>
@@ -47,14 +65,10 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
               loading="eager"
             />
           </Link>
+          <nav className="site-nav" aria-label="Navegación institucional">
+            {nav()}
+          </nav>
           <div className="site-header-actions">
-            <Link
-              className="button secondary site-products"
-              href="/productos"
-              aria-current={pathname.startsWith("/productos") ? "page" : undefined}
-            >
-              Ver productos
-            </Link>
             <Link className="site-login" href={storeRoutes.login}>
               Ingresar
             </Link>
@@ -80,9 +94,7 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
       </header>
       <Modal open={open} onClose={closeMenu} title="Explorá DISTRICO" sheet>
         <nav className="site-mobile-nav" aria-label="Navegación institucional">
-          <Link href="/productos" onClick={closeMenu}>
-            Productos
-          </Link>
+          {nav(true)}
           <Link href={storeRoutes.login} onClick={closeMenu}>
             Ingresar
           </Link>
@@ -121,9 +133,9 @@ export function PublicFooter() {
         </div>
         <div>
           <h3>Explorá</h3>
-          <Link href="/#nosotros">Nosotros</Link>
+          <Link href="/nosotros">Nosotros</Link>
           <Link href="/productos">Productos</Link>
-          <Link href="/#marcas">Marcas</Link>
+          <Link href="/marcas">Marcas</Link>
         </div>
         <div>
           <h3>Casa Matriz</h3>

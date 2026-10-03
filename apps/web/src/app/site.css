@@ -16,10 +16,12 @@
 .site-logo img { width: 163px; height: auto; }
 .site-header a:hover { color: var(--lime); }
 .site-header :focus-visible { outline-color: var(--lime); }
+.site-nav { display: none; align-items: center; gap: clamp(14px, 1.55vw, 26px); margin-left: auto; }
+.site-nav a { position: relative; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.site-nav a::after { content: ""; position: absolute; inset: auto 0 -10px; height: 2px; background: var(--lime); transform: scaleX(0); transform-origin: left; transition: transform var(--dur-base) var(--ease-out); }
+.site-nav a:hover::after, .site-nav a[aria-current]::after { transform: scaleX(1); }
 .site-header-actions { display: none; align-items: center; gap: 12px; }
 .site-header-actions .button { min-height: 42px; padding-inline: 15px; white-space: nowrap; }
-.site-header-actions .site-products { display: none; color: white; border-color: rgb(255 255 255 / .5); }
-.site-header .site-products:hover, .site-header .site-products[aria-current] { color: var(--lime); background: transparent; border-color: var(--lime); }
 .site-login { font-size: 12px; font-weight: 750; padding: 10px; white-space: nowrap; }
 .site-header .button.lime:hover { color: var(--ink); background: #c4da30; }
 .site-menu-button { margin-left: auto; color: white; }
@@ -226,6 +228,32 @@
 .site-catalog-intro .eyebrow { color: var(--lime); }
 .site-catalog-intro h1 { max-width: 820px; font-size: clamp(40px, 7vw, 86px); font-weight: 800; line-height: 1.02; letter-spacing: -.07em; }
 .site-catalog-intro p:not(.eyebrow) { max-width: 640px; margin-block: 20px 25px; color: var(--on-ink-muted); font-size: 16px; }
+.site-warranty-hero { display: grid; gap: 28px; align-items: center; }
+.site-warranty-seal { display: grid; place-content: center; width: 132px; aspect-ratio: 1; border: 2px solid var(--lime); border-radius: 50%; text-align: center; }
+.site-warranty-seal strong { color: var(--lime); font-size: 34px; font-weight: 850; letter-spacing: -.05em; line-height: 1; }
+.site-warranty-seal span { margin-top: 4px; font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.site-warranty-brands { padding-block: 34px; background: var(--paper); }
+.site-warranty-brands .reference-kicker { margin-bottom: 14px; color: var(--lime-text); }
+.site-warranty-brands ul { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.site-warranty-brands a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 18px; border: 1px solid var(--line); border-radius: 99px; background: white; font-size: 14px; font-weight: 700; transition: border-color var(--dur-base) var(--ease-out); }
+.site-warranty-brands a:hover { border-color: var(--lime); }
+.site-warranty-steps h2 { font-size: clamp(32px, 5vw, 56px); font-weight: 800; letter-spacing: -.06em; line-height: 1.06; }
+.site-warranty-steps ol { display: grid; gap: 18px; margin: 36px 0 0; padding: 0; list-style: none; }
+.site-warranty-steps li { padding: 26px; border: 1px solid var(--line); border-radius: var(--radius); }
+.site-warranty-steps li > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--lime); color: var(--ink-deep); font-weight: 850; }
+.site-warranty-steps h3 { margin-top: 18px; font-size: 20px; font-weight: 800; }
+.site-warranty-steps li p { margin-top: 8px; color: var(--text); }
+.site-warranty-terms { max-width: 780px; margin-top: 48px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.site-warranty-terms summary { min-height: 56px; display: flex; align-items: center; cursor: pointer; font-weight: 800; }
+.site-warranty-terms h3 { margin-top: 22px; font-size: 16px; }
+.site-warranty-terms p, .site-warranty-terms ul { margin-top: 10px; color: var(--text); line-height: 1.6; }
+.site-warranty-terms > :last-child { margin-bottom: 26px; }
+@media (min-width: 768px) {
+  .site-warranty-hero { grid-template-columns: auto 1fr; gap: 48px; }
+  .site-warranty-seal { width: 170px; }
+  .site-warranty-seal strong { font-size: 44px; }
+  .site-warranty-steps ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .site-catalog-body { padding-block: 54px 100px; }
 .site-search { display: flex; align-items: center; gap: 12px; padding: 7px 8px 7px 17px; border: 1px solid var(--line); border-radius: 9px; }
 .site-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; }
@@ -289,8 +317,9 @@
   .site-detail-grid, .site-detail-loading { grid-template-columns: 1fr 1fr; }
 }
 @media (min-width: 1120px) {
+  .site-nav { display: flex; }
+  .site-header-actions { margin-left: clamp(20px, 2.5vw, 44px); }
   .site-menu-button { display: none; }
-  .site-header-actions .site-products { display: inline-flex; }
   .site-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
@@ -317,4 +346,56 @@
   .site-final-cta { padding: 30px; }
   .site-pagination { gap: 8px; }
   .site-pagination .button { padding-inline: 10px; font-size: 11px; }
+}
+.site-brand-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
+.site-brand-filters button { min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 99px; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; transition: background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
+.site-brand-filters button:hover { border-color: var(--ink); }
+.site-brand-filters button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: white; }
+.site-brand-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.site-brand-grid .reference-brand-card { min-height: 280px; }
+.site-about-hero { display: grid; gap: 34px; align-items: center; }
+.site-about-hero-photo { overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--radius); }
+.site-about-hero-photo img { width: 100%; height: 100%; object-fit: cover; }
+.site-about-history h2, .site-about-values h2, .site-about-team h2, .site-about-infra h2 { max-width: 760px; font-size: clamp(32px, 5vw, 56px); font-weight: 800; letter-spacing: -.06em; line-height: 1.06; }
+.site-about-history .reference-kicker, .site-about-values .reference-kicker, .site-about-team .reference-kicker, .site-about-purpose .reference-kicker { color: var(--lime-text); }
+.site-about-history ol { display: grid; gap: 0 32px; margin: 40px 0 0; padding: 0; list-style: none; }
+.site-about-history li { padding: 22px 0; border-top: 1px solid var(--line); }
+.site-about-history strong { color: var(--lime-text); font-size: 28px; font-weight: 850; letter-spacing: -.04em; }
+.site-about-history h3, .site-about-team h3, .site-about-infra h3 { margin-top: 6px; font-size: 18px; font-weight: 800; }
+.site-about-history li p, .site-about-team li p { margin-top: 6px; color: var(--text); line-height: 1.6; }
+.site-about-culture { padding-block: clamp(70px, 9vw, 120px); background: #002733; color: white; }
+.site-about-culture .reference-kicker { color: #d3e652; }
+.site-about-culture h2 { max-width: 900px; font-size: clamp(34px, 5.4vw, 70px); font-weight: 800; letter-spacing: -.06em; line-height: 1.04; }
+.site-about-culture em { color: #c6df23; font-style: normal; }
+.site-about-culture p:not(.reference-kicker) { margin-top: 20px; color: #a8bbbd; }
+.site-about-purpose { padding-block: clamp(56px, 7vw, 90px); background: var(--paper); }
+.site-about-purpose .container { display: grid; gap: 36px; }
+.site-about-purpose p:not(.reference-kicker) { font-size: clamp(17px, 1.8vw, 21px); line-height: 1.55; }
+.site-about-values dl { display: grid; gap: 0 40px; margin: 40px 0 0; }
+.site-about-values dl > div { display: grid; gap: 6px; padding: 20px 0; border-top: 1px solid var(--line); }
+.site-about-values dt { font-size: 17px; font-weight: 800; }
+.site-about-values dd { margin: 0; color: var(--text); line-height: 1.6; }
+.site-about-team { background: var(--paper); }
+.site-about-team > .container > p:not(.reference-kicker) { max-width: 640px; margin-top: 18px; color: var(--text); font-size: 16px; }
+.site-about-team ul { display: grid; gap: 22px; margin: 40px 0 34px; padding: 0; list-style: none; }
+.site-about-team li img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--radius); margin-bottom: 14px; }
+.site-about-infra { background: #001a22; color: white; }
+.site-about-infra .reference-kicker { color: #d3e652; }
+.site-about-facts { display: grid; gap: 12px; margin: 40px 0 0; padding: 0; list-style: none; }
+.site-about-facts li { padding: 24px; border: 1px solid rgb(255 255 255 / .12); border-radius: var(--radius); }
+.site-about-facts strong { color: #c6df23; font-size: clamp(28px, 3vw, 38px); font-weight: 850; letter-spacing: -.05em; }
+.site-about-facts li p { margin-top: 6px; color: #a8bbbd; line-height: 1.6; }
+.site-about-infra-foot { margin-top: 22px; color: #a8bbbd; font-size: 14px; }
+.site-about-gallery { display: grid; gap: 12px; margin: 40px 0 0; padding: 0; list-style: none; }
+.site-about-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); }
+@media (min-width: 768px) {
+  .site-brand-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .site-about-hero { grid-template-columns: 1.1fr .9fr; gap: 56px; }
+  .site-about-history ol, .site-about-values dl, .site-about-purpose .container, .site-about-facts { grid-template-columns: 1fr 1fr; }
+  .site-about-team ul, .site-about-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1120px) {
+  .site-brand-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .site-about-history ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .site-about-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

@@ -1,6 +1,31 @@
 # Registro de avance
 
-Última actualización: 1 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 2 de octubre de 2026. Rama de trabajo: `main`.
+
+## Cambio: navbar sin Contacto; landing sin marcas ni «quiénes somos» (02/10)
+
+- `site-shell.tsx`: el navbar queda Productos, Marcas, Garantía, Nosotros.
+- `site-home-reference.tsx`: se quitaron las secciones «Las 15 marcas que distribuimos» (#marcas, carrusel y su lógica de scroll) y «Distribuyendo en Uruguay desde 1995» (#nosotros). Ese contenido vive en /marcas y /nosotros. La sección de contacto (#contacto) sigue al final de la landing.
+- `site-home.tsx`: «Descubrí DISTRICO» apuntaba a #nosotros; ahora va a #lineas.
+- `site-reference.css`: se borraron `.reference-brands*`, `.reference-brand-arrow*` y `.reference-about*`; las tarjetas `.reference-brand-card` se conservan para /marcas.
+- Tests de landing: el de movimiento reducido solo verifica el hero; el de marcas usa /marcas.
+- Verificado: typecheck, lint, e2e `landing` + `flows` + `motion` 40/40.
+
+## Mejora: páginas propias de Marcas y Nosotros (02/10)
+
+- Nuevas `(sitio)/marcas/page.tsx` y `(sitio)/nosotros/page.tsx`, con la estructura del repo Importadora. El header y el footer enlazan a `/marcas` y `/nosotros` en lugar de las anclas de la landing.
+- `/marcas`: filtro por línea de negocio (`site-brand-directory.tsx`, botones con `aria-pressed`) y grilla con las 15 marcas. Las tarjetas se movieron a `site-brand-card.tsx` y los datos a `src/lib/site-brands.ts` (con la línea de cada marca); el carrusel de la landing usa los mismos.
+- `/nosotros`: hero con la fachada, 13 hitos, cultura, misión y visión, 9 valores, beneficios con fotos, infraestructura, galería y CTA. Los textos están en `nosotros/content.ts`. Fotos nuevas en `public/images` (webp, convertidas desde `Importadora/src/assets/institutional`). «Enviar mi CV» usa el mismo mailto que `/tienda/empresa`.
+- Estilos `.site-brand-*` y `.site-about-*` al final de `site.css`.
+- Verificado: typecheck, lint, e2e `landing` 12/12 (el test del navbar ahora recorre /nosotros, /marcas con filtro y /garantia), `flows` + `motion` 28/28. Sin scroll horizontal ni imágenes rotas en /marcas y /nosotros a 390, 768 y 1440px. Sin revisión visual humana.
+- Pendiente: las secciones #marcas y #nosotros siguen en la landing como resumen. Contacto sigue siendo ancla. No hay fichas por marca (`/marcas/[slug]` de Importadora).
+
+## Mejora: navbar institucional y página de garantía (02/10)
+
+- `site-shell.tsx`: el header público lleva Productos (`/productos`), Marcas (`/#marcas`), Garantía (`/garantia`), Nosotros (`/#nosotros`) y Contacto (`/#contacto`), en ese orden; el menú móvil usa los mismos enlaces. Se quitó el botón «Ver productos» (lo reemplaza el enlace Productos) y el enlace «Líneas» del footer. Ya no hay resaltado de sección por scroll; `aria-current="page"` solo en rutas.
+- Nueva `(sitio)/garantia/page.tsx`: contenido de la garantía de palatabilidad tomado del repo Importadora (`src/pages/garantia.astro`): marcas incluidas (Biofresh, Gran Plus, Guabi Natural, Three Cats, Three Dogs), tres pasos, condiciones en `<details>` y CTA a WhatsApp. Reutiliza `.site-catalog-intro` y `.reference-contact`; estilos nuevos `.site-warranty-*` en `site.css`.
+- Verificado: typecheck, lint, e2e `landing.spec.ts` 12/12 y el test de catálogo de `flows.spec.ts` (actualizado para entrar por el enlace Productos del navbar). Sin scroll horizontal en `/garantia` a 390, 1120 y 1440px.
+- Pendiente: Marcas, Nosotros y Contacto siguen siendo anclas de la landing, sin páginas propias como en Importadora. No se corrió la suite e2e completa.
 
 ## Mejora: ficha de producto B2B con panel de compra fijo (01/10)
 

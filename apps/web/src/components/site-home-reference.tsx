@@ -1,32 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Mail } from "lucide-react";
+import type { CSSProperties } from "react";
+import { ArrowRight, ArrowUpRight, Mail } from "lucide-react";
 import { Picture } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
-
-const brands = [
-  { name: "Gran Plus", logo: "gran-plus.png", color: "#84152a" },
-  { name: "Biofresh", logo: "biofresh.png", color: "#5b8474" },
-  { name: "Three Dogs", logo: "three-dogs.png", color: "#6d82aa" },
-  { name: "TOH", color: "#b96b4d" },
-  { name: "Procão", logo: "procao.png", color: "#a5ad59" },
-  { name: "Three Cats", logo: "three-cats.png", color: "#a07652" },
-  { name: "Stack", logo: "stack.png", color: "#bb777e" },
-  { name: "Guabi Natural", color: "#81a166" },
-  { name: "Primocão", logo: "primocao.png", color: "#9b7657" },
-  { name: "Primogato", logo: "primogato.png", color: "#808aa2" },
-  { name: "YowUp", color: "#5e96b2" },
-  { name: "LoPets", color: "#ab7777" },
-  { name: "Pipicat", logo: "pipicat.png", color: "#6c9ca0" },
-  { name: "Beny", logo: "beny.png", color: "#aa8c51" },
-  { name: "4 Pets", logo: "4pets.png", color: "#7a9262" },
-] as const;
-
-const petPhotos = [3, 2, 1, 5, 6, 7, 4, 8].map(
-  (number) => `/images/brand-pets-${String(number).padStart(2, "0")}.webp`,
-);
 
 const lines = [
   {
@@ -98,32 +76,6 @@ const lines = [
 ] as const;
 
 export function SiteHomeReference() {
-  const brandRail = useRef<HTMLDivElement>(null);
-  const [brandPosition, setBrandPosition] = useState({ back: false, next: true });
-
-  useEffect(() => {
-    const rail = brandRail.current;
-    if (!rail) return;
-    const update = () => setBrandPosition({
-      back: rail.scrollLeft > 2,
-      next: rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2,
-    });
-    update();
-    rail.addEventListener("scroll", update, { passive: true });
-    const resize = new ResizeObserver(update);
-    resize.observe(rail);
-    return () => { rail.removeEventListener("scroll", update); resize.disconnect(); };
-  }, []);
-
-  const moveBrands = (direction: -1 | 1) => {
-    const rail = brandRail.current;
-    if (!rail) return;
-    rail.scrollBy({
-      left: direction * Math.max(rail.clientWidth * .8, 180),
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-    });
-  };
-
   return (
     <>
       <div id="lineas" className="reference-lines">
@@ -158,63 +110,6 @@ export function SiteHomeReference() {
           </section>
         ))}
       </div>
-
-      <section className="reference-brands site-section" id="marcas" aria-labelledby="brands-title">
-        <div className="container">
-          <p className="reference-kicker">Representaciones</p>
-          <div className="reference-brands-heading">
-            <h2 id="brands-title">Las 15 marcas que distribuimos.</h2>
-            <p>Alimento balanceado, arenas sanitarias, cuidado animal y snacks de fábricas de la región.</p>
-          </div>
-          <div className="reference-brands-stage">
-            <div className="reference-brands-rail" ref={brandRail} aria-label="Marcas que distribuye Districo" tabIndex={0}>
-              {brands.map((brand, index) => (
-                <Link className="reference-brand-card" key={brand.name} href={`/productos?search=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${brand.name}`} style={{ backgroundColor: brand.color }}>
-                  <Picture className="reference-brand-photo" src={petPhotos[index % petPhotos.length]} alt="" loading="lazy" sizes="(max-width: 767px) 45vw, 16vw" />
-                  <span className="reference-brand-shade" aria-hidden="true" />
-                  <span className="reference-brand-mark">
-                    {"logo" in brand && brand.logo ? (
-                      <Picture src={`/images/brands/${brand.logo}`} alt="" loading="lazy" sizes="140px" />
-                    ) : (
-                      <span className="reference-brand-wordmark">{brand.name}</span>
-                    )}
-                  </span>
-                  <span className="reference-brand-name">{brand.name}<ArrowUpRight size={15} aria-hidden="true" /></span>
-                </Link>
-              ))}
-            </div>
-            <button className="reference-brand-arrow reference-brand-arrow--back" type="button" onClick={() => moveBrands(-1)} disabled={!brandPosition.back} aria-label="Marcas anteriores"><ChevronLeft size={22} /></button>
-            <button className="reference-brand-arrow reference-brand-arrow--next" type="button" onClick={() => moveBrands(1)} disabled={!brandPosition.next} aria-label="Marcas siguientes"><ChevronRight size={22} /></button>
-          </div>
-          <div className="reference-brands-actions">
-            <Link href="/productos" className="reference-brands-button">Ver el catálogo completo <ArrowRight size={18} aria-hidden="true" /></Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="reference-about" id="nosotros" aria-labelledby="reference-about-title">
-        <div className="container reference-about-grid">
-          <div className="reference-about-photo">
-            <Picture
-              src="/images/deposito-estanterias.webp"
-              alt="Depósito de DISTRICO con estanterías de mercadería"
-              loading="lazy"
-              sizes="(max-width: 767px) 100vw, 50vw"
-            />
-          </div>
-          <div className="reference-about-copy">
-            <p className="reference-kicker">Quiénes somos</p>
-            <h2 id="reference-about-title">Distribuyendo en Uruguay desde 1995.</h2>
-            <p>Districo S.A. nació como Distribuidora Colón, fundada por Fernando Graviz sobre la experiencia agroveterinaria familiar. Hoy distribuimos alimento para mascotas, arenas sanitarias, cuidado animal y snacks en todo el país.</p>
-            <ul>
-              <li><Check size={18} aria-hidden="true" /><span><strong>Casa Matriz de 10.000 m²</strong> en Montevideo, con 1.600 m² de depósito.</span></li>
-              <li><Check size={18} aria-hidden="true" /><span><strong>Sucursal Maldonado</strong> con sede propia de 700 m² para atender el este.</span></li>
-              <li><Check size={18} aria-hidden="true" /><span><strong>Energía y flota propias</strong> con plantas fotovoltaicas y vehículos eléctricos.</span></li>
-            </ul>
-            <Link className="reference-about-link" href="/#contacto">Hablemos de tu comercio <ArrowRight size={18} aria-hidden="true" /></Link>
-          </div>
-        </div>
-      </section>
 
       <section className="reference-contact" id="contacto" aria-labelledby="reference-contact-title">
         <div className="container reference-contact-grid">

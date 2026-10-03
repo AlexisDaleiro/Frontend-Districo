@@ -29,7 +29,7 @@ test("catálogo público, filtros persistentes y ausencia de precios", async ({
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: /Marcas que acompañan. Un socio que responde/ })).toBeVisible();
   // Líneas salió de la landing: se entra al catálogo desde el header y se filtra ahí.
-  await page.getByRole("link", { name: "Ver productos", exact: true }).click();
+  await page.locator(".site-nav").getByRole("link", { name: "Productos" }).click();
   await expect(page).toHaveURL(/productos$/);
   await page.getByLabel("Categoría").selectOption({ label: "Arenas sanitarias" });
   await expect(page).toHaveURL(/\/productos\?categoryId=/);
