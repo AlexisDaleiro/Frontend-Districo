@@ -193,9 +193,14 @@ export function MotionSystem() {
           (rect.top + rect.height / 2 - innerHeight / 2) / ((rect.height + innerHeight) / 2),
         ));
         const distance = innerWidth < 768 ? 22 : 38;
+        const focus = 1 - Math.abs(progress);
         line.style.setProperty("--line-product-y", `${(-progress * distance).toFixed(2)}px`);
         line.style.setProperty("--line-ring-y", `${(progress * distance * 0.55).toFixed(2)}px`);
         line.style.setProperty("--line-ring-rotate", `${(progress * 7).toFixed(2)}deg`);
+        line.style.setProperty("--line-ring-scale", (0.95 + focus * 0.07).toFixed(3));
+        line.style.setProperty("--line-glow-y", `${(-progress * distance * 0.7).toFixed(2)}px`);
+        line.style.setProperty("--line-glow-scale", (0.91 + focus * 0.18).toFixed(3));
+        line.style.setProperty("--line-glow-opacity", (0.62 + focus * 0.32).toFixed(3));
       }
     };
 
@@ -275,6 +280,10 @@ export function MotionSystem() {
           line.style.removeProperty("--line-product-y");
           line.style.removeProperty("--line-ring-y");
           line.style.removeProperty("--line-ring-rotate");
+          line.style.removeProperty("--line-ring-scale");
+          line.style.removeProperty("--line-glow-y");
+          line.style.removeProperty("--line-glow-scale");
+          line.style.removeProperty("--line-glow-opacity");
         }
         if (frame) cancelAnimationFrame(frame);
         frame = 0;
@@ -311,6 +320,10 @@ export function MotionSystem() {
         line.style.removeProperty("--line-product-y");
         line.style.removeProperty("--line-ring-y");
         line.style.removeProperty("--line-ring-rotate");
+        line.style.removeProperty("--line-ring-scale");
+        line.style.removeProperty("--line-glow-y");
+        line.style.removeProperty("--line-glow-scale");
+        line.style.removeProperty("--line-glow-opacity");
       }
     };
   }, []);

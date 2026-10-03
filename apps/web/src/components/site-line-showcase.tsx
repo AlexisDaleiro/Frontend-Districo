@@ -15,15 +15,40 @@ const STEP_MS = 3800;
 // detiene la rotación.
 export function SiteLineShowcase({ products, offset }: { products: readonly Product[]; offset: number }) {
   const root = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLButtonElement>(null);
+  const tiltFrame = useRef<number | null>(null);
+  const pendingTilt = useRef({ x: 0, y: 0 });
   const [active, setActive] = useState(0);
   const [visible, setVisible] = useState(false);
   const [hold, setHold] = useState(false);
   const [stopped, setStopped] = useState(false);
+  const [tilted, setTilted] = useState(false);
+  const [motionAllowed, setMotionAllowed] = useState(true);
   const count = products.length;
   const current = products[active];
 
   useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) setStopped(true);
+    const preference = matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => {
+      setMotionAllowed(!preference.matches);
+      if (!preference.matches) return;
+      setStopped(true);
+      setTilted(false);
+      if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
+      tiltFrame.current = null;
+      stage.current?.style.removeProperty("--product-tilt-x");
+      stage.current?.style.removeProperty("--product-tilt-y");
+      stage.current?.style.removeProperty("--product-lift");
+    };
+    updatePreference();
+    preference.addEventListener("change", updatePreference);
+    return () => {
+      preference.removeEventListener("change", updatePreference);
+      if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
+    };
+  }, []);
+
+  useEffect(() => {
     const node = root.current;
     if (!node || !("IntersectionObserver" in window)) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.35 });
@@ -41,6 +66,18 @@ export function SiteLineShowcase({ products, offset }: { products: readonly Prod
     return () => window.clearTimeout(timer);
   }, [visible, hold, stopped, count, offset]);
 
+  const queueTilt = (x: number, y: number) => {
+    pendingTilt.current = { x, y };
+    if (tiltFrame.current !== null) return;
+    tiltFrame.current = requestAnimationFrame(() => {
+      tiltFrame.current = null;
+      const { x: nextX, y: nextY } = pendingTilt.current;
+      stage.current?.style.setProperty("--product-tilt-x", `${(-nextY * 6).toFixed(2)}deg`);
+      stage.current?.style.setProperty("--product-tilt-y", `${(nextX * 9).toFixed(2)}deg`);
+      stage.current?.style.setProperty("--product-lift", `${(-(Math.abs(nextX) + Math.abs(nextY)) * 3).toFixed(2)}px`);
+    });
+  };
+
   return (
     <div
       className="reference-showcase"
@@ -48,16 +85,37 @@ export function SiteLineShowcase({ products, offset }: { products: readonly Prod
       onPointerEnter={(event) => event.pointerType === "mouse" && setHold(true)}
       onPointerLeave={() => setHold(false)}
       onFocus={() => setHold(true)}
-      onBlur={() => setHold(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHold(false);
+      }}
     >
-      <div className="reference-showcase-stage">
+      <button
+        className="reference-showcase-stage"
+        ref={stage}
+        type="button"
+        aria-label={`Inclinar producto: ${current.alt}`}
+        aria-pressed={tilted}
+        disabled={!motionAllowed}
+        onPointerMove={(event) => {
+          if (!motionAllowed || event.pointerType !== "mouse") return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          queueTilt(((event.clientX - bounds.left) / bounds.width - .5) * 2, ((event.clientY - bounds.top) / bounds.height - .5) * 2);
+        }}
+        onPointerLeave={() => queueTilt(tilted ? .65 : 0, tilted ? -.5 : 0)}
+        onClick={() => {
+          const next = !tilted;
+          setTilted(next);
+          setStopped(true);
+          queueTilt(next ? .65 : 0, next ? -.5 : 0);
+        }}
+      >
         <span className="reference-line-ring" aria-hidden="true" />
         {products.map((product, index) => (
-          <div key={product.src} className={`reference-showcase-item${index === active ? " is-active" : ""}`} aria-hidden={index !== active}>
+          <span key={product.src} className={`reference-showcase-item${index === active ? " is-active" : ""}`} aria-hidden={index !== active}>
             <Picture src={product.src} alt={index === active ? product.alt : ""} loading="lazy" sizes="(max-width: 767px) 60vw, 26vw" />
-          </div>
+          </span>
         ))}
-      </div>
+      </button>
       <div className="reference-showcase-thumbs" role="group" aria-label="Elegir producto">
         {products.map((product, index) => (
           <button

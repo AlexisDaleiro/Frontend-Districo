@@ -1,5 +1,6 @@
 .reference-lines { scroll-margin-top: 76px; background: linear-gradient(180deg in oklab, var(--ink) 0%, #003647 7%, #003647 13%, #55684d 22%, #55684d 30%, #3f6759 39%, #3f6759 47%, #fac541 56%, #fac541 64%, #a8410b 73%, #a8410b 81%, #2e5e7e 90%, #2e5e7e 93%, #001a22 99%, #001a22 100%); }
-.reference-line { position: relative; overflow: hidden; color: white; background: radial-gradient(ellipse 40% 48% at var(--line-glow-x) 46%, color-mix(in srgb, var(--line-accent) 38%, transparent), transparent 82%); }
+.reference-line { position: relative; isolation: isolate; overflow: hidden; color: white; }
+.reference-line::before { content: ""; position: absolute; z-index: 0; top: 46%; left: var(--line-glow-x); width: min(74vw, 720px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--line-accent) 38%, transparent), transparent 72%); opacity: var(--line-glow-opacity, .8); transform: translate3d(-50%, calc(-50% + var(--line-glow-y, 0px)), 0) scale(var(--line-glow-scale, 1)); pointer-events: none; }
 .reference-line--dark { color: #231e0c; }
 .reference-line-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(30px, 4vw, 64px); min-height: 730px; padding-block: 75px; }
 .reference-line-grid.is-reversed .reference-line-copy { order: 2; }
@@ -14,15 +15,16 @@
 .reference-line-cta { display: inline-flex; align-items: center; justify-content: space-between; gap: 26px; min-height: 56px; padding: 14px 27px; border-radius: 99px; background: white; color: #163d49; font-size: 14px; font-weight: 800; }
 .reference-line-cta:hover { background: #e8efcb; color: #163d49; }
 .reference-line-visual { position: relative; display: grid; place-items: center; min-height: 480px; isolation: isolate; }
-.reference-line-ring { position: absolute; z-index: -1; width: min(82%, 445px); aspect-ratio: 1; border-radius: 50%; opacity: .95; background: rgb(255 255 255 / .13); box-shadow: inset 0 0 80px rgb(255 255 255 / .07); transform: translate3d(0, var(--line-ring-y, 0px), 0) rotate(var(--line-ring-rotate, 0deg)); }
+.reference-line-ring { position: absolute; z-index: -1; width: min(82%, 445px); aspect-ratio: 1; border-radius: 50%; opacity: .95; background: rgb(255 255 255 / .13); box-shadow: inset 0 0 80px rgb(255 255 255 / .07); transform: translate3d(0, var(--line-ring-y, 0px), 0) rotate(var(--line-ring-rotate, 0deg)) scale(var(--line-ring-scale, 1)); }
 .reference-line-ring::before { content: ""; position: absolute; inset: 10%; border: 1px solid rgb(255 255 255 / .13); border-radius: 50%; }
 .reference-showcase { position: relative; z-index: 0; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; container-type: inline-size; translate: 0 var(--line-product-y, 0px); }
-.reference-showcase-stage { position: relative; display: grid; place-items: center; width: 100%; height: min(390px, 78cqi); }
+.reference-showcase-stage { position: relative; display: grid; place-items: center; width: 100%; height: min(390px, 78cqi); padding: 0; border: 0; border-radius: 16px; background: transparent; color: inherit; cursor: pointer; }
+.reference-showcase-stage:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
 /* Sale: baja y se desvanece rápido. Entra: sube con leve escala, con un retardo para no cruzarse con el que sale. */
 .reference-showcase-item { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: translateY(34px) scale(.92); transition: opacity 420ms ease, transform 420ms ease-in; pointer-events: none; }
 .reference-showcase-item.is-active { opacity: 1; transform: none; transition: opacity 600ms ease 200ms, transform 850ms var(--ease-out) 200ms; }
-.reference-showcase-item img { display: block; width: auto; height: min(340px, 68cqi); max-width: 66cqi; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); transition: transform .5s ease; }
-.reference-line:hover .reference-showcase-item.is-active img { transform: translateY(-9px) rotate(-2deg); }
+.reference-showcase-item img { display: block; width: auto; height: min(340px, 68cqi); max-width: 66cqi; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); transition: transform .22s ease; }
+.reference-showcase-item.is-active img { transform: perspective(800px) rotateX(var(--product-tilt-x, 0deg)) rotateY(var(--product-tilt-y, 0deg)) translateY(var(--product-lift, 0px)); }
 .reference-showcase-thumbs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .reference-showcase-thumbs button { display: block; flex: none; width: 56px; height: 56px; padding: 6px; border: 1px solid transparent; border-radius: 14px; background: rgb(255 255 255 / .12); color: inherit; opacity: .55; cursor: pointer; transition: opacity var(--dur-base) ease, background-color var(--dur-base) ease, border-color var(--dur-base) ease, transform var(--dur-base) var(--ease-out); }
 .reference-showcase-thumbs img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -54,6 +56,7 @@
 .reference-contact-secondary:hover { background: rgb(255 255 255 / .08); color: white; }
 .reference-contact-email { display: inline-flex; align-items: center; gap: 9px; margin-top: 12px; color: #d3dedc; font-size: 13px; }
 @media (max-width: 767px) {
+  .reference-line::before { left: 50%; width: min(100vw, 620px); }
   .reference-line-grid { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding-block: 70px 58px; }
   .reference-line-grid.is-reversed .reference-line-copy, .reference-line-grid.is-reversed .reference-line-visual { order: initial; }
   .reference-line-copy h2 { font-size: clamp(38px, 9.5vw, 52px); }
@@ -65,4 +68,4 @@
   .reference-showcase-thumbs button { width: 48px; height: 48px; }
   .reference-contact-grid { grid-template-columns: 1fr; gap: 30px; }
 }
-@media (prefers-reduced-motion: reduce) { .reference-showcase { translate: none; } .reference-showcase-item, .reference-showcase-item.is-active, .reference-showcase-item img { transition: none; } .reference-line:hover .reference-showcase-item.is-active img { transform: none; } .reference-line-ring { transform: none !important; } }
+@media (prefers-reduced-motion: reduce) { .reference-showcase { translate: none; } .reference-line::before { transform: translate3d(-50%, -50%, 0) !important; } .reference-showcase-item, .reference-showcase-item.is-active, .reference-showcase-item img { transition: none; } .reference-showcase-item.is-active img, .reference-line-ring { transform: none !important; } }
