@@ -32,7 +32,19 @@ export function SiteHome() {
 
 const heroChapters = [
   {
-    eyebrow: "01 / Marcas",
+    eyebrow: "01 / Respuesta",
+    firstLine: "Un socio que",
+    highlight: "responde.",
+    lead: "Atención cercana y experiencia para acompañarte en cada pedido.",
+    image: "/images/casa-matriz-fachada.webp",
+    imageAlt: "Fachada de la Casa Matriz de DISTRICO en Montevideo",
+    imageWidth: 588,
+    imageHeight: 441,
+    caption: "Cerca de tu negocio",
+    kind: "photo",
+  },
+  {
+    eyebrow: "02 / Marcas",
     firstLine: "Marcas que",
     highlight: "acompañan.",
     lead: "Productos que tus clientes buscan, respaldados por un distribuidor que conoce tu negocio.",
@@ -44,7 +56,7 @@ const heroChapters = [
     kind: "product",
   },
   {
-    eyebrow: "02 / Cobertura",
+    eyebrow: "03 / Cobertura",
     firstLine: "Llegamos a",
     highlight: "todo Uruguay.",
     lead: "Una red logística que conecta nuestras marcas con comercios de todo el país.",
@@ -53,18 +65,6 @@ const heroChapters = [
     imageWidth: 2000,
     imageHeight: 1339,
     caption: "Logística en marcha",
-    kind: "photo",
-  },
-  {
-    eyebrow: "03 / Respuesta",
-    firstLine: "Un socio que",
-    highlight: "responde.",
-    lead: "Atención cercana y experiencia para acompañarte en cada pedido.",
-    image: "/images/casa-matriz-fachada.webp",
-    imageAlt: "Fachada de la Casa Matriz de DISTRICO en Montevideo",
-    imageWidth: 588,
-    imageHeight: 441,
-    caption: "Cerca de tu negocio",
     kind: "photo",
   },
 ] as const;

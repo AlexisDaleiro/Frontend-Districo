@@ -24,8 +24,10 @@
 .reference-showcase-item { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: translateY(34px) scale(.92); transition: opacity 420ms ease, transform 420ms ease-in; pointer-events: none; }
 .reference-showcase-item.is-active { opacity: 1; transform: none; transition: opacity 600ms ease 200ms, transform 850ms var(--ease-out) 200ms; }
 .reference-showcase-item img { display: block; width: auto; height: min(340px, 68cqi); max-width: 66cqi; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); transition: transform .22s ease; }
-.reference-line--compact-image .reference-showcase-item img { scale: 1.8; translate: 0 -24px; }
+.reference-line--compact-image .reference-showcase-stage { height: min(460px, 100cqi); overflow: hidden; }
+.reference-line--compact-image .reference-showcase-item img { scale: var(--product-scale); translate: 0 var(--product-offset); }
 .reference-line--compact-image .reference-showcase-thumbs img { scale: 2; }
+.reference-line--compact-image .reference-showcase-thumbs button { overflow: hidden; }
 .reference-showcase-item.is-active img { transform: perspective(800px) rotateX(var(--product-tilt-x, 0deg)) rotateY(var(--product-tilt-y, 0deg)) translateY(var(--product-lift, 0px)); }
 .reference-showcase-thumbs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .reference-showcase-thumbs button { display: block; flex: none; width: 56px; height: 56px; padding: 6px; border: 1px solid transparent; border-radius: 14px; background: rgb(255 255 255 / .12); color: inherit; opacity: .55; cursor: pointer; transition: opacity var(--dur-base) ease, background-color var(--dur-base) ease, border-color var(--dur-base) ease, transform var(--dur-base) var(--ease-out); }
@@ -103,6 +105,7 @@
   .reference-line-tags { margin-block: 24px; }
   .reference-line-visual { min-height: 370px; margin-top: 25px; }
   .reference-showcase-stage { height: min(320px, 82cqi); }
+  .reference-line--compact-image .reference-showcase-stage { height: min(340px, 94cqi); }
   .reference-showcase-item img { height: min(280px, 72cqi); }
   .reference-showcase-thumbs button { width: 48px; height: 48px; }
   .reference-contact-grid { grid-template-columns: 1fr; gap: 30px; }

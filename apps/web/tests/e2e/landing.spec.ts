@@ -12,7 +12,7 @@ test("el contenido institucional sigue visible sin JavaScript", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan/,
+      name: /Un socio que responde/,
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Alimento para mascotas" })).toBeVisible();
@@ -25,7 +25,7 @@ test("hero institucional y tres accesos principales", async ({ page }) => {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Marcas que acompañan/,
+      name: /Un socio que responde/,
     }),
   ).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
@@ -55,9 +55,10 @@ test("el hero narra tres escenas sin barra de controles", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".site-hero");
   await expect(hero.locator(".site-hero-story-controls")).toHaveCount(0);
+  await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /casa-matriz-fachada\.webp/);
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.", { timeout: 7000 });
   await expect(hero.locator(".site-hero-story-media img")).toHaveAttribute("src", /hero-biofresh-castrados\.png/);
   await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Llegamos a todo Uruguay.", { timeout: 7000 });
-  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.", { timeout: 7000 });
 });
 
 test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
@@ -65,7 +66,7 @@ test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".site-hero");
   await page.waitForTimeout(5500);
-  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Marcas que acompañan.");
+  await expect(hero.getByRole("heading", { level: 1 })).toHaveText("Un socio que responde.");
 });
 
 test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {

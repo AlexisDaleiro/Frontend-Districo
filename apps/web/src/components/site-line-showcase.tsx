@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Picture } from "./ui";
 
-type Product = { src: string; alt: string; brand: string; brandHref?: string };
+type Product = { src: string; alt: string; brand: string; brandHref?: string; visualScale?: number; visualOffset?: number };
 
 const STEP_MS = 3800;
 
@@ -111,7 +111,12 @@ export function SiteLineShowcase({ products, offset }: { products: readonly Prod
       >
         <span className="reference-line-ring" aria-hidden="true" />
         {products.map((product, index) => (
-          <span key={product.src} className={`reference-showcase-item${index === active ? " is-active" : ""}`} aria-hidden={index !== active}>
+          <span
+            key={product.src}
+            className={`reference-showcase-item${index === active ? " is-active" : ""}`}
+            aria-hidden={index !== active}
+            style={{ "--product-scale": product.visualScale ?? 1, "--product-offset": `${product.visualOffset ?? 0}px` } as CSSProperties}
+          >
             <Picture src={product.src} alt={index === active ? product.alt : ""} loading="lazy" sizes="(max-width: 767px) 60vw, 26vw" />
           </span>
         ))}

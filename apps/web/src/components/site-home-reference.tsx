@@ -99,9 +99,9 @@ const lines = [
     description: "Productos de laboratorio y farmacia veterinaria para acompañar el cuidado profesional de animales de compañía y producción.",
     tags: ["Veterinaria", "Producción animal"],
     products: [
-      { src: "/images/raicor-animales-de-compania-0.png", alt: "Alizin 10 ml para uso veterinario", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria" },
-      { src: "/images/raicor-animales-de-compania-1.png", alt: "Allercalm 250 ml para animales de compañía", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria" },
-      { src: "/images/raicor-ganaderia-0.png", alt: "Adenosan en dosis para producción animal", brand: "Raicor", brandHref: "/productos?categoryId=ganaderia" },
+      { src: "/images/raicor-animales-de-compania-0.png", alt: "Alizin 10 ml para uso veterinario", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria", visualScale: 1.75, visualOffset: -45 },
+      { src: "/images/raicor-animales-de-compania-1.png", alt: "Allercalm 250 ml para animales de compañía", brand: "Raicor", brandHref: "/productos?categoryId=veterinaria", visualScale: 1.35, visualOffset: -18 },
+      { src: "/images/raicor-ganaderia-0.png", alt: "Adenosan en dosis para producción animal", brand: "Raicor", brandHref: "/productos?categoryId=ganaderia", visualScale: 1.55, visualOffset: -30 },
     ],
     href: "/productos?categoryId=veterinaria",
     accent: "#b9b8ed",
