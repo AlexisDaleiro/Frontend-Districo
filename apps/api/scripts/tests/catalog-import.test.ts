@@ -200,6 +200,7 @@ test('creates only review drafts with stable identity and no commercial variants
 
 test('reimporting skips existing identities instead of resetting edited products', async () => {
   const records = new Map<string, Record<string, unknown>>();
+  const category = { findMany: async () => [] };
   const product = {
     findUnique: async ({ where }: { where: { source_sourceExternalId: { sourceExternalId: string } } }) =>
       records.get(where.source_sourceExternalId.sourceExternalId) ?? null,
@@ -210,7 +211,10 @@ test('reimporting skips existing identities instead of resetting edited products
   };
   const database = {
     product,
-    $transaction: async (fn: (tx: { product: typeof product }) => unknown) => fn({ product }),
+    category,
+    brand: { findMany: async () => [] },
+    laboratory: { findMany: async () => [] },
+    $transaction: async (fn: (tx: { product: typeof product; category: typeof category }) => unknown) => fn({ product, category }),
   };
   const prisma = database as unknown as PrismaClient;
   assert.deepEqual(await importCatalog(prisma, snapshot()), { created: 1, skipped: 0 });
@@ -220,6 +224,29 @@ test('reimporting skips existing identities instead of resetting edited products
   assert.equal(records.size, 1);
   assert.equal(records.get('1739')!.name, 'Nombre revisado manualmente');
   assert.equal(records.get('1739')!.active, true);
+});
+
+test('new imports reuse canonical categories and do not recreate brand labels', async () => {
+  let created: Prisma.ProductCreateInput | undefined;
+  const product = {
+    findUnique: async () => null,
+    create: async ({ data }: { data: Prisma.ProductCreateInput }) => { created = data; return data; },
+  };
+  const category = { findMany: async () => [{ id: 'canonical', name: 'Biológicos', parentId: 'medicamentos' }] };
+  const prisma = {
+    brand: { findMany: async () => [{ name: 'Zoetis' }] },
+    laboratory: { findMany: async () => [] },
+    product,
+    category,
+    $transaction: async (fn: (tx: { product: typeof product; category: typeof category }) => unknown) => fn({ product, category }),
+  } as unknown as PrismaClient;
+  const data = snapshot();
+  data.products[0].categories = [
+    { externalId: '1', name: 'BIOLOGICOS' },
+    { externalId: '2', name: 'Zoetis' },
+  ];
+  assert.deepEqual(await importCatalog(prisma, data), { created: 1, skipped: 0 });
+  assert.deepEqual(created?.categories?.create, [{ category: { connect: { id: 'canonical' } } }]);
 });
 
 test('only configured providers and their own HTTPS hosts are accepted', () => {
@@ -370,6 +397,7 @@ test('snapshots validate robots provenance without breaking older captures', () 
 
 test('source namespaces separate identical external product and category IDs', async () => {
   const records = new Map<string, Prisma.ProductCreateInput>();
+  const category = { findMany: async () => [] };
   const key = (source: unknown, externalId: unknown) => `${source}:${externalId}`;
   const product = {
     findUnique: async ({ where }: { where: { source_sourceExternalId: { source: string; sourceExternalId: string } } }) =>
@@ -381,7 +409,10 @@ test('source namespaces separate identical external product and category IDs', a
   };
   const prisma = {
     product,
-    $transaction: async (fn: (tx: { product: typeof product }) => unknown) => fn({ product }),
+    category,
+    brand: { findMany: async () => [] },
+    laboratory: { findMany: async () => [] },
+    $transaction: async (fn: (tx: { product: typeof product; category: typeof category }) => unknown) => fn({ product, category }),
   } as unknown as PrismaClient;
   for (const source of ['DISTRICO', 'RAICOR', 'MAGNIS'] as const) {
     const data = providerSnapshot(source);

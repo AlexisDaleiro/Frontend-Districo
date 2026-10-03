@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { slugify } from '../../common/utils/slugify';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
@@ -26,5 +26,13 @@ export class BrandsService {
       ...dto,
       slug: dto.slug ?? (dto.name ? slugify(dto.name) : undefined),
     });
+  }
+
+  async remove(id: string) {
+    const brand = await this.brandsRepository.findById(id);
+    if (!brand || brand.deletedAt) throw new NotFoundException('Marca no encontrada.');
+    if (await this.brandsRepository.hasActiveRules(id)) throw new ConflictException('La marca está en una promoción o recomendación activa. Quitala de esas reglas antes de eliminarla.');
+    if (await this.brandsRepository.softDeleteIfUnused(id)) return { deleted: true };
+    throw new ConflictException('La marca tiene productos asociados. Reasignalos antes de eliminarla.');
   }
 }

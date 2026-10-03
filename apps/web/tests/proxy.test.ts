@@ -41,6 +41,14 @@ describe("Frontera entre frontend y API", () => {
     expect(allowedPath("https://elsewhere.test", "GET")).toBe(false);
     expect(allowedPath("products/id/variants", "POST")).toBe(true);
     expect(allowedPath("categories/catalog", "GET")).toBe(true);
+    expect(allowedPath("categories/admin", "GET")).toBe(true);
+    expect(allowedPath("categories/admin/cat-1/products", "GET")).toBe(true);
+    expect(allowedPath("categories/admin/cat-1/candidates", "GET")).toBe(true);
+    expect(allowedPath("categories/cat-1/products", "POST")).toBe(true);
+    expect(allowedPath("categories/cat-1/products/product-1", "DELETE")).toBe(true);
+    expect(allowedPath("categories/cat-1/products", "GET")).toBe(false);
+    expect(allowedPath("brands/brand-1", "DELETE")).toBe(true);
+    expect(allowedPath("laboratories/lab-1", "DELETE")).toBe(true);
     expect(allowedPath("admin/orders/order-1/payments", "POST")).toBe(true);
     expect(allowedPath("admin/orders/order-1/invoices", "POST")).toBe(true);
     expect(allowedPath("admin/orders/order-1/invoices/invoice-1", "GET")).toBe(true);

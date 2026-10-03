@@ -14,6 +14,15 @@ import type {
 } from "./types";
 import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
+import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
+type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
+function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
+  const user = { id: "demo", email: "demo@example.test", role, permissions: [] } as User;
+  return Object.fromEntries(staffFeatures.map(([feature]) => [feature, {
+    canView: canViewAdminFeature(user, feature),
+    canEdit: !["resumen", "ventas"].includes(feature) && canEditAdminFeature(user, feature),
+  }])) as DemoRoleAccess;
+}
 type State = {
   version: number;
   session: string | null;
@@ -31,6 +40,8 @@ type State = {
   laboratories: Entity[];
   banners?: { id: string; title: string; subtitle?: string; actionLabel: string; href: string; alt: string; imageUrl: string; position: number; active: boolean; startsAt?: string; endsAt?: string }[];
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
+  staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
+  customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess }[];
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -56,6 +67,8 @@ export const blankState = (): State => ({
   laboratories: [],
   banners: [],
   staffInvitations: [],
+  staffRoleAccess: {},
+  customRoles: [],
 });
 let memory: State | undefined;
 export function resetDemo() {
@@ -77,6 +90,8 @@ function read() {
     data.contactInquiries ??= [];
     data.banners ??= [];
     data.staffInvitations ??= [];
+    data.staffRoleAccess ??= {};
+    data.customRoles ??= [];
     return data;
   } catch {
     throw new ApiError(
@@ -277,8 +292,26 @@ export async function demoRequest<T>(
     return user;
   };
   const needAdmin = () => {
-    if (needUser().role !== "ADMIN")
-      throw new ApiError("Acceso exclusivo de administración.", 403);
+    const member = needUser();
+    if (member.role === "ADMIN") return;
+    if (member.role === "CLIENT") throw new ApiError("No tenés permiso para esta acción.", 403);
+    const feature = route.startsWith("admin/orders/") && /\/(payments|invoices|credit-notes|refunds)(\/|$)/.test(route) ? "facturacion" :
+      route.startsWith("admin/contact-inquiries") ? "consultas" :
+      route.startsWith("admin/applications") ? "solicitudes" :
+      route.startsWith("admin/customers") ? "clientes" :
+      route.startsWith("admin/orders") ? "pedidos" :
+      route === "admin/dashboard" ? "resumen" : route === "admin/sales" ? "ventas" :
+      route.startsWith("admin/promotions") || route.startsWith("promotions") ? "promociones" :
+      route.startsWith("admin/recommendations") || route.startsWith("recommendations") ? "recomendaciones" :
+      route.startsWith("admin/banners") ? "banners" :
+      /^(products|pricing|inventory|attributes)(\/|$)/.test(route) ? "catalogo" :
+      /^(brands|laboratories)(\/|$)/.test(route) ? "marcas" :
+      /^(categories)(\/|$)/.test(route) ? "categorias" :
+      /^(recommendations)(\/|$)/.test(route) ? "recomendaciones" : null;
+    const access = member.role === "CUSTOM" ? s.customRoles?.find((item) => item.id === member.customRoleId)?.access : s.staffRoleAccess?.[member.role];
+    const decorated = { ...member, staffAccess: access ?? (member.role === "CUSTOM" ? undefined : defaultDemoRoleAccess(member.role as StaffRole)) };
+    if (feature && (method === "GET" ? canViewAdminFeature(decorated, feature) : canEditAdminFeature(decorated, feature))) return;
+    throw new ApiError("No tenés permiso para esta acción.", 403);
   };
   const needBuyer = () => {
     const u = needUser();
@@ -303,7 +336,12 @@ export async function demoRequest<T>(
       );
     s.session = found.id;
     result = { user: found };
-  } else if (route === "auth/me") result = needUser();
+  } else if (route === "auth/me") {
+    const current = needUser();
+    result = current.role === "CLIENT" ? current : { ...current, staffAccess: current.role === "CUSTOM"
+      ? s.customRoles?.find((item) => item.id === current.customRoleId)?.access ?? defaultDemoRoleAccess("CUSTOM")
+      : s.staffRoleAccess?.[current.role] ?? defaultDemoRoleAccess(current.role) };
+  }
   else if (route === "auth/staff-invitations/accept" && method === "POST") {
     const tokenHash = await demoHash(String(b.token ?? ""));
     const invitation = s.staffInvitations?.find((item) => item.tokenHash === tokenHash && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString());
@@ -384,13 +422,19 @@ export async function demoRequest<T>(
         "Ya existe una cuenta o solicitud con ese correo.",
         400,
       );
-    const { password: _password, ...safe } = b;
+    const { password: _password, documents: _documents, ...safe } = b;
     void _password;
+    void _documents;
+    const documents = body instanceof FormData
+      ? body.getAll("documents").filter((entry): entry is File => entry instanceof File).map((file) => ({ id: id(), type: "BUSINESS_PERMIT", originalName: file.name }))
+      : [];
     const application = {
       ...safe,
       email,
       id: id(),
       status: "PENDING",
+      requestedMedicationPermission: b.requestedMedicationPermission === true || b.requestedMedicationPermission === "true",
+      documents,
     } as Application;
     s.applications.push(application);
     result = application;
@@ -467,13 +511,29 @@ export async function demoRequest<T>(
       meta: { total: items.length, page, limit },
     };
   } else if (
-    ["categories", "categories/catalog", "brands", "laboratories", "attributes"].includes(route) &&
+    ["categories", "categories/catalog", "categories/admin", "brands", "laboratories", "attributes"].includes(route) &&
     method === "GET"
   )
-    result =
-      route === "attributes"
-        ? []
-        : s[route === "categories/catalog" ? "categories" : route as "categories" | "brands" | "laboratories"];
+    result = route === "attributes" ? [] : route === "categories/admin" ? (needAdmin(), s.categories) :
+      route === "categories" || route === "categories/catalog" ? s.categories.filter((category) => category.active !== false) :
+      s[route as "brands" | "laboratories"];
+  else if (route.startsWith("categories/admin/") && method === "GET") {
+    needAdmin();
+    const [, , categoryId, list] = route.split("/");
+    if (!s.categories.some((category) => category.id === categoryId) || !["products", "candidates"].includes(list))
+      throw new ApiError("Categoría no encontrada.", 404);
+    const linked = list === "products";
+    const term = (query.get("search") ?? "").toLowerCase();
+    const matches = s.products.filter((product) =>
+      product.categories.some((category) => category.categoryId === categoryId) === linked &&
+      (!term || [product.name, ...product.variants.map((variant) => variant.sku)].some((value) => value.toLowerCase().includes(term)))
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    const page = Math.max(1, Number(query.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.get("limit")) || 20));
+    result = { items: matches.slice((page - 1) * limit, page * limit).map((product) => ({
+      id: product.id, name: product.name, slug: product.slug, active: product.active !== false, brand: product.brand,
+    })), meta: { total: matches.length, page, limit } };
+  }
   else if (route.startsWith("products/") && method === "GET") {
     if (route.startsWith("products/admin/")) needAdmin();
     const slug = route.startsWith("products/admin/") ? route.split("/")[2] : route.split("/")[1];
@@ -745,13 +805,51 @@ export async function demoRequest<T>(
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     }
-    else if (route === "admin/staff") result = s.users.filter((u) => !u.customerAccount).map(({ id, email, role, active, emailVerified }) => ({
-      id, email, role, active: active !== false, emailVerified: emailVerified !== false,
+    else if (route === "admin/staff") result = s.users.filter((u) => !u.customerAccount).map(({ id, email, role, customRoleId, active, emailVerified }) => ({
+      id, email, role, customRoleId, customRole: s.customRoles?.find((item) => item.id === customRoleId) ?? null, active: active !== false, emailVerified: emailVerified !== false,
       invitationPending: emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString()),
     }));
+    else if (route === "admin/staff/access" && method === "GET") result = [
+      ...staffRoles.map((role) => ({ role, id: null, name: null, access: s.staffRoleAccess?.[role] ?? defaultDemoRoleAccess(role) })),
+      ...(s.customRoles ?? []).map((item) => ({ role: "CUSTOM", id: item.id, name: item.name, access: item.access })),
+    ];
+    else if (route.startsWith("admin/staff/access/") && method === "PATCH") {
+      const role = parts[3] as StaffRole;
+      const entries = b.entries as { feature: StaffFeature; canView: boolean; canEdit: boolean }[];
+      if (!staffRoles.some((item) => item === role) || role === "ADMIN" || !Array.isArray(entries) || entries.length !== staffFeatures.length ||
+          new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && !entry.canView)) {
+        throw new ApiError("Configuración de permisos inválida.", 400);
+      }
+      s.staffRoleAccess ??= {};
+      s.staffRoleAccess[role] = Object.fromEntries(entries.map((entry) => [entry.feature, { canView: entry.canView, canEdit: entry.canEdit }])) as DemoRoleAccess;
+      result = staffRoles.map((item) => ({ role: item, id: null, name: null, access: s.staffRoleAccess?.[item] ?? defaultDemoRoleAccess(item) }));
+    }
+    else if (route === "admin/staff/roles" && method === "POST") {
+      const name = String(b.name ?? "").trim();
+      const key = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      if (name.length < 2 || name.length > 60 || !key) throw new ApiError("Ingresá un nombre válido para el rol.", 400);
+      if (s.customRoles?.some((item) => item.key === key)) throw new ApiError("Ya existe un rol con ese nombre.", 409);
+      const created = { id: id(), name, key, access: defaultDemoRoleAccess("CUSTOM") };
+      (s.customRoles ??= []).push(created);
+      result = { id: created.id, name: created.name };
+    }
+    else if (route.startsWith("admin/staff/roles/") && parts[4] === "access" && method === "PATCH") {
+      const item = s.customRoles?.find((entry) => entry.id === parts[3]);
+      const entries = b.entries as { feature: StaffFeature; canView: boolean; canEdit: boolean }[];
+      if (!item) throw new ApiError("Rol no encontrado.", 404);
+      if (!Array.isArray(entries) || entries.length !== staffFeatures.length ||
+          new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && !entry.canView)) {
+        throw new ApiError("Configuración de permisos inválida.", 400);
+      }
+      item.access = Object.fromEntries(entries.map((entry) => [entry.feature, { canView: entry.canView, canEdit: entry.canEdit }])) as DemoRoleAccess;
+      result = { success: true };
+    }
     else if (route === "admin/staff/invitations" && method === "POST") {
       const email = String(b.email ?? "").trim().toLowerCase();
-      if (!/^\S+@\S+\.\S+$/.test(email) || !["ADMIN", "SALES", "CATALOG", "FINANCE"].includes(String(b.role))) throw new ApiError("Datos inválidos.", 400);
+      if (!/^\S+@\S+\.\S+$/.test(email) || ![...staffRoles, "CUSTOM"].includes(String(b.role) as StaffRole) ||
+          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId))) throw new ApiError("Datos inválidos.", 400);
       let member = s.users.find((item) => item.email.toLowerCase() === email);
       if (member && (member.customerAccount || member.active !== false || member.emailVerified !== false || member.role === "CLIENT")) throw new ApiError("Ese correo ya pertenece a una cuenta activa o de cliente.", 409);
       if (!member) {
@@ -759,11 +857,12 @@ export async function demoRequest<T>(
         s.users.push(member);
       }
       member.role = b.role as User["role"];
+      member.customRoleId = member.role === "CUSTOM" ? String(b.customRoleId) : null;
       for (const item of s.staffInvitations ?? []) if (item.userId === member.id && !item.accepted) item.revoked = true;
       const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
       const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
       s.staffInvitations!.push({ userId: member.id, tokenHash: await demoHash(token), expiresAt, accepted: false, revoked: false });
-      result = { id: member.id, email, role: member.role, token, expiresAt };
+      result = { id: member.id, email, role: member.role, customRoleId: member.customRoleId, token, expiresAt };
     }
     else if (route.startsWith("admin/staff/") && parts[3] === "active" && method === "PATCH") {
       const member = s.users.find((item) => item.id === parts[2] && !item.customerAccount);
@@ -779,10 +878,12 @@ export async function demoRequest<T>(
       const member = s.users.find((u) => u.id === parts[2] && !u.customerAccount);
       if (!member) throw new ApiError("Usuario interno no encontrado.", 404);
       if (member.id === user!.id && b.role !== "ADMIN") throw new ApiError("No podés quitarte tu acceso de administrador.", 403);
-      if (!["ADMIN", "SALES", "CATALOG", "FINANCE"].includes(String(b.role))) throw new ApiError("Rol inválido.", 400);
+      if (![...staffRoles, "CUSTOM"].includes(String(b.role) as StaffRole) ||
+          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId))) throw new ApiError("Rol inválido.", 400);
       member.role = b.role as typeof member.role;
+      member.customRoleId = member.role === "CUSTOM" ? String(b.customRoleId) : null;
       member.permissions = [];
-      result = { id: member.id, email: member.email, role: member.role, active: member.active };
+      result = { id: member.id, email: member.email, role: member.role, customRoleId: member.customRoleId, active: member.active };
     }
     else if (route.startsWith("admin/applications/")) {
       const a = s.applications.find((a) => a.id === parts[2]);
@@ -980,6 +1081,18 @@ export async function demoRequest<T>(
           b,
         );
       result = { success: true };
+    } else if (parts[0] === "products" && parts[2] === "media" && parts[3] === "upload") {
+      const p = s.products.find((product) => product.id === parts[1]);
+      if (!p || !(body instanceof FormData)) throw new ApiError("Producto no encontrado.", 404);
+      const files = body.getAll("files").filter((value): value is File => value instanceof File);
+      if (!files.length || files.length > 8) throw new ApiError("Seleccioná hasta 8 imágenes.", 400);
+      const uploaded = [];
+      for (const file of files) {
+        const media = { id: id(), productId: p.id, type: "IMAGE" as const, url: await demoImage(file), alt: p.name, position: p.media.length, isPrimary: !p.media.length };
+        p.media.push(media);
+        uploaded.push(media);
+      }
+      result = uploaded;
     } else if (parts[0] === "products" && parts[2] === "media") {
       const p = s.products.find((p) => p.id === parts[1])!;
       const m = { id: id(), ...b } as Product["media"][number];
@@ -1034,6 +1147,19 @@ export async function demoRequest<T>(
         collection.push(value as Rule & Expiration);
         result = value;
       } else result = collection;
+    } else if (parts[0] === "categories" && parts[1] && parts[2] === "products") {
+      const category = s.categories.find((item) => item.id === parts[1]);
+      const productId = method === "POST" ? String(b.productId ?? "") : parts[3];
+      const product = s.products.find((item) => item.id === productId);
+      if (!category || !product) throw new ApiError("Categoría o producto no encontrado.", 404);
+      if (method === "POST") {
+        if (!product.categories.some((item) => item.categoryId === category.id))
+          product.categories.push({ categoryId: category.id, category });
+        result = { linked: true };
+      } else if (method === "DELETE") {
+        product.categories = product.categories.filter((item) => item.categoryId !== category.id);
+        result = { removed: true };
+      } else throw new ApiError("Acción no disponible en la demo.", 400);
     } else if (["brands", "categories", "laboratories"].includes(parts[0])) {
       const collection =
         s[parts[0] as "brands" | "categories" | "laboratories"];
@@ -1041,11 +1167,35 @@ export async function demoRequest<T>(
         const value = { id: id(), ...b } as Entity;
         collection.push(value);
         result = value;
+      } else if (method === "DELETE" && parts[0] !== "categories") {
+        const index = collection.findIndex((item) => item.id === parts[1]);
+        if (index < 0) throw new ApiError("Marca o laboratorio no encontrado.", 404);
+        const inUse = s.products.some((product) => parts[0] === "brands" ? product.brand?.id === parts[1] : product.laboratory?.id === parts[1]);
+        if (inUse) throw new ApiError("Tiene productos asociados. Reasignalos antes de eliminarlo.", 409);
+        const targetType = parts[0] === "brands" ? "BRAND" : "LABORATORY";
+        const inRules = s.rules.some((rule) => rule.active !== false && rule.triggerType === targetType && rule.triggerId === parts[1]) ||
+          s.promotions.some((promotion) => promotion.active !== false && [...(promotion.conditions ?? []), ...(promotion.rewards ?? [])].some((target) => target.targetType === targetType && target.targetId === parts[1]));
+        if (inRules) throw new ApiError("Está en una promoción o recomendación activa. Quitalo de esas reglas antes de eliminarlo.", 409);
+        collection.splice(index, 1);
+        result = { deleted: true };
       } else {
         const value = collection.find((x) => x.id === parts[1]);
         Object.assign(value!, b);
         result = value;
       }
+    } else if (parts[0] === "promotions" && parts[1] && parts[1] !== "expiration") {
+      const promotion = s.promotions.find((item) => item.id === parts[1]);
+      if (!promotion) throw new ApiError("Promoción no encontrada.", 404);
+      if (method === "DELETE") {
+        s.promotions = s.promotions.filter((item) => item.id !== parts[1]);
+        result = { success: true };
+      } else if (parts[2] === "activate" || parts[2] === "deactivate") {
+        promotion.active = parts[2] === "activate";
+        result = promotion;
+      } else if (method === "PATCH") {
+        Object.assign(promotion, b);
+        result = promotion;
+      } else throw new ApiError("Acción no disponible en la demo.", 400);
     } else if (route === "admin/audit-logs") result = [];
     else
       throw new ApiError("Esta operación no está disponible en la demo.", 404);

@@ -1,0 +1,42 @@
+import { expect, test } from "@playwright/test";
+
+test("promociones admite varios productos o una marca o categoría", async ({ page }) => {
+  await page.goto("/tienda/ingresar");
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 10000 });
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
+  await page.goto("/tienda/admin/promociones");
+  await expect(page.getByRole("button", { name: "Crear regla cruzada" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear promoción" }).click();
+  const dialog = page.getByRole("dialog", { name: "Crear promoción" });
+  await dialog.getByRole("textbox", { name: "Nombre *" }).fill("Selección de prueba");
+  await expect(dialog.locator(".promotion-options label").nth(1)).toBeVisible();
+  await dialog.locator(".promotion-options label").nth(0).getByRole("checkbox").check();
+  await dialog.locator(".promotion-options label").nth(1).getByRole("checkbox").check();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(dialog).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await dialog.getByRole("spinbutton", { name: "Porcentaje *" }).fill("12");
+  await dialog.getByRole("button", { name: "Guardar promoción" }).click();
+  await expect(dialog).not.toBeVisible();
+  const card = page.locator(".admin-cards .card").filter({ hasText: "Selección de prueba" });
+  await expect(card).toContainText("2 productos");
+  await card.getByRole("button", { name: "Editar" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Editar promoción" });
+  await editDialog.getByRole("radio", { name: "Marcas" }).check();
+  await expect(editDialog.locator(".promotion-options label").first()).toBeVisible();
+  await editDialog.locator(".promotion-options label").first().getByRole("checkbox").check();
+  await editDialog.getByRole("radio", { name: "Categorías" }).check();
+  await expect(editDialog.locator(".promotion-options label").first()).toBeVisible();
+  await editDialog.locator(".promotion-options label").first().getByRole("checkbox").check();
+  await editDialog.getByRole("button", { name: "Guardar promoción" }).click();
+  await expect(card).toContainText("1 categoría");
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}"));
+  const promotion = saved.promotions.find((item: { name: string }) => item.name === "Selección de prueba");
+  expect(promotion.rewards).toHaveLength(1);
+  expect(promotion.rewards[0].targetType).toBe("CATEGORY");
+});

@@ -30,9 +30,11 @@ function fixture() {
       },
     },
     refreshToken: { updateMany: async () => { revokedTokens++; return { count: 1 }; } },
+    userPermission: { deleteMany: async () => ({ count: 0 }) },
     auditLog: { create: async ({ data }: any) => { audits.push(data.action); return data; } },
   };
-  const prisma = { ...tx, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const prisma = { ...tx, customStaffRole: { findUnique: async ({ where }: any) => where.id === 'custom-1' ? { id: 'custom-1', name: 'Depósito' } : null },
+    $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
   return { users, invitations, audits, prisma, get revokedTokens() { return revokedTokens; } };
 }
 
@@ -82,4 +84,18 @@ test('deactivation revokes sessions; self-deactivation and last-admin removal ar
   await admin.updateStaffActive('staff-1', true, 'admin-1');
   f.users['staff-1'].role = Role.ADMIN;
   await assert.rejects(() => admin.updateStaffActive('staff-1', false, 'other-admin'), BadRequestException);
+});
+
+test('custom roles can be invited and assigned only when the role exists', async () => {
+  const f = fixture();
+  const admin = new AdminService(f.prisma, {} as never, {} as never, {} as never);
+  await assert.rejects(() => admin.inviteStaff('person@example.test', Role.CUSTOM, 'admin-1', 'missing'), BadRequestException);
+  const invitation = await admin.inviteStaff('person@example.test', Role.CUSTOM, 'admin-1', 'custom-1');
+  assert.equal(invitation.customRoleId, 'custom-1');
+  assert.equal(f.users['staff-1'].role, Role.CUSTOM);
+  assert.equal(f.users['staff-1'].customRoleId, 'custom-1');
+  await admin.updateStaffRole('staff-1', Role.SALES, 'admin-1');
+  assert.equal(f.users['staff-1'].customRoleId, null);
+  await admin.updateStaffRole('staff-1', Role.CUSTOM, 'admin-1', 'custom-1');
+  assert.equal(f.users['staff-1'].customRoleId, 'custom-1');
 });

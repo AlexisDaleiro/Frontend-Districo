@@ -4,9 +4,12 @@ import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { request, useApi, useSession } from "./providers";
-import { Empty, ErrorBox, Loading, Picture } from "./ui";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
+import { Empty, ErrorBox, Loading, Modal, Picture } from "./ui";
+import { AdminCategoryEditor } from "./admin-category-editor";
 import type { Editor, Field } from "./admin-form";
 import type { Entity } from "@/lib/types";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 type OpenEditor = (editor: Editor) => void;
 type CategoryNode = Entity & { children: CategoryNode[] };
@@ -27,7 +30,8 @@ function LogoUploadButton({ item, busy, onFile }: { item: Entity; busy: boolean;
 function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories"; title: string; edit: OpenEditor }) {
   const q = useApi<Entity[]>(path);
   const client = useQueryClient();
-  const { notify } = useSession();
+  const { notify, user } = useSession();
+  const canEdit = canEditAdminFeature(user, "marcas");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>();
   async function upload(item: Entity, file?: File) {
@@ -39,7 +43,7 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
     setError(undefined);
     try {
       await request(`${path}/${item.id}/logo`, "POST", form);
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, path);
       notify("Logo guardado.");
     } catch (cause) { setError(cause); }
     finally { setBusy(null); }
@@ -50,17 +54,28 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
     setError(undefined);
     try {
       await request(`${path}/${item.id}/logo`, "DELETE");
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, path);
       notify("Logo quitado.");
+    } catch (cause) { setError(cause); }
+    finally { setBusy(null); }
+  }
+  async function remove(item: Entity) {
+    if (!window.confirm(`¿Eliminar ${item.name}? Esta acción no se puede deshacer.`)) return;
+    setBusy(item.id);
+    setError(undefined);
+    try {
+      await request(`${path}/${item.id}`, "DELETE");
+      await invalidateAdminMutation(client, path);
+      notify(`${path === "brands" ? "Marca" : "Laboratorio"} eliminado.`);
     } catch (cause) { setError(cause); }
     finally { setBusy(null); }
   }
   return <section className="admin-directory">
     <div className="admin-toolbar">
       <h2>{title}</h2>
-      <button className="button small" onClick={() => edit({ title: `Crear ${title.toLowerCase()}`, path, fields: nameFields })}>
+      {canEdit && <button className="button small" onClick={() => edit({ title: `Crear ${title.toLowerCase()}`, path, fields: nameFields })}>
         <Plus size={16} /> Crear
-      </button>
+      </button>}
     </div>
     {error ? <ErrorBox error={error} /> : null}
     {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : !q.data.length ?
@@ -69,13 +84,14 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
         <div className="admin-directory-row" key={item.id}>
           {item.imageUrl ? <Picture className="admin-directory-logo" src={item.imageUrl} alt={item.name} sizes="42px" /> : <span className="admin-directory-logo admin-directory-logo-empty" aria-hidden="true" />}
           <span>{item.name}</span>
-          <div className="actions">
+          {canEdit && <div className="actions">
           <LogoUploadButton item={item} busy={busy === item.id} onFile={(file) => { void upload(item, file); }} />
           {item.imageUrl && <button className="icon-button" disabled={busy === item.id} title={`Quitar logo de ${item.name}`} aria-label={`Quitar logo de ${item.name}`} onClick={() => void removeLogo(item)}><Trash2 size={16} /></button>}
           <button className="icon-button" title={`Editar ${item.name}`} aria-label={`Editar ${item.name}`} onClick={() => edit({
             title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: nameFields, initial: { ...item },
           })}><Pencil size={16} /></button>
-          </div>
+          <button className="icon-button" disabled={busy === item.id} title={`Eliminar ${item.name}`} aria-label={`Eliminar ${item.name}`} onClick={() => void remove(item)}><Trash2 size={16} /></button>
+          </div>}
         </div>)}</div>}
   </section>;
 }
@@ -108,9 +124,15 @@ function descendants(node: CategoryNode): Set<string> {
 }
 
 export function AdminCategories({ edit }: { edit: OpenEditor }) {
-  const q = useApi<Entity[]>("categories/catalog");
+  const q = useApi<Entity[]>("categories/admin");
+  const client = useQueryClient();
+  const { notify, user } = useSession();
+  const canEdit = canEditAdminFeature(user, "categorias");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>();
+  const [editingCategory, setEditingCategory] = useState<CategoryNode | null>(null);
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const forest = categoryForest(q.data);
@@ -122,21 +144,35 @@ export function AdminCategories({ edit }: { edit: OpenEditor }) {
     return [...nameFields, {
       key: "parentId", label: "Categoría superior", type: "select", allowEmpty: true,
       options: q.data.filter((item) => !excluded.has(item.id)).map((item) => ({ value: item.id, label: item.name })),
-    }];
+    }, { key: "active", label: "Visible en la tienda", type: "checkbox" }];
   };
-  const openEditor = (node?: CategoryNode, parentId?: string) => edit({
-    title: node ? `Editar ${node.name}` : parentId ? "Crear subcategoría" : "Crear categoría",
-    path: node ? `categories/${node.id}` : "categories",
-    method: node ? "PATCH" : "POST",
-    fields: fieldsFor(node),
-    initial: node ? { ...node } : { parentId: parentId ?? "" },
-    transform: (data) => ({ ...data, parentId: data.parentId || null }),
-  });
+  const openEditor = (node?: CategoryNode, parentId?: string) => {
+    if (node) { setEditingCategory(node); return; }
+    edit({
+      title: parentId ? "Crear subcategoría" : "Crear categoría",
+      path: "categories",
+      method: "POST",
+      fields: fieldsFor(),
+      initial: { parentId: parentId ?? "", active: true },
+      transform: (data) => ({ ...data, parentId: data.parentId || null }),
+    });
+  };
   const toggle = (id: string) => setExpanded((current) => {
     const next = new Set(current);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+  async function setActive(node: CategoryNode, active: boolean) {
+    setBusyId(node.id);
+    setError(undefined);
+    try {
+      await request(`categories/${node.id}`, "PATCH", { active });
+      await invalidateAdminMutation(client, "categories");
+      notify(active ? "Categoría activada." : "Categoría desactivada.");
+    } catch (cause) { setError(cause); }
+    finally { setBusyId(null); }
+  }
+  const excludedCategoryIds = editingCategory ? descendants(editingCategory) : new Set<string>();
   const render = (nodes: CategoryNode[], depth = 0): ReactNode => <ul className="admin-category-list">
     {nodes.filter(matches).map((node) => {
       const hasChildren = node.children.length > 0;
@@ -147,9 +183,13 @@ export function AdminCategories({ edit }: { edit: OpenEditor }) {
             {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
           </button> : <span className="admin-category-spacer" />}
           <span className="admin-category-name">{node.name}</span>
+          {node.active === false && <span className="status-pill" data-status="INACTIVE">Inactiva</span>}
           {hasChildren && <span className="muted small-copy">{node.children.length}</span>}
-          <button className="icon-button" title={`Agregar subcategoría a ${node.name}`} aria-label={`Agregar subcategoría a ${node.name}`} onClick={() => openEditor(undefined, node.id)}><Plus size={16} /></button>
-          <button className="icon-button" title={`Editar ${node.name}`} aria-label={`Editar ${node.name}`} onClick={() => openEditor(node)}><Pencil size={16} /></button>
+          {canEdit && <label className="admin-category-active" title={`Visible en la tienda: ${node.name}`}>
+            <input type="checkbox" aria-label={`Visible en la tienda: ${node.name}`} checked={node.active !== false} disabled={busyId === node.id} onChange={(event) => void setActive(node, event.target.checked)} />
+          </label>}
+          {canEdit && <button className="icon-button" title={`Agregar subcategoría a ${node.name}`} aria-label={`Agregar subcategoría a ${node.name}`} onClick={() => openEditor(undefined, node.id)}><Plus size={16} /></button>}
+          {canEdit && <button className="icon-button" title={`Editar ${node.name}`} aria-label={`Editar ${node.name}`} onClick={() => openEditor(node)}><Pencil size={16} /></button>}
         </div>
         {hasChildren && open && render(node.children, depth + 1)}
       </li>;
@@ -158,9 +198,16 @@ export function AdminCategories({ edit }: { edit: OpenEditor }) {
   return <section>
     <div className="admin-toolbar">
       <h2>Árbol de categorías</h2>
-      <button className="button small" onClick={() => openEditor()}><Plus size={16} /> Nueva categoría</button>
+      {canEdit && <button className="button small" onClick={() => openEditor()}><Plus size={16} /> Nueva categoría</button>}
     </div>
     <input className="form-input admin-category-search" aria-label="Buscar categorías" placeholder="Buscar categoría" value={search} onChange={(event) => setSearch(event.target.value)} />
+    {error !== undefined && <ErrorBox error={error} />}
     {!forest.length ? <Empty title="Todavía no hay categorías" /> : term && !forest.some(matches) ? <Empty title="No hay categorías que coincidan" /> : render(forest)}
+    <Modal open={!!editingCategory} onClose={() => setEditingCategory(null)} title={editingCategory ? `Editar ${editingCategory.name}` : ""} className="admin-category-editor-modal">
+      {editingCategory && <AdminCategoryEditor key={editingCategory.id} category={editingCategory}
+        parentOptions={q.data.filter((item) => !excludedCategoryIds.has(item.id))}
+        onClose={() => setEditingCategory(null)}
+        onRenamed={(name) => setEditingCategory((current) => current ? { ...current, name } : null)} />}
+    </Modal>
   </section>;
 }

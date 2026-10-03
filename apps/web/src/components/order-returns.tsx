@@ -8,7 +8,7 @@ import { downloadPrivateFile } from "@/lib/http";
 import { orderBalance } from "@/lib/order-billing";
 import type { Order } from "@/lib/types";
 
-export function OrderReturns({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
+export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Order; onUpdated: () => Promise<void>; readOnly?: boolean }) {
   const { notify } = useSession();
   const [creditAmount, setCreditAmount] = useState("");
   const [creditReason, setCreditReason] = useState("");
@@ -89,13 +89,13 @@ export function OrderReturns({ order, onUpdated }: { order: Order; onUpdated: ()
     {!!order.creditNotes?.length && <><h4>Notas de crédito</h4><ul>{order.creditNotes.map((note) => <li key={note.id}>
       <span>{note.noteNumber ? `Nota ${note.noteNumber}` : "Nota sin número"} · {note.reason} · {new Date(note.createdAt).toLocaleString("es-UY")}{note.recordedByEmail ? ` · ${note.recordedByEmail}` : ""}</span>
       <strong>{money(Number(note.amount), order.currency)}</strong>
-      {note.originalName && !DEMO && <button className="text-link" type="button" disabled={busy} onClick={() => void download(note.id, note.originalName!)}><Download size={16} /> Descargar</button>}
+      {!readOnly && note.originalName && !DEMO && <button className="text-link" type="button" disabled={busy} onClick={() => void download(note.id, note.originalName!)}><Download size={16} /> Descargar</button>}
     </li>)}</ul></>}
     {!!order.refunds?.length && <><h4>Reintegros</h4><ul>{order.refunds.map((refund) => <li key={refund.id}>
       <span>{refund.reason}{refund.reference ? ` · Ref. ${refund.reference}` : ""} · {new Date(refund.createdAt).toLocaleString("es-UY")}{refund.recordedByEmail ? ` · ${refund.recordedByEmail}` : ""}</span>
       <strong>{money(Number(refund.amount), order.currency)}</strong>
     </li>)}</ul></>}
-    {canCredit && <form className="order-billing-form" onSubmit={(event) => void saveCredit(event)}>
+    {!readOnly && canCredit && <form className="order-billing-form" onSubmit={(event) => void saveCredit(event)}>
       <h4>Registrar nota de crédito</h4>
       <label className="field">Importe ({order.currency})<input className="form-input" type="number" min="0.01" max={balance.creditable} step="0.01" required value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} /></label>
       <label className="field">Motivo de la devolución<textarea className="form-input" minLength={3} maxLength={500} required value={creditReason} onChange={(event) => setCreditReason(event.target.value)} /></label>
@@ -103,7 +103,7 @@ export function OrderReturns({ order, onUpdated }: { order: Order; onUpdated: ()
       <label className="field">Archivo (PDF, PNG o JPG)<input ref={fileInput} className="form-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
       <button className="button small secondary" disabled={busy} type="submit"><FileUp size={16} /> Registrar crédito</button>
     </form>}
-    {balance.refundable > 0 && <form className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
+    {!readOnly && balance.refundable > 0 && <form className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
       <h4>Registrar dinero reintegrado</h4>
       <label className="field">Importe ({order.currency})<input className="form-input" type="number" min="0.01" max={balance.refundable} step="0.01" required value={refundAmount} onChange={(event) => setRefundAmount(event.target.value)} /></label>
       <label className="field">Motivo<textarea className="form-input" minLength={3} maxLength={500} required value={refundReason} onChange={(event) => setRefundReason(event.target.value)} /></label>

@@ -9,6 +9,31 @@ async function admin(page: Page) {
   await expect(page).toHaveURL(/\/tienda$/, { timeout: 10000 });
   await page.goto("/tienda/admin");
 }
+test("roles configura permisos de ver y editar por rol", async ({ page }) => {
+  await admin(page);
+  await page.goto("/tienda/admin/personal");
+  await expect(page.getByRole("heading", { name: "Permisos por rol" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Roles" }).click();
+  await expect(page).toHaveURL(/\/tienda\/admin\/roles$/);
+  await expect(page.getByRole("heading", { name: "Permisos por rol" })).toBeVisible();
+  await expect(page.locator(".staff-role-access tbody tr")).toHaveCount(13);
+  await expect(page.getByRole("checkbox", { name: "Ver Consultas" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Editar Consultas" })).toBeChecked();
+  await page.getByRole("checkbox", { name: "Editar Catálogo" }).check();
+  await expect(page.getByRole("checkbox", { name: "Ver Catálogo" })).toBeChecked();
+  await page.getByRole("button", { name: "Guardar permisos" }).click();
+  await page.reload();
+  await expect(page.getByRole("checkbox", { name: "Editar Catálogo" })).toBeChecked();
+  await page.getByRole("checkbox", { name: "Ver Pagos y facturas" }).uncheck();
+  await expect(page.getByRole("checkbox", { name: "Editar Pedidos" })).not.toBeChecked();
+  await page.getByRole("checkbox", { name: "Editar Pedidos" }).check();
+  await expect(page.getByRole("checkbox", { name: "Ver Pagos y facturas" })).toBeChecked();
+  await page.getByRole("combobox", { name: "Rol a configurar" }).selectOption("ADMIN");
+  await expect(page.getByRole("checkbox", { name: "Ver Catálogo" })).toBeDisabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".staff-role-access")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
 test("administración permite cerrar sesión con el menú abierto o contraído", async ({ page }) => {
   await admin(page);
   await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
@@ -55,6 +80,13 @@ test("personal, categorías y clientes tienen flujos administrables", async ({ p
   await expect(page.locator(".admin-customers-table tbody tr")).toHaveCount(3);
   await page.goto("/tienda/admin/marcas");
   await expect(page.getByRole("heading", { name: "Marcas y laboratorios" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear" }).first().click();
+  await page.getByRole("textbox", { name: "Nombre *", exact: true }).fill("Marca descartable");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText("Marca descartable")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Eliminar Marca descartable" }).click();
+  await expect(page.getByText("Marca descartable")).not.toBeVisible();
   await page.goto("/tienda/admin/categorias");
   await expect(page.getByRole("heading", { name: "Árbol de categorías" })).toBeVisible();
   await page.getByRole("button", { name: "Nueva categoría" }).click();
@@ -65,6 +97,11 @@ test("personal, categorías y clientes tienen flujos administrables", async ({ p
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Abrir Alimentación" }).click();
   await expect(page.getByText("Subcategoría de prueba")).toBeVisible();
+  const categoryToggle = page.getByRole("checkbox", { name: "Visible en la tienda: Subcategoría de prueba" });
+  await categoryToggle.uncheck();
+  await expect(categoryToggle).not.toBeChecked();
+  await categoryToggle.check();
+  await expect(categoryToggle).toBeChecked();
   await page.goto("/tienda/admin/personal");
   await page.getByRole("button", { name: "Invitar persona" }).click();
   await page.getByRole("textbox", { name: "Correo electrónico" }).fill("vendedor@example.test");
@@ -79,6 +116,33 @@ test("personal, categorías y clientes tienen flujos administrables", async ({ p
   await page.getByLabel("Confirmar contraseña").fill("ContraseñaSegura123!");
   await page.getByRole("button", { name: "Activar cuenta" }).click();
   await expect(page.getByText("Tu cuenta quedó activa.", { exact: false })).toBeVisible();
+});
+
+test("consultas se recorren en una tabla compacta y conservan el detalle editable", async ({ page }) => {
+  await admin(page);
+  await page.evaluate(() => {
+    const key = "districo-demo-v1";
+    const state = JSON.parse(localStorage.getItem(key) ?? "{}");
+    const now = new Date().toISOString();
+    state.contactInquiries = [{
+      id: "inquiry-test",
+      name: "Comercio de prueba",
+      businessName: "Sucursal Centro",
+      email: "consulta@example.test",
+      message: "Necesito información sobre entregas semanales.",
+      status: "NEW",
+      createdAt: now,
+      updatedAt: now,
+    }, ...(state.contactInquiries ?? [])];
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.goto("/tienda/admin/consultas");
+  const row = page.locator(".admin-inquiries-table tbody tr").filter({ hasText: "Sucursal Centro" }).first();
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: "Ver detalle" }).click();
+  await expect(page.getByText("Necesito información sobre entregas semanales.")).toBeVisible();
+  await page.getByRole("button", { name: "Gestionar" }).click();
+  await expect(page.getByRole("dialog").getByRole("combobox", { name: "Estado" })).toBeVisible();
 });
 test("administración crea producto, presentación, precio, stock y medio", async ({
   page,
@@ -119,24 +183,23 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
     .fill("24");
   await page.getByRole("dialog").getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await page.getByRole("button", { name: "Agregar imagen por URL" }).click();
-  await page
-    .getByLabel("URL de la imagen")
-    .fill(new URL("/images/placeholder.svg", page.url()).href);
-  await page.getByLabel("Texto alternativo").fill("Imagen de prueba");
-  await page.getByRole("dialog").getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.locator('#imagenes input[type="file"]').setInputFiles({
+    name: "prueba.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/T7sAAAAASUVORK5CYII=", "base64"),
+  });
+  await expect(page.getByText("Imagen subida.")).toBeVisible();
   await page.getByRole("link", { name: "Volver al catálogo" }).click();
   const row = page.getByRole("row").filter({ hasText: "AA Producto de prueba" });
   await expect(row.getByRole("cell", { name: "24 uds." })).toBeVisible();
   await expect(row.getByRole("link", { name: "Vista previa" })).toHaveCount(0);
   await expect(row.getByRole("link", { name: "Presentaciones e imágenes" })).toHaveCount(0);
   await row.getByRole("link", { name: "Editar producto" }).click();
-  await page.getByRole("button", { name: "Vista previa" }).click();
-  await expect(page.getByRole("heading", { name: "Vista previa" })).toBeVisible();
+  await page.getByRole("link", { name: "Vista previa" }).click();
+  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba\/vista-previa$/);
   await expect(page.getByText("Stock disponible", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Ocultar vista previa" }).click();
-  await expect(page.getByRole("heading", { name: "Vista previa" })).not.toBeVisible();
+  await page.getByRole("link", { name: "Volver a editar producto" }).click();
+  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba$/);
   await expect(page.getByRole("heading", { name: "Editar producto" })).toBeVisible();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.goto("/tienda/producto/aa-producto-prueba");

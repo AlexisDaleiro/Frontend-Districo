@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { effectivePermissions } from '../common/business/account-access';
+import { staffAccessMatrix } from '../common/staff-role-access';
 
 export interface TokenPayload {
   sub: string;
@@ -175,8 +176,12 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     const { passwordHash: _passwordHash, ...safeUser } = user;
+    const staffOverrides = user.role === Role.CLIENT ? [] : user.role === Role.CUSTOM && user.customRoleId
+      ? await this.prisma.customStaffRoleAccess.findMany({ where: { roleId: user.customRoleId } })
+      : await this.prisma.staffRoleAccess.findMany({ where: { role: user.role } });
     return {
       ...safeUser,
+      staffAccess: user.role === Role.CLIENT ? undefined : staffAccessMatrix(user.role, staffOverrides),
       permissions: safeUser.permissions.filter((permission) =>
         effectivePermissions(user.role, user.customerAccount?.accountStatus, [permission.permission]).length > 0,
       ),

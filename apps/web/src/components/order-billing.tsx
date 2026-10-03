@@ -8,7 +8,7 @@ import { orderBalance } from "@/lib/order-billing";
 import type { Order } from "@/lib/types";
 import { OrderReturns } from "./order-returns";
 
-export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: () => Promise<void> }) {
+export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Order; onUpdated: () => Promise<void>; readOnly?: boolean }) {
   const { notify } = useSession();
   const [mode, setMode] = useState<"partial" | "full">("full");
   const [amount, setAmount] = useState("");
@@ -143,12 +143,12 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
             <li key={payment.id} className={payment.voidedAt ? "is-voided" : ""}>
               <span>{new Date(payment.createdAt).toLocaleString("es-UY")}{payment.recordedByEmail ? ` · ${payment.recordedByEmail}` : ""}{payment.voidedAt ? ` · Anulado ${new Date(payment.voidedAt).toLocaleString("es-UY")}${payment.voidedByEmail ? ` por ${payment.voidedByEmail}` : ""}: ${payment.voidReason}` : ""}</span>
               <strong>{money(Number(payment.amount), order.currency)}</strong>
-              {!payment.voidedAt && !DEMO && <button className="text-link" type="button" disabled={!!busy} onClick={() => { setCorrection({ kind: "payment", id: payment.id, requestId: crypto.randomUUID() }); setReason(""); }}>Anular</button>}
+              {!readOnly && !payment.voidedAt && !DEMO && <button className="text-link" type="button" disabled={!!busy} onClick={() => { setCorrection({ kind: "payment", id: payment.id, requestId: crypto.randomUUID() }); setReason(""); }}>Anular</button>}
             </li>
           ))}</ul>
         </div>
       )}
-      {!DEMO && canPay && (
+      {!readOnly && !DEMO && canPay && (
         <form onSubmit={(event) => void recordPayment(event)} className="order-billing-form">
           <h4>Actualizar estado de pago</h4>
           <div className="order-billing-modes" role="group" aria-label="Tipo de pago">
@@ -175,10 +175,10 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
                 {invoice.voidedAt ? ` · Anulada ${new Date(invoice.voidedAt).toLocaleString("es-UY")}${invoice.voidedByEmail ? ` por ${invoice.voidedByEmail}` : ""}: ${invoice.voidReason}` : ""}
                 {invoice.replacesInvoiceId ? ` · Reemplazo: ${invoice.replacementReason}` : ""}
               </span>
-              {invoice.originalName && (
+              {!readOnly && invoice.originalName && (
                 <button className="text-link" type="button" disabled={!!busy} onClick={() => void download(invoice.id, invoice.originalName!)}><Download size={16} /> Descargar</button>
               )}
-              {!invoice.voidedAt && !DEMO && <div className="actions">
+              {!readOnly && !invoice.voidedAt && !DEMO && <div className="actions">
                 <button className="text-link" type="button" disabled={!!busy} onClick={() => { setReplacesInvoiceId(invoice.id); setReplacementReason(""); }}>Reemplazar</button>
                 <button className="text-link" type="button" disabled={!!busy} onClick={() => { setCorrection({ kind: "invoice", id: invoice.id, requestId: crypto.randomUUID() }); setReason(""); }}>Anular</button>
               </div>}
@@ -198,7 +198,7 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
           </div>
         </form>
       )}
-      {!DEMO && (
+      {!readOnly && !DEMO && (
         <form className="order-billing-form" onSubmit={(event) => void attachInvoice(event)}>
           <h4>{replacesInvoiceId ? "Reemplazar factura" : "Registrar factura"}</h4>
           {replacesInvoiceId && <>
@@ -218,7 +218,7 @@ export function OrderBilling({ order, onUpdated }: { order: Order; onUpdated: ()
         </form>
       )}
       {error && <p className="error" role="alert">{error}</p>}
-      <OrderReturns order={order} onUpdated={onUpdated} />
+      <OrderReturns order={order} onUpdated={onUpdated} readOnly={readOnly} />
     </section>
   );
 }

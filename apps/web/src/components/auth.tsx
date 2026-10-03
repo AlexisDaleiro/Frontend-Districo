@@ -155,6 +155,7 @@ export function Apply() {
   const { user } = useSession();
   const [done, setDone] = useState(""),
     [error, setError] = useState<unknown>();
+  const [permits, setPermits] = useState<File[]>([]);
   const form = useForm<ApplicationInput>({
     resolver: zodResolver(applicationSchema),
     defaultValues: { requestedMedicationPermission: false },
@@ -164,11 +165,13 @@ export function Apply() {
     // Igual que la API: correo en minúsculas; RUT solo con dígitos.
     const email = values.email.trim().toLowerCase();
     try {
-      await request("applications", "POST", {
-        ...values,
-        email,
-        rut: values.rut.replace(/[\s.-]/g, ""),
-      });
+      if (permits.length > 3 || permits.some((file) => file.size > 5_000_000 || !["application/pdf", "image/png", "image/jpeg"].includes(file.type)))
+        throw new Error("Adjuntá hasta 3 archivos PDF, PNG o JPG de menos de 5 MB cada uno.");
+      const data = new FormData();
+      for (const [key, value] of Object.entries({ ...values, email, rut: values.rut.replace(/[\s.-]/g, "") }))
+        data.append(key, String(value));
+      for (const file of permits) data.append("documents", file);
+      await request("applications", "POST", data);
       setDone(email);
     } catch (e) {
       setError(e);
@@ -278,6 +281,14 @@ export function Apply() {
           />
           Quiero solicitar habilitación para productos veterinarios
           restringidos. DISTRICO revisará este permiso.
+        </label>
+        <label className="field span-2">
+          Permisos o habilitaciones del negocio (opcional)
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple onChange={(event) => {
+            setPermits(Array.from(event.target.files ?? []));
+            setError(undefined);
+          }} />
+          <span className="small-copy muted">Hasta 3 archivos PDF, PNG o JPG. Máximo 5 MB por archivo.</span>
         </label>
         <div className="span-2">
           {error !== undefined && <ErrorBox error={error} />}

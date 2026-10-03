@@ -21,6 +21,7 @@ export const storeRoutes = {
   admin: `${root}/admin`,
   adminSection: (section: string) => `${root}/admin/${encodeURIComponent(section)}`,
   adminProduct: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}`,
+  adminProductPreview: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}/vista-previa`,
 } as const;
 
 export function withSearch(path: string, params: URLSearchParams) {

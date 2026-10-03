@@ -14,6 +14,7 @@ enum Role {
   SALES
   CATALOG
   FINANCE
+  CUSTOM
   CLIENT
 }
 
@@ -162,6 +163,8 @@ model User {
   email             String           @unique
   passwordHash      String
   role              Role             @default(CLIENT)
+  customRoleId      String?
+  customRole        CustomStaffRole? @relation(fields: [customRoleId], references: [id], onDelete: Restrict)
   active            Boolean          @default(true)
   emailVerified     Boolean          @default(false)
   permissions       UserPermission[]
@@ -187,6 +190,37 @@ model UserPermission {
   createdAt  DateTime   @default(now())
 
   @@unique([userId, permission])
+}
+
+model StaffRoleAccess {
+  role      Role
+  feature   String
+  canView   Boolean @default(false)
+  canEdit   Boolean @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@id([role, feature])
+}
+
+model CustomStaffRole {
+  id        String                  @id @default(cuid())
+  name      String
+  key       String                  @unique
+  accesses  CustomStaffRoleAccess[]
+  users     User[]
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+}
+
+model CustomStaffRoleAccess {
+  roleId    String
+  role      CustomStaffRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  feature   String
+  canView   Boolean         @default(false)
+  canEdit   Boolean         @default(false)
+  updatedAt DateTime        @updatedAt
+
+  @@id([roleId, feature])
 }
 
 model RefreshToken {
@@ -248,6 +282,7 @@ model Laboratory {
 model Category {
   id        String            @id @default(cuid())
   parentId  String?
+  mergedIntoId String?
   parent    Category?         @relation("CategoryChildren", fields: [parentId], references: [id])
   children  Category[]        @relation("CategoryChildren")
   name      String
@@ -257,6 +292,8 @@ model Category {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   deletedAt DateTime?
+
+  @@index([mergedIntoId])
 }
 
 model Product {

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { request, useSession } from "./providers";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { ErrorBox } from "./ui";
 export type Field = {
   key: string;
@@ -109,13 +110,13 @@ export function AdminForm({
         editor.method ?? "POST",
         editor.transform ? editor.transform(data) : data,
       );
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, editor.path);
       notify(editor.success?.(result) ?? "Cambios guardados.");
       onDone(result);
     } catch (e) {
       setError(e);
       // Ante un error (también incierto) se relee lo que quedó en la API.
-      void client.invalidateQueries();
+      void invalidateAdminMutation(client, editor.path);
     }
   }
   return (

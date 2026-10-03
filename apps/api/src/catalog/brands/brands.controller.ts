@@ -37,6 +37,14 @@ export class BrandsController {
     return this.brandsService.update(id, dto);
   }
 
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  remove(@Param('id') id: string) {
+    return this.brandsService.remove(id);
+  }
+
   @Post(':id/logo')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

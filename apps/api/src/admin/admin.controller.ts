@@ -30,6 +30,8 @@ import { UpdateStaffActiveDto } from './dto/update-staff-active.dto';
 import { RecordCreditNoteDto } from '../orders/dto/record-credit-note.dto';
 import { RecordRefundDto } from '../orders/dto/record-refund.dto';
 import { ApplicationListQueryDto } from './dto/application-list-query.dto';
+import { UpdateStaffAccessDto } from './dto/update-staff-access.dto';
+import { CreateStaffRoleDto } from './dto/create-staff-role.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -87,6 +89,20 @@ export class AdminController {
     return this.applications.findPage(query);
   }
 
+  @Get('applications/:id/documents/:documentId')
+  @Roles(Role.ADMIN, Role.SALES)
+  async downloadApplicationDocument(@Param('id') id: string, @Param('documentId') documentId: string, @Res({ passthrough: true }) response: Response) {
+    const document = await this.applications.document(id, documentId);
+    response.set({
+      'Content-Type': document.mimeType,
+      'Content-Disposition': `attachment; filename="permiso"; filename*=UTF-8''${encodeURIComponent(document.name)}`,
+      'Content-Length': String(document.bytes.length),
+      'Cache-Control': 'no-store, private',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(document.bytes);
+  }
+
   @Post('applications/:id/approve')
   approveApplication(@Param('id') id: string, @Body() dto: ReviewApplicationDto, @CurrentUser() user: JwtUser) {
     return this.applications.approve(id, user.sub, dto.medicationPermission ?? false);
@@ -99,14 +115,14 @@ export class AdminController {
 
   @Get('orders')
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
-  ordersList() {
-    return this.admin.ordersAdmin();
+  ordersList(@CurrentUser() user: JwtUser) {
+    return this.admin.ordersAdmin(user);
   }
 
   @Get('orders/page')
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
-  ordersPage(@Query() query: OrderListQueryDto) {
-    return this.admin.ordersPage(query);
+  ordersPage(@Query() query: OrderListQueryDto, @CurrentUser() user: JwtUser) {
+    return this.admin.ordersPage(query, user);
   }
 
   @Post('orders/:id/payments')
@@ -200,9 +216,29 @@ export class AdminController {
     return this.admin.staff();
   }
 
+  @Get('staff/access')
+  staffAccess() {
+    return this.admin.staffRoleAccess();
+  }
+
+  @Patch('staff/access/:role')
+  updateStaffAccess(@Param('role') role: Role, @Body() dto: UpdateStaffAccessDto, @CurrentUser() user: JwtUser) {
+    return this.admin.updateStaffRoleAccess(role, dto.entries, user.sub);
+  }
+
+  @Post('staff/roles')
+  createStaffRole(@Body() dto: CreateStaffRoleDto, @CurrentUser() user: JwtUser) {
+    return this.admin.createCustomRole(dto.name, user.sub);
+  }
+
+  @Patch('staff/roles/:id/access')
+  updateCustomRoleAccess(@Param('id') id: string, @Body() dto: UpdateStaffAccessDto, @CurrentUser() user: JwtUser) {
+    return this.admin.updateCustomRoleAccess(id, dto.entries, user.sub);
+  }
+
   @Post('staff/invitations')
   inviteStaff(@Body() dto: InviteStaffDto, @CurrentUser() user: JwtUser) {
-    return this.admin.inviteStaff(dto.email, dto.role, user.sub);
+    return this.admin.inviteStaff(dto.email, dto.role, user.sub, dto.customRoleId);
   }
 
   @Patch('staff/:id/active')
@@ -212,7 +248,7 @@ export class AdminController {
 
   @Patch('staff/:id/role')
   updateStaffRole(@Param('id') id: string, @Body() dto: UpdateStaffRoleDto, @CurrentUser() user: JwtUser) {
-    return this.admin.updateStaffRole(id, dto.role, user.sub);
+    return this.admin.updateStaffRole(id, dto.role, user.sub, dto.customRoleId);
   }
 
   @Post('orders/:id/credit-notes')

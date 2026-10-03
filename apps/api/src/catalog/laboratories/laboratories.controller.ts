@@ -37,6 +37,14 @@ export class LaboratoriesController {
     return this.laboratoriesService.update(id, dto);
   }
 
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  remove(@Param('id') id: string) {
+    return this.laboratoriesService.remove(id);
+  }
+
   @Post(':id/logo')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

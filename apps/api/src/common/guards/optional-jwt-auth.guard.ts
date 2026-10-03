@@ -1,9 +1,12 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
 export class OptionalJwtAuthGuard extends AuthGuard('jwt') {
-  handleRequest<TUser = unknown>(_err: unknown, user: TUser | false) {
+  handleRequest<TUser = unknown>(err: unknown, user: TUser | false, _info: unknown, context: ExecutionContext) {
+    if ((err || !user) && context.switchToHttp().getRequest().headers.authorization) {
+      throw new UnauthorizedException('Sesión vencida o inválida.');
+    }
     return user || null;
   }
 

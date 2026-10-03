@@ -28,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sub: user.id,
       email: user.email,
       role: user.role,
+      customRoleId: user.customRoleId,
       permissions: effectivePermissions(
         user.role,
         user.customerAccount?.accountStatus,

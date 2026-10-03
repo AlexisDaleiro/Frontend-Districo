@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -9,7 +10,6 @@ import {
   ViewTransition,
 } from "react";
 import {
-  ArrowUpRight,
   BadgePercent,
   Images,
   ClipboardList,
@@ -28,11 +28,12 @@ import {
   UserPlus,
   Users,
   ShieldCheck,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
-import { request, useApi, useSession } from "./providers";
+import { DEMO, request, useApi, useSession } from "./providers";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { CountUp } from "./count-up";
@@ -40,13 +41,16 @@ import { OrderItems } from "./orders";
 import { OrderBilling } from "./order-billing";
 import { AdminSales } from "./admin-sales";
 import { AdminBanners } from "./admin-banners";
-import { AdminStaff } from "./admin-staff";
+import { AdminRoles, AdminStaff } from "./admin-staff";
+import { AdminPromotionForm } from "./admin-promotion-form";
 import { AdminBrandsLabs, AdminCategories } from "./admin-organization";
 import { orderBalance } from "@/lib/order-billing";
 import { orderProgressChoices, orderProgressOptionLabel } from "@/lib/order-progress";
 import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
-import { canSeeAdminSection } from "@/lib/staff-access";
+import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
+import { scopedPromotion } from "@/lib/promotion-scope";
 import {
   label,
   money,
@@ -79,6 +83,7 @@ const sections: [string, string, string, LucideIcon, string?][] = [
   ["Marketing", "banners", "Banners", Images],
   ["Marketing", "recomendaciones", "Recomendaciones", Sparkles],
   ["Acceso", "personal", "Personal", ShieldCheck],
+  ["Acceso", "roles", "Roles", ListChecks],
 ];
 const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
@@ -124,7 +129,7 @@ function Dashboard() {
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   return (
     <>
-      {user?.role !== "CATALOG" && <AdminSales />}
+      {canViewAdminFeature(user, "ventas") && <AdminSales />}
       <div className="stats">
         {(
           [
@@ -149,7 +154,7 @@ function Dashboard() {
             ],
             ["newContactInquiries", "Consultas nuevas", "consultas", Inbox],
           ] as const
-        ).filter(([, , path]) => canSeeAdminSection(user?.role, path)).map(([key, title, path, Icon]) => (
+        ).filter(([, , path]) => canSeeAdminSection(user, path)).map(([key, title, path, Icon]) => (
           <Link className="card stat" href={storeRoutes.adminSection(path)} key={key}>
             <span className="stat-icon" aria-hidden="true">
               <Icon size={18} />
@@ -161,28 +166,12 @@ function Dashboard() {
           </Link>
         ))}
       </div>
-      {(user?.role === "ADMIN" || user?.role === "SALES") && <div className="panel" style={{ marginTop: 30 }}>
-        <h2>Un buen día empieza por lo importante.</h2>
-        <p className="muted" style={{ marginTop: 14 }}>
-          Revisá las solicitudes de nuevos comercios y los pedidos que necesitan
-          tu atención.
-        </p>
-        <div className="actions">
-          {canSeeAdminSection(user?.role, "solicitudes") && <Link className="button" href={storeRoutes.adminSection("solicitudes")}>
-            Revisar solicitudes <ArrowUpRight size={16} />
-          </Link>}
-          {canSeeAdminSection(user?.role, "pedidos") && <Link className="button secondary" href={storeRoutes.adminSection("pedidos")}>
-            Gestionar pedidos
-          </Link>}
-          {canSeeAdminSection(user?.role, "consultas") && <Link className="button secondary" href={storeRoutes.adminSection("consultas")}>
-            Ver consultas
-          </Link>}
-        </div>
-      </div>}
     </>
   );
 }
 function ContactInquiries({ edit }: { edit: OpenEditor }) {
+  const { user } = useSession();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -234,43 +223,25 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
       {!q.data.items.length ? (
         <Empty title="No hay consultas con estos filtros" />
       ) : (
-        <div className="admin-cards contact-admin-list">
-          {q.data.items.map((inquiry) => (
-            <article className="card" key={inquiry.id}>
-              <div className="row between">
-                <div>
-                  <h3>{inquiry.businessName || inquiry.name}</h3>
-                  {inquiry.businessName && <p>{inquiry.name}</p>}
-                </div>
-                <span className="status-pill" data-status={inquiry.status}>{label(inquiry.status)}</span>
-              </div>
-              <p>
-                <a className="text-link" href={`mailto:${inquiry.email}`}>
-                  {inquiry.email}
-                </a>
-                {inquiry.phone ? ` · ${inquiry.phone}` : ""}
-              </p>
-              {inquiry.locality && <p>{inquiry.locality}</p>}
-              <p className="contact-admin-message">{inquiry.message}</p>
-              <p className="muted small-copy">
-                {new Intl.DateTimeFormat("es-UY", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(inquiry.createdAt))}
-                {inquiry.handledBy?.email
-                  ? ` · Gestionada por ${inquiry.handledBy.email}`
-                  : ""}
-              </p>
-              {inquiry.internalNote && (
-                <p className="contact-admin-note">
-                  <strong>Nota interna:</strong> {inquiry.internalNote}
-                </p>
-              )}
-              <div className="actions">
-                <button
-                  className="button small"
-                  onClick={() =>
-                    edit({
+        <div className="table-wrap">
+          <table className="admin-inquiries-table">
+            <thead><tr><th>FECHA</th><th>COMERCIO / CONTACTO</th><th>ESTADO</th><th>RESPONSABLE</th><th>ACCIÓN</th></tr></thead>
+            <tbody>{q.data.items.map((inquiry) => (
+              <Fragment key={inquiry.id}>
+                <tr>
+                  <td>{new Intl.DateTimeFormat("es-UY", { dateStyle: "short", timeStyle: "short" }).format(new Date(inquiry.createdAt))}</td>
+                  <td><strong>{inquiry.businessName || inquiry.name}</strong><br /><span className="muted small-copy">{inquiry.name} · {inquiry.email}</span></td>
+                  <td><span className="status-pill" data-status={inquiry.status}>{label(inquiry.status)}</span></td>
+                  <td>{inquiry.handledBy?.email ?? "Sin asignar"}</td>
+                  <td><button className="button small secondary" type="button" aria-expanded={expandedId === inquiry.id} aria-controls={`consulta-${inquiry.id}`} onClick={() => setExpandedId(expandedId === inquiry.id ? null : inquiry.id)}>{expandedId === inquiry.id ? "Ocultar" : "Ver detalle"}</button></td>
+                </tr>
+                {expandedId === inquiry.id && <tr id={`consulta-${inquiry.id}`} className="admin-inquiry-detail"><td colSpan={5}>
+                  <p>{inquiry.message}</p>
+                  <p className="muted small-copy">{[inquiry.phone, inquiry.locality].filter(Boolean).join(" · ")}</p>
+                  {inquiry.internalNote && <p><strong>Nota interna:</strong> {inquiry.internalNote}</p>}
+                  <div className="actions">
+                    <a className="text-link" href={`mailto:${inquiry.email}`}>{inquiry.email}</a>
+                    {canEditAdminFeature(user, "consultas") && <button className="button small" type="button" onClick={() => edit({
                       title: `Gestionar consulta de ${inquiry.name}`,
                       path: `admin/contact-inquiries/${inquiry.id}`,
                       method: "PATCH",
@@ -280,25 +251,15 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
                           { value: "IN_PROGRESS", label: "En seguimiento" },
                           { value: "RESOLVED", label: "Resuelta" },
                         ]),
-                        {
-                          key: "internalNote",
-                          label: "Nota interna",
-                          type: "textarea",
-                          required: false,
-                        },
+                        { key: "internalNote", label: "Nota interna", type: "textarea", required: false, allowEmpty: true },
                       ],
-                      initial: {
-                        status: inquiry.status,
-                        internalNote: inquiry.internalNote ?? "",
-                      },
-                    })
-                  }
-                >
-                  Gestionar
-                </button>
-              </div>
-            </article>
-          ))}
+                      initial: { status: inquiry.status, internalNote: inquiry.internalNote ?? "" },
+                    })}>Gestionar</button>}
+                  </div>
+                </td></tr>}
+              </Fragment>
+            ))}</tbody>
+          </table>
         </div>
       )}
       <AdminPagination meta={q.data.meta} onPage={setPage} />
@@ -362,23 +323,10 @@ function Applications({ edit }: { edit: OpenEditor }) {
                   ? "Solicitado"
                   : "No solicitado"}
               </p>
-              {a.documents?.map((d, i) => (
-                <p key={i}>
-                  {/^https?:\/\//.test(d.fileUrl) ? (
-                    <a
-                      className="text-link"
-                      href={d.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {d.originalName} ↗
-                    </a>
-                  ) : (
-                    d.originalName
-                  )}
-                </p>
+              {a.documents?.map((d) => (
+                <p key={d.id}>{DEMO ? d.originalName : <a className="text-link" href={`/api/backend/admin/applications/${a.id}/documents/${d.id}`} download>{d.originalName} ↗</a>}</p>
               ))}
-              {a.status === "PENDING" && user?.role === "ADMIN" && (
+              {a.status === "PENDING" && canEditAdminFeature(user, "solicitudes") && (
                 <div className="actions">
                   <button
                     className="button small"
@@ -460,7 +408,7 @@ function Customers({ edit }: { edit: OpenEditor }) {
             <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
             <td>{label(c.creditStatus)}</td>
             <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
-            <td>{user?.role === "ADMIN" && (
+            <td>{canEditAdminFeature(user, "clientes") && (
               <button
                 className="button secondary small"
                 onClick={() =>
@@ -600,6 +548,7 @@ function OrderProgressControl({ order, onUpdated }: { order: Order; onUpdated: (
 }
 function AdminOrders() {
   const { user } = useSession();
+  const canViewBilling = canViewAdminFeature(user, "facturacion");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -661,7 +610,7 @@ function AdminOrders() {
                 <th>CLIENTE</th>
                 <th>ESTADO</th>
                 <th>TOTAL</th>
-                <th>ABONADO</th>
+                {canViewBilling && <th>ABONADO</th>}
                 <th>ACCIONES</th>
               </tr>
             </thead>
@@ -683,7 +632,7 @@ function AdminOrders() {
                     <span className="status-pill" data-status={o.status}>{label(o.status)}</span>
                   </td>
                   <td>{money(o.total, o.currency)}</td>
-                  <td>{money(orderBalance(o).paid, o.currency)}</td>
+                  {canViewBilling && <td>{money(orderBalance(o).paid, o.currency)}</td>}
                   <td>
                     <button
                       className="button small secondary"
@@ -752,14 +701,15 @@ function AdminOrders() {
                 </div>
               )}
             </dl>
-            {(user?.role === "ADMIN" || user?.role === "SALES") && <OrderProgressControl
+            {canEditAdminFeature(user, "pedidos") && <OrderProgressControl
               key={`${detail.id}-${detail.status}`}
               order={detail}
               onUpdated={async () => { await Promise.all([q.refetch(), detailQuery.refetch()]); }}
             />}
-            {(user?.role === "ADMIN" || user?.role === "FINANCE") && <OrderBilling
+            {canViewBilling && <OrderBilling
               key={detail.id}
               order={detail}
+              readOnly={!canEditAdminFeature(user, "facturacion")}
               onUpdated={async () => {
                 await Promise.all([q.refetch(), detailQuery.refetch()]);
               }}
@@ -779,6 +729,8 @@ function AdminOrders() {
   );
 }
 function ProductManagement({ edit }: { edit: OpenEditor }) {
+  const { user } = useSession();
+  const canEdit = canEditAdminFeature(user, "catalogo");
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [activity, setActivity] = useState("");
@@ -795,10 +747,10 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
     <>
       <div className="admin-toolbar">
         <h2>Catálogo y existencias</h2>
-        <button className="button small" onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data))}>
+        {canEdit && <button className="button small" onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data))}>
           <Plus size={16} />
           Crear producto
-        </button>
+        </button>}
       </div>
       <form
         className="inline-search"
@@ -861,8 +813,8 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                 <td>{p.variants.length}</td>
                 <td><strong>{availableStock}</strong> uds.</td>
                 <td>
-                  <Link className="button small secondary" href={storeRoutes.adminProduct(p.slug)}>
-                    <Pencil size={15} /> Editar producto
+                  <Link className="button small secondary" href={canEdit ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
+                    {canEdit ? <Pencil size={15} /> : null}{canEdit ? "Editar producto" : "Ver producto"}
                   </Link>
                 </td>
               </tr>
@@ -897,6 +849,8 @@ export function VariantManagement({
   product: Product;
   edit: OpenEditor;
 }) {
+  const { user } = useSession();
+  const canEdit = canEditAdminFeature(user, "catalogo");
   const [stockId, setStockId] = useState("");
   const stock = useApi<{
     physicalStock: number;
@@ -927,9 +881,9 @@ export function VariantManagement({
     <>
       <h3 style={{ marginTop: 20 }}>{product.name}</h3>
       <div className="actions">
-        <button className="button small" onClick={() => variantEditor()}>
+        {canEdit && <button className="button small" onClick={() => variantEditor()}>
           Agregar presentación
-        </button>
+        </button>}
       </div>
       <div className="stack" style={{ marginTop: 20 }}>
         {product.variants.map((v) => (
@@ -940,13 +894,13 @@ export function VariantManagement({
               {v.price ? money(v.price.amount, v.price.currency) : "Sin precio"}
             </p>
             <div className="actions">
-              <button
+              {canEdit && <button
                 className="button small secondary"
                 onClick={() => variantEditor(v)}
               >
                 Editar presentación
-              </button>
-              <button
+              </button>}
+              {canEdit && <button
                 className="button small secondary"
                 onClick={() =>
                   edit({
@@ -967,7 +921,7 @@ export function VariantManagement({
                 }
               >
                 Precio
-              </button>
+              </button>}
               <button
                 className="button small secondary"
                 onClick={() => setStockId(v.id)}
@@ -992,7 +946,7 @@ export function VariantManagement({
                 {stock.data.availableStock}
               </p>
               <div className="actions">
-                <button
+                {canEdit && <button
                   className="button small"
                   onClick={() =>
                     edit({
@@ -1013,7 +967,7 @@ export function VariantManagement({
                   }
                 >
                   Actualizar
-                </button>
+                </button>}
                 <button
                   className="button secondary small"
                   onClick={() => setStockId("")}
@@ -1038,9 +992,11 @@ function Marketing({
   const path = recommendations ? "admin/recommendations" : "admin/promotions";
   const mutationPath = recommendations ? "recommendations" : "promotions";
   const client = useQueryClient();
-  const { notify } = useSession();
+  const { notify, user } = useSession();
+  const canEdit = canEditAdminFeature(user, recommendations ? "recomendaciones" : "promociones");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<unknown>();
+  const [promotionRule, setPromotionRule] = useState<Rule | null | undefined>(undefined);
   const [productSearch, setProductSearch] = useState("");
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   useEffect(() => {
@@ -1048,7 +1004,7 @@ function Marketing({
     return () => clearTimeout(timer);
   }, [productSearch]);
   const q = useApi<Rule[]>(path);
-  const products = useApi<ProductList>(`products/admin/list?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`);
+  const products = useApi<ProductList>(`products?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`);
   const brands = useApi<Entity[]>("brands"),
     categories = useApi<Entity[]>("categories/catalog"),
     labs = useApi<Entity[]>("laboratories");
@@ -1088,12 +1044,16 @@ function Marketing({
     setActionError(undefined);
     try {
       await request(target, method, body);
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, target);
       notify(method === "DELETE" ? "Regla eliminada." : "Regla actualizada.");
     } catch (cause) { setActionError(cause); }
     finally { setBusyId(null); }
   }
-  function create(rule?: Rule) {
+  function create(rule?: Rule, advanced = false) {
+    if (!recommendations && !advanced && (!rule || scopedPromotion(rule))) {
+      setPromotionRule(rule ?? null);
+      return;
+    }
     const condition = rule?.conditions?.[0];
     const reward = rule?.rewards?.[0];
     const recommended = rule?.products?.[0];
@@ -1148,7 +1108,7 @@ function Marketing({
       });
     else
       edit({
-        title: rule ? "Editar promoción" : "Crear promoción",
+        title: rule ? "Editar promoción" : "Crear regla cruzada",
         path: rule ? `promotions/${rule.id}` : path,
         method: rule ? "PATCH" : "POST",
         fields: [
@@ -1189,7 +1149,7 @@ function Marketing({
           startsAt: day(rule.startsAt), endsAt: day(rule.endsAt),
           priority: rule.priority ?? 0, combinable: rule.combinable ?? false,
         } : {
-          type: "PERCENTAGE",
+          type: "CROSS_DISCOUNT",
           rewardType: "PERCENTAGE",
           metric: "MIN_QUANTITY",
           minQuantity: 1,
@@ -1257,15 +1217,16 @@ function Marketing({
             ? "Recomendaciones de carrito"
             : "Promociones comerciales"}
         </h2>
-        <button
+        {canEdit && <button
           className="button small"
-          disabled={!products.data}
+          disabled={recommendations && !products.data}
           onClick={() => create()}
         >
           Crear {recommendations ? "recomendación" : "promoción"}
-        </button>
+        </button>}
+        {!recommendations && canEdit && <button className="button small secondary" disabled={!products.data} onClick={() => create(undefined, true)}>Crear regla cruzada</button>}
       </div>
-      <input className="form-input admin-category-search" type="search" aria-label="Buscar producto para reglas" placeholder="Buscar producto para reglas" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
+      <input className="form-input admin-category-search" type="search" aria-label={recommendations ? "Buscar producto para recomendaciones" : "Buscar producto para reglas cruzadas"} placeholder={recommendations ? "Buscar producto para recomendaciones" : "Buscar producto para reglas cruzadas"} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
       {actionError && <ErrorBox error={actionError} />}
       {products.error && (
         <ErrorBox
@@ -1299,13 +1260,20 @@ function Marketing({
               <p className="small-copy">
                 {rule.active === false ? "Inactiva" : "Activa"}
               </p>
-              <div className="actions">
-                <button className="button small secondary" disabled={!!busyId || !products.data} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
+              {!recommendations && scopedPromotion(rule) && <p className="small-copy">
+                Aplicada a {rule.rewards.length} {rule.rewards[0].targetType === "PRODUCT"
+                  ? rule.rewards.length === 1 ? "producto" : "productos"
+                  : rule.rewards[0].targetType === "BRAND"
+                    ? rule.rewards.length === 1 ? "marca" : "marcas"
+                    : rule.rewards.length === 1 ? "categoría" : "categorías"}
+              </p>}
+              {canEdit && <div className="actions">
+                <button className="button small secondary" disabled={!!busyId || ((recommendations || !scopedPromotion(rule)) && !products.data)} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
                 <button className="button small secondary" disabled={!!busyId} onClick={() => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}>
                   {rule.active === false ? "Activar" : "Desactivar"}
                 </button>
                 <button className="icon-button" title={`Eliminar ${rule.name}`} aria-label={`Eliminar ${rule.name}`} disabled={!!busyId} onClick={() => void action(rule, `${mutationPath}/${rule.id}`, "DELETE")}><Trash2 size={16} /></button>
-              </div>
+              </div>}
             </div>
           ))}
         </div>
@@ -1322,7 +1290,7 @@ function Marketing({
         <section style={{ marginTop: 35 }}>
           <div className="admin-toolbar">
             <h2>Próximo vencimiento</h2>
-            <button
+            {canEdit && <button
               className="button secondary small"
               disabled={!products.data}
               onClick={() =>
@@ -1363,7 +1331,7 @@ function Marketing({
               }
             >
               Crear por vencimiento
-            </button>
+            </button>}
           </div>
           {expiration.isPending ? (
             <Loading />
@@ -1391,7 +1359,7 @@ function Marketing({
                       : `Precio promocional: ${p.promotionalPrice}`}
                   </p>
                   <p className="small-copy">{p.active === false ? "Inactiva" : "Activa"}</p>
-                  <div className="actions">
+                  {canEdit && <div className="actions">
                     <button className="button small secondary" disabled={!!busyId || !products.data} onClick={() => edit({
                       title: "Editar promoción por vencimiento", path: `promotions/expiration/${p.id}`, method: "PATCH",
                       fields: [
@@ -1424,20 +1392,23 @@ function Marketing({
                       quantityLimit: p.quantityLimit, active: p.active === false,
                     })}>{p.active === false ? "Activar" : "Desactivar"}</button>
                     <button className="icon-button" title="Eliminar promoción por vencimiento" aria-label="Eliminar promoción por vencimiento" disabled={!!busyId} onClick={() => void action(p, `promotions/expiration/${p.id}`, "DELETE")}><Trash2 size={16} /></button>
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
           )}
         </section>
       )}
+      <Modal open={promotionRule !== undefined} onClose={() => setPromotionRule(undefined)} title={promotionRule ? "Editar promoción" : "Crear promoción"} className="promotion-editor-modal">
+        {promotionRule !== undefined && <AdminPromotionForm key={promotionRule?.id ?? "new"} rule={promotionRule ?? undefined} onDone={() => setPromotionRule(undefined)} />}
+      </Modal>
     </>
   );
 }
-export function AdminNav({ section, email, role }: { section: string; email?: string; role?: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CLIENT" }) {
+export function AdminNav({ section, email }: { section: string; email?: string }) {
   // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
-  const counts = useApi<Record<string, number>>("admin/dashboard");
-  const { logout } = useSession();
+  const { logout, user } = useSession();
+  const counts = useApi<Record<string, number>>("admin/dashboard", canSeeAdminSection(user, ""));
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -1511,11 +1482,11 @@ export function AdminNav({ section, email, role }: { section: string; email?: st
       </div>
       <nav className="admin-nav" aria-label="Administración" id="admin-navigation" ref={nav}>
         <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
-        {groups.filter((group) => sections.some(([g, path]) => g === group && canSeeAdminSection(role, path))).map((group) => (
+        {groups.filter((group) => sections.some(([g, path]) => g === group && canSeeAdminSection(user, path))).map((group) => (
           <div className="admin-nav-group" key={group}>
             <p>{group}</p>
             {sections
-              .filter(([g, path]) => g === group && canSeeAdminSection(role, path))
+              .filter(([g, path]) => g === group && canSeeAdminSection(user, path))
               .map(([, path, title, Icon, countKey]) => {
                 const count = countKey ? (counts.data?.[countKey] ?? 0) : 0;
                 return (
@@ -1596,19 +1567,27 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
     <Marketing edit={edit} recommendations />
   ) : section === "personal" ? (
     <AdminStaff />
+  ) : section === "roles" ? (
+    <AdminRoles />
   ) : (
     <Empty title="Sección no disponible" />
   );
 }
 export function Admin({ section = "" }: { section?: string }) {
   const { user } = useSession();
+  const router = useRouter();
   const [editor, setEditor] = useState<Editor | null>(null);
   const current = sections.find(([, path]) => path === section);
+  useEffect(() => {
+    if (section || !user || canSeeAdminSection(user, "")) return;
+    const first = sections.find(([, path]) => path && canSeeAdminSection(user, path));
+    if (first) router.replace(storeRoutes.adminSection(first[1]));
+  }, [section, user, router]);
   return (
     <div className="container admin-page section">
       <AccessGate admin>
         <div className="admin-shell">
-          <AdminNav section={section} email={user?.email} role={user?.role} />
+          <AdminNav section={section} email={user?.email} />
           <div className="admin-main">
             {/* Cada sección entra con su propia transición (motion.css); la
                 barra lateral queda fija. */}
@@ -1627,7 +1606,7 @@ export function Admin({ section = "" }: { section?: string }) {
                       : "Tu operación, en un solo lugar."
                   }
                 />
-                {canSeeAdminSection(user?.role, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
+                {canSeeAdminSection(user, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
               </div>
             </ViewTransition>
           </div>

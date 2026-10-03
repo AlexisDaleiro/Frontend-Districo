@@ -3,6 +3,7 @@ export type Permission =
 export type Entity = {
   id: string;
   name: string;
+  active?: boolean;
   slug?: string;
   imageUrl?: string | null;
   parentId?: string | null;
@@ -35,7 +36,10 @@ export type Customer = {
 export type User = {
   id: string;
   email: string;
-  role: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CLIENT";
+  role: "ADMIN" | "SALES" | "CATALOG" | "FINANCE" | "CUSTOM" | "CLIENT";
+  customRoleId?: string | null;
+  customRole?: { id: string; name: string } | null;
+  staffAccess?: Record<string, { canView: boolean; canEdit: boolean }>;
   permissions: Permission[];
   customerAccount?: Customer;
   active?: boolean;
@@ -170,7 +174,7 @@ export type Application = {
   requestedMedicationPermission: boolean;
   status: string;
   rejectionReason?: string;
-  documents?: { type: string; fileUrl: string; originalName: string }[];
+  documents?: { id: string; type: string; originalName: string }[];
 };
 export type ContactInquiryStatus = "NEW" | "IN_PROGRESS" | "RESOLVED";
 export type CreateContactInquiryInput = {

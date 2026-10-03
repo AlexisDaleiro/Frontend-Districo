@@ -4,7 +4,7 @@ export type CategoryIdentity = {
   parentId: string | null;
 };
 
-const normalizedName = (name: string) =>
+export const normalizedCategoryName = (name: string) =>
   name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
 
 export function groupEquivalentCategories<T extends CategoryIdentity>(categories: T[]) {
@@ -18,7 +18,7 @@ export function groupEquivalentCategories<T extends CategoryIdentity>(categories
     const parent = category.parentId ? byId.get(category.parentId) : undefined;
     const path = JSON.stringify([
       parent ? pathFor(parent, visiting) : null,
-      normalizedName(category.name) || category.id,
+      normalizedCategoryName(category.name) || category.id,
     ]);
     visiting.delete(category.id);
     paths.set(category.id, path);

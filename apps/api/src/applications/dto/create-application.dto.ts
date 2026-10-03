@@ -1,20 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsBoolean, IsEmail, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
-
-export class CustomerDocumentInputDto {
-  @IsString()
-  type: string;
-
-  @IsString()
-  fileUrl: string;
-
-  @IsString()
-  originalName: string;
-
-  @IsString()
-  mimeType: string;
-}
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateApplicationDto {
   @ApiProperty()
@@ -58,11 +44,7 @@ export class CreateApplicationDto {
   businessType?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   requestedMedicationPermission?: boolean;
-
-  @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => CustomerDocumentInputDto)
-  documents?: CustomerDocumentInputDto[];
 }

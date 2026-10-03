@@ -8,6 +8,10 @@ import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerListQueryDto, OrderListQueryDto } from './dto/admin-list-query.dto';
+import { defaultStaffAccess, staffAccessMatrix, staffFeatures } from '../common/staff-role-access';
+import { StaffAccessEntryDto } from './dto/update-staff-access.dto';
+import { JwtUser } from '../common/types/jwt-user.type';
+import { slugify } from '../common/utils/slugify';
 
 @Injectable()
 export class AdminService {
@@ -17,6 +21,90 @@ export class AdminService {
     private readonly orders: OrdersService,
     private readonly applications: ApplicationsService,
   ) {}
+
+  async staffRoleAccess() {
+    const roles = [Role.ADMIN, Role.SALES, Role.CATALOG, Role.FINANCE];
+    const [overrides, customRoles] = await Promise.all([
+      this.prisma.staffRoleAccess.findMany({ where: { role: { in: roles } } }),
+      this.prisma.customStaffRole.findMany({ include: { accesses: true }, orderBy: { name: 'asc' } }),
+    ]);
+    return [
+      ...roles.map((role) => ({ role, id: null, name: null, access: staffAccessMatrix(role, overrides.filter((entry) => entry.role === role)) })),
+      ...customRoles.map((item) => ({ role: Role.CUSTOM, id: item.id, name: item.name, access: staffAccessMatrix(Role.CUSTOM, item.accesses) })),
+    ];
+  }
+
+  async updateStaffRoleAccess(role: Role, entries: StaffAccessEntryDto[], actorId: string) {
+    if (role === Role.ADMIN || role === Role.CLIENT || role === Role.CUSTOM || !Object.values(Role).includes(role)) throw new BadRequestException('Este rol no se puede configurar.');
+    this.validateStaffAccess(entries);
+    await this.prisma.$transaction(async (tx) => {
+      for (const entry of entries) {
+        await tx.staffRoleAccess.upsert({
+          where: { role_feature: { role, feature: entry.feature } },
+          create: { role, feature: entry.feature, canView: entry.canView, canEdit: entry.canEdit },
+          update: { canView: entry.canView, canEdit: entry.canEdit },
+        });
+      }
+      await tx.auditLog.create({ data: {
+        action: 'STAFF_ROLE_ACCESS_UPDATED', entityType: 'StaffRoleAccess', entityId: role,
+        userId: actorId, metadata: { role, entries: entries.map((entry) => ({ feature: entry.feature, canView: entry.canView, canEdit: entry.canEdit })) },
+      } });
+    });
+    return this.staffRoleAccess();
+  }
+
+  async createCustomRole(nameInput: string, actorId: string) {
+    const name = nameInput.trim();
+    const key = slugify(name);
+    if (!key) throw new BadRequestException('Ingresá un nombre válido para el rol.');
+    if (await this.prisma.customStaffRole.findUnique({ where: { key } })) throw new ConflictException('Ya existe un rol con ese nombre.');
+    return this.prisma.$transaction(async (tx) => {
+      const role = await tx.customStaffRole.create({ data: { name, key }, select: { id: true, name: true } });
+      await tx.auditLog.create({ data: {
+        action: 'STAFF_ROLE_CREATED', entityType: 'CustomStaffRole', entityId: role.id,
+        userId: actorId, metadata: { name },
+      } });
+      return role;
+    });
+  }
+
+  async updateCustomRoleAccess(id: string, entries: StaffAccessEntryDto[], actorId: string) {
+    if (!await this.prisma.customStaffRole.findUnique({ where: { id } })) throw new NotFoundException('Rol no encontrado.');
+    this.validateStaffAccess(entries);
+    await this.prisma.$transaction(async (tx) => {
+      for (const entry of entries) {
+        await tx.customStaffRoleAccess.upsert({
+          where: { roleId_feature: { roleId: id, feature: entry.feature } },
+          create: { roleId: id, feature: entry.feature, canView: entry.canView, canEdit: entry.canEdit },
+          update: { canView: entry.canView, canEdit: entry.canEdit },
+        });
+      }
+      await tx.auditLog.create({ data: {
+        action: 'STAFF_ROLE_ACCESS_UPDATED', entityType: 'CustomStaffRole', entityId: id,
+        userId: actorId, metadata: { entries: entries.map((entry) => ({ feature: entry.feature, canView: entry.canView, canEdit: entry.canEdit })) },
+      } });
+    });
+    return this.staffRoleAccess();
+  }
+
+  private validateStaffAccess(entries: StaffAccessEntryDto[]) {
+    if (new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
+        entries.some((entry) => entry.canEdit && !entry.canView)) {
+      throw new BadRequestException('Configuración de permisos inválida.');
+    }
+    if (entries.find((entry) => entry.feature === 'pedidos')?.canEdit &&
+        !entries.find((entry) => entry.feature === 'facturacion')?.canView) {
+      throw new BadRequestException('Para gestionar pedidos se debe poder ver facturación.');
+    }
+    if (entries.find((entry) => entry.feature === 'facturacion')?.canView &&
+        !entries.find((entry) => entry.feature === 'pedidos')?.canView) {
+      throw new BadRequestException('Para ver facturación se debe poder ver pedidos.');
+    }
+    if (entries.find((entry) => entry.feature === 'ventas')?.canView &&
+        !entries.find((entry) => entry.feature === 'resumen')?.canView) {
+      throw new BadRequestException('Para ver ventas se debe poder ver el resumen.');
+    }
+  }
 
   async dashboard() {
     const [products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries] = await Promise.all([
@@ -113,8 +201,9 @@ export class AdminService {
     return { items, meta: { total, page: query.page, limit: query.limit } };
   }
 
-  ordersPage(query: OrderListQueryDto) {
-    return this.orders.findAdminOrdersPage(query);
+  async ordersPage(query: OrderListQueryDto, user: JwtUser | Role) {
+    const [result, canViewBilling] = await Promise.all([this.orders.findAdminOrdersPage(query), this.canViewBilling(user)]);
+    return canViewBilling ? result : { ...result, items: result.items.map((order) => this.withoutBilling(order)) };
   }
 
   async updateCustomer(id: string, dto: UpdateCustomerDto, userId?: string) {
@@ -152,8 +241,28 @@ export class AdminService {
     return updated;
   }
 
-  ordersAdmin() {
-    return this.orders.findAdminOrders();
+  async ordersAdmin(user: JwtUser | Role) {
+    const [orders, canViewBilling] = await Promise.all([this.orders.findAdminOrders(), this.canViewBilling(user)]);
+    return canViewBilling ? orders : orders.map((order) => this.withoutBilling(order));
+  }
+
+  private async canViewBilling(input: JwtUser | Role) {
+    const user = typeof input === 'string' ? { role: input, customRoleId: null } : input;
+    if (user.role === Role.ADMIN) return true;
+    if (user.role === Role.CUSTOM) {
+      if (!user.customRoleId) return false;
+      const access = await this.prisma.customStaffRoleAccess.findUnique({ where: { roleId_feature: { roleId: user.customRoleId, feature: 'facturacion' } } });
+      return access?.canView ?? false;
+    }
+    const override = await this.prisma.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature: 'facturacion' } } });
+    return (override ?? defaultStaffAccess(user.role, 'facturacion')).canView;
+  }
+
+  private withoutBilling<T extends { payments: unknown; invoices: unknown; creditNotes: unknown; refunds: unknown; paidTotal: unknown; creditedTotal: unknown; refundedTotal: unknown }>(order: T) {
+    const { payments: _payments, invoices: _invoices, creditNotes: _creditNotes,
+      refunds: _refunds, paidTotal: _paidTotal, creditedTotal: _creditedTotal,
+      refundedTotal: _refundedTotal, ...visible } = order;
+    return visible;
   }
 
   applicationsAdmin() {
@@ -168,7 +277,7 @@ export class AdminService {
     return this.prisma.user.findMany({
       where: { customerAccountId: null },
       select: {
-        id: true, email: true, role: true, active: true, emailVerified: true,
+        id: true, email: true, role: true, customRoleId: true, customRole: { select: { id: true, name: true } }, active: true, emailVerified: true,
         staffInvitations: {
           select: { expiresAt: true, acceptedAt: true, revokedAt: true },
           orderBy: { createdAt: 'desc' }, take: 1,
@@ -183,7 +292,8 @@ export class AdminService {
     })));
   }
 
-  async inviteStaff(emailInput: string, role: Role, actorId: string) {
+  async inviteStaff(emailInput: string, role: Role, actorId: string, customRoleId?: string) {
+    await this.assertCustomRole(role, customRoleId);
     const email = emailInput.trim().toLowerCase();
     const token = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(token).digest('hex');
@@ -195,16 +305,16 @@ export class AdminService {
         throw new ConflictException('Ese correo ya pertenece a una cuenta activa o de cliente.');
       }
       const user = existing ?? await tx.user.create({ data: {
-        email, role, active: false, emailVerified: false, passwordHash: placeholderHash,
+        email, role, customRoleId: role === Role.CUSTOM ? customRoleId : null, active: false, emailVerified: false, passwordHash: placeholderHash,
       } });
       await tx.staffInvitation.updateMany({ where: { userId: user.id, acceptedAt: null, revokedAt: null }, data: { revokedAt: new Date() } });
-      await tx.user.update({ where: { id: user.id }, data: { role } });
+      await tx.user.update({ where: { id: user.id }, data: { role, customRoleId: role === Role.CUSTOM ? customRoleId : null } });
       await tx.staffInvitation.create({ data: { userId: user.id, tokenHash, invitedById: actorId, expiresAt } });
       await tx.auditLog.create({ data: {
         action: existing ? 'STAFF_REINVITED' : 'STAFF_INVITED', entityType: 'User', entityId: user.id,
-        userId: actorId, metadata: { email, role, expiresAt: expiresAt.toISOString() },
+        userId: actorId, metadata: { email, role, customRoleId, expiresAt: expiresAt.toISOString() },
       } });
-      return { id: user.id, email, role };
+      return { id: user.id, email, role, customRoleId: role === Role.CUSTOM ? customRoleId : null };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return { ...staff, token, expiresAt };
   }
@@ -235,7 +345,8 @@ export class AdminService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
-  async updateStaffRole(id: string, role: Role, actorId: string) {
+  async updateStaffRole(id: string, role: Role, actorId: string, customRoleId?: string) {
+    await this.assertCustomRole(role, customRoleId);
     if (id === actorId && role !== Role.ADMIN) throw new ForbiddenException('No podés quitarte tu propio acceso de administrador.');
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, role: true, active: true, customerAccountId: true } });
@@ -244,10 +355,20 @@ export class AdminService {
         const admins = await tx.user.count({ where: { role: Role.ADMIN, active: true, customerAccountId: null } });
         if (admins <= 1) throw new BadRequestException('Debe quedar al menos un administrador activo.');
       }
-      const updated = await tx.user.update({ where: { id }, data: { role }, select: { id: true, email: true, role: true, active: true } });
+      const updated = await tx.user.update({ where: { id }, data: { role, customRoleId: role === Role.CUSTOM ? customRoleId : null }, select: { id: true, email: true, role: true, customRoleId: true, active: true } });
       if (role !== Role.ADMIN) await tx.userPermission.deleteMany({ where: { userId: id } });
-      await tx.auditLog.create({ data: { action: 'STAFF_ROLE_CHANGED', entityType: 'User', entityId: id, userId: actorId, metadata: { from: user.role, to: role } } });
+      await tx.auditLog.create({ data: { action: 'STAFF_ROLE_CHANGED', entityType: 'User', entityId: id, userId: actorId, metadata: { from: user.role, to: role, customRoleId } } });
       return updated;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
+  private async assertCustomRole(role: Role, customRoleId?: string) {
+    if (role !== Role.CUSTOM) {
+      if (customRoleId) throw new BadRequestException('Este rol no acepta un identificador personalizado.');
+      return;
+    }
+    if (!customRoleId || !await this.prisma.customStaffRole.findUnique({ where: { id: customRoleId } })) {
+      throw new BadRequestException('Seleccioná un rol existente.');
+    }
   }
 }

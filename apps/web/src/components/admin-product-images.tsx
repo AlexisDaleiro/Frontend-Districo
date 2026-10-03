@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Pencil, Star, Trash2 } from "lucide-react";
 import { request, useSession } from "./providers";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { ErrorBox, Picture } from "./ui";
 import type { Editor } from "./admin-form";
 import type { Product } from "@/lib/types";
@@ -29,7 +30,7 @@ export function AdminProductImages({ product, edit }: { product: Product; edit: 
     setError(undefined);
     try {
       await request(`products/${product.id}/media/upload`, "POST", form);
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, "products");
       notify(selected.length === 1 ? "Imagen subida." : `${selected.length} imágenes subidas.`);
     } catch (cause) { setError(cause); }
     finally { setBusy(false); }
@@ -40,7 +41,7 @@ export function AdminProductImages({ product, edit }: { product: Product; edit: 
     setError(undefined);
     try {
       await request(`products/media/${id}`, "PATCH", { isPrimary: true });
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, "products");
       notify("Imagen principal actualizada.");
     } catch (cause) { setError(cause); }
     finally { setBusy(false); }
@@ -52,7 +53,7 @@ export function AdminProductImages({ product, edit }: { product: Product; edit: 
     setError(undefined);
     try {
       await request(`products/media/${id}`, "DELETE");
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, "products");
       notify("Imagen quitada.");
     } catch (cause) { setError(cause); }
     finally { setBusy(false); }

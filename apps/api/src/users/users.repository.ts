@@ -8,14 +8,14 @@ export class UsersRepository {
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
-      include: { permissions: true, customerAccount: { include: { addresses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } } },
+      include: { permissions: true, customRole: { select: { id: true, name: true } }, customerAccount: { include: { addresses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } } },
     });
   }
 
   findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { permissions: true, customerAccount: { include: { addresses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } } },
+      include: { permissions: true, customRole: { select: { id: true, name: true } }, customerAccount: { include: { addresses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } } },
     });
   }
 }

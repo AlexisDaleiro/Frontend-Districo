@@ -48,6 +48,23 @@ function testCrossPromotion() {
   assert.equal(discounts[0].amount, 60);
 }
 
+function testMultiplePromotionTargets() {
+  const lines: PromotionLine[] = ['p1', 'p2', 'p3'].map((productId) => ({
+    productId, variantId: `${productId}-v`, brandId: productId === 'p3' ? 'other' : 'brand-1',
+    categoryIds: [productId === 'p3' ? 'category-2' : 'category-1'], quantity: 1, unitPrice: 100,
+  }));
+  const base = { id: 'scoped', name: 'Selección', type: PromotionType.PERCENTAGE, priority: 0, combinable: false, conditions: [] };
+  const rewards = (targetType: PromotionTargetType, targetIds: string[]) => targetIds.map((targetId) => ({
+    targetType, targetId, rewardType: PromotionRewardType.PERCENTAGE, percentage: 10,
+  }));
+  const productDiscounts = calculatePromotionDiscounts(lines, [{ ...base, rewards: rewards(PromotionTargetType.PRODUCT, ['p1', 'p2']) }]);
+  assert.deepEqual(productDiscounts.map((discount) => discount.lineIndex), [0, 1]);
+  const brandDiscounts = calculatePromotionDiscounts(lines, [{ ...base, rewards: rewards(PromotionTargetType.BRAND, ['brand-1']) }]);
+  assert.deepEqual(brandDiscounts.map((discount) => discount.lineIndex), [0, 1]);
+  const categoryDiscounts = calculatePromotionDiscounts(lines, [{ ...base, rewards: rewards(PromotionTargetType.CATEGORY, ['category-2']) }]);
+  assert.deepEqual(categoryDiscounts.map((discount) => discount.lineIndex), [2]);
+}
+
 function testCreditReview() {
   assert.equal(requiresManualReview(CreditStatus.GOOD_STANDING), false);
   assert.equal(requiresManualReview(CreditStatus.PAYMENT_PENDING), true);
@@ -59,6 +76,7 @@ testPriceVisibility();
 testQuantityRules();
 testReservationMath();
 testCrossPromotion();
+testMultiplePromotionTargets();
 testCreditReview();
 
 console.log('Business rule tests passed');

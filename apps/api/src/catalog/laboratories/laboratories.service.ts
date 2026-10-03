@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { slugify } from '../../common/utils/slugify';
 import { CreateLaboratoryDto } from './dto/create-laboratory.dto';
 import { UpdateLaboratoryDto } from './dto/update-laboratory.dto';
@@ -25,5 +25,13 @@ export class LaboratoriesService {
       ...dto,
       slug: dto.slug ?? (dto.name ? slugify(dto.name) : undefined),
     });
+  }
+
+  async remove(id: string) {
+    const laboratory = await this.laboratoriesRepository.findById(id);
+    if (!laboratory || laboratory.deletedAt) throw new NotFoundException('Laboratorio no encontrado.');
+    if (await this.laboratoriesRepository.hasActiveRules(id)) throw new ConflictException('El laboratorio está en una promoción o recomendación activa. Quitalo de esas reglas antes de eliminarlo.');
+    if (await this.laboratoriesRepository.softDeleteIfUnused(id)) return { deleted: true };
+    throw new ConflictException('El laboratorio tiene productos asociados. Reasignalos antes de eliminarlo.');
   }
 }

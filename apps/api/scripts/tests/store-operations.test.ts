@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BadRequestException, ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccountStatus, OrderStatus, Permission, Prisma, Role } from '@prisma/client';
 import { effectivePermissions } from '../../src/common/business/account-access';
@@ -12,13 +12,14 @@ import { PrismaService } from '../../src/prisma/prisma.service';
 import { AdminController } from '../../src/admin/admin.controller';
 import { ProductsController } from '../../src/catalog/products/products.controller';
 import { ROLES_KEY } from '../../src/common/decorators/roles.decorator';
-import { ApplicationsService } from '../../src/applications/applications.service';
+import { ApplicationsService, permitFileType } from '../../src/applications/applications.service';
 import { AdminService } from '../../src/admin/admin.service';
 
 test('staff roles can access only their operational routes', () => {
   const roles = (target: object, method: string) => Reflect.getMetadata(ROLES_KEY, Reflect.get(target, method)) as Role[] | undefined;
   assert.deepEqual(roles(AdminController.prototype, 'ordersPage'), [Role.ADMIN, Role.SALES, Role.FINANCE]);
   assert.deepEqual(roles(AdminController.prototype, 'recordRefund'), [Role.ADMIN, Role.FINANCE]);
+  assert.deepEqual(roles(AdminController.prototype, 'downloadApplicationDocument'), [Role.ADMIN, Role.SALES]);
   assert.deepEqual(roles(AdminController.prototype, 'updateOrderStatus'), [Role.ADMIN, Role.SALES]);
   assert.deepEqual(roles(ProductsController.prototype, 'create'), [Role.ADMIN, Role.CATALOG]);
   assert.deepEqual(roles(AdminController.prototype, 'updateStaffRole'), undefined);
@@ -31,12 +32,53 @@ test('application search returns bounded pages without password hashes', async (
     findMany: async (query: Record<string, unknown>) => { listQuery = query; return [{ id: 'app-1' }]; },
     count: async () => 37,
   } } as unknown as PrismaService;
-  const service = new ApplicationsService(prisma, {} as never, {} as never);
+  const service = new ApplicationsService(prisma, {} as never, {} as never, {} as never);
   const result = await service.findPage({ page: 3, limit: 10, search: 'Pet', status: undefined });
   assert.deepEqual(result.meta, { total: 37, page: 3, limit: 10 });
   assert.equal(listQuery?.skip, 20);
   assert.equal(listQuery?.take, 10);
   assert.equal((listQuery?.select as Record<string, unknown>).passwordHash, undefined);
+});
+
+test('business permits are validated by content and saved privately with the application', async () => {
+  assert.equal(permitFileType(Buffer.from('%PDF-1.7')).mimeType, 'application/pdf');
+  assert.equal(permitFileType(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])).mimeType, 'image/png');
+  assert.equal(permitFileType(Buffer.from([255, 216, 255])).mimeType, 'image/jpeg');
+  assert.throws(() => permitFileType(Buffer.from('<script>')), BadRequestException);
+  const uploads: string[] = [];
+  const removed: string[] = [];
+  let created: Record<string, unknown> | undefined;
+  let failCreation = false;
+  const storage = {
+    upload: async (path: string) => { uploads.push(path); },
+    remove: async (path: string) => { removed.push(path); uploads.splice(uploads.indexOf(path), 1); },
+    download: async () => Buffer.from('%PDF-1.7'),
+  } as unknown as InvoiceStorageService;
+  const prisma = {
+    user: { findUnique: async () => null },
+    customerApplication: { create: async ({ data }: { data: Record<string, unknown> }) => {
+      if (failCreation) throw new Error('database unavailable');
+      created = data;
+      return { id: data.id, email: data.email, status: 'PENDING' };
+    } },
+    customerDocument: { findFirst: async ({ where }: { where: { applicationId: string } }) => ({
+      fileUrl: uploads[0], mimeType: 'application/pdf', originalName: 'permiso.pdf', applicationId: where.applicationId,
+    }) },
+  } as unknown as PrismaService;
+  const service = new ApplicationsService(prisma, {} as never, { notify: async () => undefined } as never, storage);
+  const dto = { businessName: 'Prueba', legalName: 'Prueba SA', rut: '123456789012', email: 'test@example.com', password: 'password123' };
+  await assert.rejects(() => service.create(dto, [{ buffer: Buffer.from('<script>'), size: 8, mimetype: 'application/pdf', originalname: 'falso.pdf' }]), BadRequestException);
+  assert.equal(uploads.length, 0);
+  const application = await service.create(dto, [{ buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' }]);
+  assert.equal(uploads.length, 1);
+  assert.match(uploads[0], new RegExp(`^applications/${application.id}/`));
+  assert.equal((created?.documents as { create: { fileUrl: string }[] }).create[0].fileUrl, uploads[0]);
+  assert.equal((await service.document(application.id, 'document-1')).name, 'permiso.pdf');
+  await assert.rejects(() => service.document('other-application', 'document-1'), NotFoundException);
+  failCreation = true;
+  await assert.rejects(() => service.create(dto, [{ buffer: Buffer.from('%PDF-1.7'), size: 8, mimetype: 'application/pdf', originalname: 'permiso.pdf' }]), /database unavailable/);
+  assert.equal(uploads.length, 1);
+  assert.equal(removed.length, 1);
 });
 
 test('only existing internal accounts can be assigned a staff role', async () => {

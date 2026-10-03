@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { request, useApi, useSession } from "./providers";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { ErrorBox, Loading, Modal, Picture } from "./ui";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 export type StoreBanner = {
   id: string;
@@ -33,7 +35,8 @@ const localDate = (value?: string | null) => value
 export function AdminBanners() {
   const q = useApi<StoreBanner[]>("admin/banners");
   const client = useQueryClient();
-  const { notify } = useSession();
+  const { notify, user } = useSession();
+  const canEdit = canEditAdminFeature(user, "banners");
   const [editing, setEditing] = useState<StoreBanner | "new" | null>(null);
   const [deleting, setDeleting] = useState<StoreBanner | null>(null);
   const [draft, setDraft] = useState<Draft>(blank);
@@ -81,7 +84,7 @@ export function AdminBanners() {
     setBusy(true);
     try {
       await request(editing === "new" ? "admin/banners" : `admin/banners/${editing.id}`, editing === "new" ? "POST" : "PATCH", form);
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, "admin/banners");
       setEditing(null);
       notify("Banner guardado.");
     } catch (cause) {
@@ -97,7 +100,7 @@ export function AdminBanners() {
     setError(undefined);
     try {
       await request(`admin/banners/${deleting.id}`, "DELETE");
-      await client.invalidateQueries();
+      await invalidateAdminMutation(client, "admin/banners");
       setDeleting(null);
       notify("Banner eliminado.");
     } catch (cause) {
@@ -112,7 +115,7 @@ export function AdminBanners() {
   return <>
     <div className="admin-toolbar">
       <h2>Banners de la tienda</h2>
-      <button className="button small" onClick={() => open()}><Plus size={16} /> Nuevo banner</button>
+      {canEdit && <button className="button small" onClick={() => open()}><Plus size={16} /> Nuevo banner</button>}
     </div>
     {q.data.length ? <div className="table-wrap"><table><thead><tr><th>IMAGEN</th><th>CONTENIDO</th><th>DESTINO</th><th>ESTADO</th><th>ACCIONES</th></tr></thead><tbody>
       {q.data.map((banner) => <tr key={banner.id}>
@@ -120,10 +123,10 @@ export function AdminBanners() {
         <td><strong>{banner.title}</strong><p className="small-copy muted">Orden {banner.position}{banner.mobileImageUrl ? " · Móvil" : ""}</p></td>
         <td><span className="small-copy">{banner.href}</span></td>
         <td><span className="status-pill">{banner.active ? "Activo" : "Inactivo"}</span></td>
-        <td><div className="actions">
+        <td>{canEdit && <div className="actions">
           <button className="icon-button" title="Editar banner" aria-label={`Editar ${banner.title}`} onClick={() => open(banner)}><Pencil size={17} /></button>
           <button className="icon-button" title="Eliminar banner" aria-label={`Eliminar ${banner.title}`} onClick={() => { setError(undefined); setDeleting(banner); }}><Trash2 size={17} /></button>
-        </div></td>
+        </div>}</td>
       </tr>)}
     </tbody></table></div> : <p className="muted">Todavía no hay banners cargados. La tienda muestra los actuales hasta que publiques el primero.</p>}
     <Modal open={!!editing} onClose={() => setEditing(null)} title={editing === "new" ? "Nuevo banner" : "Editar banner"}>
