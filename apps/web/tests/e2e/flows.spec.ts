@@ -264,11 +264,15 @@ test("cliente edita su cuenta y administra varias direcciones", async ({ page })
   test.setTimeout(90000);
   await login(page);
   await page.goto("/tienda/cuenta");
-  await expect(page.locator(".account-readonly-fields strong").first()).toHaveText("cliente@gmail.com");
+  // El correo es un dato fijo de la ficha, no un campo editable.
+  await expect(
+    page.locator(".account-readonly-fields div").filter({ hasText: "Correo electrónico" }).locator("strong"),
+  ).toHaveText("cliente@gmail.com");
   await expect(page.getByText("Sin registrar", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Correo electrónico")).toHaveCount(0);
   await expect(page.getByLabel("Teléfono")).toHaveCount(0);
 
+  await page.getByRole("button", { name: "Editar datos" }).click();
   await page.getByLabel("Nombre comercial").fill("Pet Shop Centro");
   await page.getByRole("button", { name: "Guardar datos" }).click();
   await expect(page.getByRole("heading", { name: "Pet Shop Centro" })).toBeVisible();

@@ -4,7 +4,6 @@ import "../globals.css";
 import "../motion.css";
 import "../site.css";
 import "../site-motion.css";
-import { Providers } from "@/components/providers";
 import { MotionSystem } from "@/components/motion-system";
 import { StoreFrame } from "@/components/store-frame";
 
@@ -27,9 +26,9 @@ export const metadata: Metadata = {
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Providers>
+    <>
       <MotionSystem />
       <StoreFrame>{children}</StoreFrame>
-    </Providers>
+    </>
   );
 }

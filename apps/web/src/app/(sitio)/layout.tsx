@@ -4,7 +4,6 @@ import "../motion.css";
 import "../site.css";
 import "../site-reference.css";
 import "../site-motion.css";
-import { Providers } from "@/components/providers";
 import { MotionSystem } from "@/components/motion-system";
 import { PublicHeader, PublicFooter } from "@/components/site-shell";
 
@@ -18,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <Providers><MotionSystem /><PublicHeader /><main id="contenido" className="site-page">{children}</main><PublicFooter /></Providers>;
+  return <><MotionSystem /><PublicHeader /><main id="contenido" className="site-page">{children}</main><PublicFooter /></>;
 }

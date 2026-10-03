@@ -2,6 +2,11 @@
 
 Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
 
+## Prueba de cuenta alineada al rediseño (3/10/2026)
+
+- «cliente edita su cuenta y administra varias direcciones» (`tests/e2e/flows.spec.ts`) fallaba desde el rediseño de la cuenta (`02b68c34`): el correo ya no es el primer dato fijo y la edición se abre con «Editar datos». La prueba busca el correo por su rótulo y abre la edición antes de cambiar el nombre comercial. Sin cambios en la interfaz.
+- Verificado: lint y `flows.spec.ts` completo 20/20.
+
 ## Buscador de la tienda con previsualización (3/10/2026)
 
 - `HeaderSearch` en `src/components/shell.tsx`: desde 2 letras y tras 250 ms consulta `products/cards?search=…&limit=5` (misma ruta que el catálogo) y muestra hasta 5 productos con foto y marca, más «Ver todos los resultados (N)». Enter sigue enviando al catálogo filtrado.

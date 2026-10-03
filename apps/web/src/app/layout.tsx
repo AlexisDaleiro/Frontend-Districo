@@ -1,4 +1,5 @@
 import localFont from "next/font/local";
+import { Providers } from "@/components/providers";
 
 const manrope = localFont({
   src: "../../../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2",
@@ -15,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es-UY">
-      <body className={manrope.className}>{children}</body>
+      <body className={manrope.className}><Providers>{children}</Providers></body>
     </html>
   );
 }
