@@ -36,6 +36,8 @@
 .site-auth-main { padding-top: 76px; min-height: 70vh; }
 .site-session-check, .session-gate { min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 22px; background: var(--ink); color: white; font-weight: 750; }
 .site-session-check { position: fixed; inset: 0; z-index: 90; }
+.session-gate > [role="status"] { animation: session-gate-wait 240ms ease 1200ms both; }
+@keyframes session-gate-wait { from { opacity: 0; } }
 
 .site-hero { min-height: 100svh; position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; background: var(--ink); color: white; }
 .site-hero::before { content: ""; position: absolute; width: 80vw; aspect-ratio: 1; border: 1px solid rgb(255 255 255 / .08); border-radius: 50%; right: -37vw; top: -26vw; pointer-events: none; }
