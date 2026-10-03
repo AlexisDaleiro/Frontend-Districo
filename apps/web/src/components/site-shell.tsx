@@ -9,10 +9,9 @@ import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
 
 const sections = [
+  ["lineas", "Líneas"],
   ["nosotros", "Nosotros"],
   ["marcas", "Marcas"],
-  ["como-trabajamos", "Cómo trabajamos"],
-  ["novedades", "Novedades"],
   ["contacto", "Contacto"],
 ] as const;
 
@@ -155,28 +154,31 @@ export function PublicFooter() {
             sizes="201px"
           />
           <p>
-            Marcas que acompañan.
-            <br />
-            Un socio que responde.
+            Distribución de alimento para mascotas, arenas sanitarias,
+            cuidado animal y snacks en todo Uruguay.
           </p>
-          <span className="footer-pill">Distribución mayorista · Uruguay</span>
+          <span className="footer-pill">ISO 9001 · Desde 1995</span>
         </div>
         <div>
           <h3>Explorá</h3>
           <Link href="/#nosotros">Nosotros</Link>
           <Link href="/productos">Productos</Link>
           <Link href="/#marcas">Marcas</Link>
-          <Link href="/#novedades">Novedades</Link>
+          <Link href="/#lineas">Líneas</Link>
         </div>
         <div>
-          <h3>Estamos cerca</h3>
+          <h3>Casa Matriz</h3>
+          <p>César Mayo Gutiérrez 3024 bis, esq. Camino Uruguay · Montevideo</p>
           <a href="tel:08001004">
             <Phone size={14} /> 0800 1004
           </a>
-          <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
-          <p>Montevideo · Maldonado</p>
+          <a href="tel:+59823201381">(+598) 2320 1381</a>
         </div>
         <div>
+          <h3>Sucursal Maldonado</h3>
+          <p>A. Antonio Lusich esq. Vicenza · Maldonado</p>
+          <a href="tel:+59842252155">(+598) 4225 2155</a>
+          <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
           <h3>Seguinos</h3>
           <div className="site-socials">
             <a

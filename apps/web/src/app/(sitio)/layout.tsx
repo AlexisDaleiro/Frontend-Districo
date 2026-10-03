@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import "../motion.css";
 import "../site.css";
+import "../site-reference.css";
 import "../site-motion.css";
 import { Providers } from "@/components/providers";
 import { MotionSystem } from "@/components/motion-system";
