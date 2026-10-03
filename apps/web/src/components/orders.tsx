@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, ArrowUpRight, CheckCircle, RotateCcw } from "lucide-react";
+import { Trash2, ArrowUpRight, CheckCircle, RotateCcw, Package, ShoppingBag, ShieldCheck } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { AccessGate } from "./auth";
 import { Quantity } from "./catalog";
@@ -68,29 +68,31 @@ function CartLine({
   }, [busy, isPending, isError, error, quantity, item.quantity, mutate]);
   return (
     <div className="cart-item">
-      <div>
+      <span className="cart-item-icon" aria-hidden="true"><Package size={25} /></span>
+      <div className="cart-item-content">
         <Link href={storeRoutes.product(item.product.slug)}>
           <h3>{item.product.name}</h3>
         </Link>
-        <p>
-          {item.variant.name} · {item.variant.sku}
-        </p>
-        <p>
-          Mínimo {item.variant.minimumOrderQuantity} · Múltiplos de{" "}
-          {item.variant.saleMultiple}
-        </p>
-        <div className="row">
-          <Quantity
-            value={quantity}
-            onChange={(value) => {
-              mutation.reset();
-              onPendingChange(item.id, true);
-              setQuantity(value);
-            }}
-            variant={item.variant}
-          />
+        <p className="cart-item-variant">{item.variant.name}</p>
+        <div className="cart-item-meta">
+          <span>SKU {item.variant.sku}</span>
+          <span>Mínimo {item.variant.minimumOrderQuantity} · Múltiplos de {item.variant.saleMultiple}</span>
+        </div>
+        <div className="cart-item-controls">
+          <div>
+            <span className="cart-item-control-label">Cantidad</span>
+            <Quantity
+              value={quantity}
+              onChange={(value) => {
+                mutation.reset();
+                onPendingChange(item.id, true);
+                setQuantity(value);
+              }}
+              variant={item.variant}
+            />
+          </div>
           <button
-            className="icon-button"
+            className="cart-remove-button"
             aria-label={`Quitar ${item.product.name}`}
             disabled={busy || mutation.isPending}
             onClick={() => {
@@ -98,7 +100,7 @@ function CartLine({
               mutation.mutate(true);
             }}
           >
-            <Trash2 size={17} />
+            <Trash2 size={16} /> <span>Quitar</span>
           </button>
         </div>
         {error && <p className="field-error">{error}</p>}
@@ -109,13 +111,17 @@ function CartLine({
         )}
         {mutation.error && <ErrorBox error={mutation.error} />}
       </div>
-      <strong
-        aria-busy={isPending}
-        data-saved={mutation.isSuccess && quantity === item.quantity}
-        style={{ opacity: isPending ? 0.55 : 1, transition: "opacity .2s" }}
-      >
-        {item.unitPrice ? money(item.subtotal, item.currency) : "Sin precio"}
-      </strong>
+      <div className="cart-item-price">
+        <span>Subtotal</span>
+        <strong
+          aria-busy={isPending}
+          data-saved={mutation.isSuccess && quantity === item.quantity}
+          style={{ opacity: isPending ? 0.55 : 1, transition: "opacity .2s" }}
+        >
+          {item.unitPrice ? money(item.subtotal, item.currency) : "Sin precio"}
+        </strong>
+        {!!item.unitPrice && <small>{money(item.unitPrice, item.currency)} por unidad</small>}
+      </div>
     </div>
   );
 }
@@ -223,6 +229,13 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   return (
     <div className="cart-layout">
       <div className="cart-items">
+        <div className="cart-list-heading">
+          <div>
+            <p className="eyebrow">Productos seleccionados</p>
+            <h2>{checkoutMode ? "Revisá tu selección" : "Revisá cantidades y presentaciones"}</h2>
+          </div>
+          <span>{q.data.items.length} {q.data.items.length === 1 ? "producto" : "productos"}</span>
+        </div>
         {q.data.items.map((item) => (
           <CartLine
             key={item.id}
@@ -236,8 +249,8 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
             {checkoutMode ? "Volver al carrito" : "Seguir explorando"}
           </ActionLink>
         </div>
-        {recommendations.data?.length ? (
-          <div className="panel" style={{ marginTop: 30 }}>
+        {!checkoutMode && recommendations.data?.length ? (
+          <div className="panel cart-recommendations">
             <h3>También puede interesarte</h3>
             {recommendations.data.map((r, i) => (
               <p key={`${r.product.id}-${i}`} style={{ marginTop: 10 }}>
@@ -254,22 +267,19 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
         ) : null}
       </div>
       <aside className="summary">
-        <h2>Resumen del pedido</h2>
-        <div className="row between">
-          <span>
-            {q.data.items.length}{" "}
-            {q.data.items.length === 1 ? "producto" : "productos"}
-          </span>
-          <span>{money(q.data.total, q.data.items[0]?.currency)}</span>
+        <div className="cart-summary-heading">
+          <span className="cart-summary-icon"><ShoppingBag size={21} aria-hidden="true" /></span>
+          <div>
+            <p className="eyebrow">Paso {checkoutMode ? "2" : "1"} de 2</p>
+            <h2>Resumen del pedido</h2>
+          </div>
         </div>
+        <div className="cart-summary-count"><span>Productos</span><strong>{q.data.items.length}</strong></div>
         <SubtotalRow value={q.data.total}>
-          <strong>Subtotal</strong>
+          <strong>Subtotal estimado</strong>
           <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
         </SubtotalRow>
-        <p className="info-note">
-          Los descuentos aplicables se confirman al enviar el pedido. No se
-          realizará ningún cobro en línea. La entrega se coordina con DISTRICO.
-        </p>
+        <div className="cart-summary-note"><ShieldCheck size={18} aria-hidden="true" /><p>Sin cobro en línea. Los descuentos se confirman al enviar el pedido y la entrega se coordina con DISTRICO.</p></div>
         {checkoutMode && user?.role === "CLIENT" && (
           <div className="checkout-address">
             <h3>Dirección de entrega</h3>
@@ -370,6 +380,10 @@ export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
         </Empty>
       ) : (
         <>
+          <div className="cart-preview-intro">
+            <span>{q.data.items.length} {q.data.items.length === 1 ? "producto" : "productos"} en tu pedido</span>
+            <p>Ajustá las cantidades antes de continuar.</p>
+          </div>
           <div className="cart-preview-items">
             {q.data.items.map((item) => (
               <CartLine
@@ -382,7 +396,7 @@ export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
           </div>
           <div className="cart-preview-foot">
             <SubtotalRow value={q.data.total}>
-              <strong>Subtotal</strong>
+              <strong>Subtotal estimado</strong>
               <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
             </SubtotalRow>
             {blocked && (
@@ -411,8 +425,14 @@ export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
 }
 export function CartPage() {
   return (
-    <div className="container section">
-      <PageHeading eyebrow="Un paso más cerca" title="Tu carrito" />
+    <div className="container section cart-page order-flow-page">
+      <div className="cart-page-heading">
+        <PageHeading eyebrow="Tu pedido mayorista" title="Tu carrito">Revisá los productos antes de continuar con el pedido.</PageHeading>
+        <div className="cart-page-steps" aria-label="Progreso del pedido">
+          <span aria-current="step"><strong>01</strong> Carrito</span>
+          <span><strong>02</strong> Confirmación</span>
+        </div>
+      </div>
       <AccessGate>
         <CartContent checkoutMode={false} />
       </AccessGate>
@@ -421,7 +441,7 @@ export function CartPage() {
 }
 export function CheckoutPage() {
   return (
-    <div className="container section">
+    <div className="container section order-flow-page checkout-page">
       <PageHeading eyebrow="Revisá tu pedido" title="Confirmar pedido" />
       <AccessGate>
         <CartContent checkoutMode />

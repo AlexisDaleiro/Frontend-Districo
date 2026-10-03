@@ -374,46 +374,6 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
     "Contactar durante la tarde",
   );
 });
-test("empresa presenta historia, operación y acceso comercial", async ({
-  page,
-}) => {
-  await login(page);
-  await page.goto("/tienda/empresa");
-  await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Una empresa uruguaya con más de 30 años de ruta",
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "Nadie es más importante que todos nosotros juntos.",
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Infraestructura para llegar más lejos." }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "Ninguna empresa puede ser mejor que las personas que trabajan en ella.",
-    }),
-  ).toBeVisible();
-  for (const benefit of ["Gimnasio", "Comedor", "Lavandería"])
-    await expect(
-      page.getByRole("heading", { name: benefit, exact: true }),
-    ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Enviar mi CV" })).toHaveAttribute(
-    "href",
-    /mailto:contacto@districo\.com\.uy/,
-  );
-  await expect(page.getByText(/productos disponibles en nuestro catálogo activo/)).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Solicitar cuenta mayorista" }),
-  ).toHaveAttribute("href", "/tienda/solicitar-cuenta");
-  await expect(
-    page.getByRole("link", { name: "Contactar al equipo" }),
-  ).toHaveAttribute("href", "/tienda/contacto");
-});
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {
@@ -455,7 +415,6 @@ for (const width of [360, 390, 768, 1024, 1440])
       "/tienda/productos",
       "/tienda/ingresar",
       "/tienda/contacto",
-      "/tienda/empresa",
       "/tienda/solicitar-cuenta",
     ]) {
       await page.goto(path);
@@ -490,4 +449,44 @@ test("panel móvil atrapa foco, cierra con Escape y respeta movimiento reducido"
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(trigger).toBeFocused();
+});
+
+test("el buscador previsualiza productos mientras se escribe", async ({ page }) => {
+  await login(page);
+  const input = page.getByLabel("Buscar productos");
+  const panel = page.getByRole("region", { name: "Sugerencias de productos" });
+  await input.fill("a");
+  await expect(panel).toBeHidden();
+  await input.fill("alizin");
+  const result = panel.getByRole("link", { name: /Alizin/i }).first();
+  await expect(result).toBeVisible();
+  // Sin permiso para medicamentos se explica el motivo en lugar del precio.
+  await expect(result.locator(".search-panel-price")).toHaveText("Requiere habilitación profesional");
+  await input.fill("biofresh");
+  const priced = panel.getByRole("link", { name: /Biofresh/i }).first().locator(".search-panel-price");
+  await expect(priced).not.toHaveClass(/is-hidden/);
+  await expect(priced).toHaveText(/[0-9]/);
+  await input.fill("alizin");
+  await expect(result).toBeVisible();
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    const box = await panel.boundingBox();
+    expect(box && box.x >= 0 && box.x + box.width <= width).toBe(true);
+  }
+  await input.press("ArrowDown");
+  await expect(result).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(input).toBeFocused();
+  await input.fill("zzzzqqq");
+  await expect(panel).toContainText("Sin resultados");
+  await input.fill("alizin");
+  await result.click();
+  await expect(page).toHaveURL(/\/tienda\/producto\/alizin/);
+  // Terminada la búsqueda, el buscador queda vacío.
+  await expect(input).toHaveValue("");
+  await input.fill("bio");
+  await input.press("Enter");
+  await expect(page).toHaveURL(new RegExp("/tienda/productos[?]search=bio$"));
+  await expect(input).toHaveValue("");
 });

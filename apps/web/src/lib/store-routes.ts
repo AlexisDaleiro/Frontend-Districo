@@ -8,7 +8,6 @@ export const storeRoutes = {
   category: (id: string) => `${categories}/${encodeURIComponent(id)}`,
   product: (slug: string) => `${root}/producto/${encodeURIComponent(slug)}`,
   brands: `${root}/marcas`,
-  company: `${root}/empresa`,
   contact: `${root}/contacto`,
   cart: `${root}/carrito`,
   checkout: `${root}/checkout`,

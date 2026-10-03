@@ -2,6 +2,21 @@
 
 Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
 
+## Buscador de la tienda con previsualización (3/10/2026)
+
+- `HeaderSearch` en `src/components/shell.tsx`: desde 2 letras y tras 250 ms consulta `products/cards?search=…&limit=5` (misma ruta que el catálogo) y muestra hasta 5 productos con foto y marca, más «Ver todos los resultados (N)». Enter sigue enviando al catálogo filtrado.
+- Estados visibles: «Buscando…», «Sin resultados…» y error («No se pudo buscar»), sin datos ficticios. Flechas recorren las sugerencias, Escape cierra y devuelve el foco, sale al perder el foco. Estilos `.search-panel*` en `globals.css`, animación desactivada con movimiento reducido.
+- Precio en cada sugerencia: primera presentación activa con `money`, igual que la tarjeta del catálogo; sin precio muestra `hiddenPriceText` (ingresar, no habilitado, habilitación profesional). Sin cálculos propios.
+- Terminada la búsqueda el buscador queda vacío: elegir una sugerencia o «Ver todos» limpia el texto (Enter ya recarga el catálogo y lo vacía).
+- Verificado: typecheck, lint, e2e nuevo «el buscador previsualiza productos mientras se escribe» (demo, incluye ajuste a 390 y 1280 px) y «adaptable a 390px».
+
+## Tienda sin «Nuestra empresa» (3/10/2026)
+
+- Se quitó «Nuestra empresa» del menú de la tienda: repetía lo que ya cuenta `/nosotros` del sitio público.
+- `src/app/tienda/empresa/page.tsx` ahora redirige a `/nosotros`. Se borraron `storeRoutes.company` y `src/components/company-catalog-metric.tsx`, que solo usaba esa página.
+- Tests: se quitó «empresa presenta historia…» de `flows`, la ruta del recorrido adaptable y el ítem del menú en `motion`. La prueba de View Transition ahora navega a «Contacto»; se quitaron sus chequeos de parallax y reveal propios de la página de empresa.
+- Verificado: typecheck, lint de los archivos tocados, e2e focalizados 4/4. Pendiente: limpiar los estilos `.company-*` de `globals.css` (hay cambios ajenos sin commitear en ese archivo).
+
 ## Mejora: varios productos por línea en la landing, de a uno con fundido (03/10)
 
 - Nuevo `site-line-showcase.tsx` (opción A, elegida tras probar un giradiscos): cada `.reference-line-visual` muestra un producto por vez sobre el anillo. El que sale baja y se desvanece (420 ms); el que entra sube con leve escala (850 ms, 200 ms de retardo). Cambia cada 3,8 s; cada línea con 650 ms de desfase.

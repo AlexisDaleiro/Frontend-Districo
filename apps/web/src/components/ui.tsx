@@ -134,6 +134,7 @@ export function Modal({
   onClose,
   title,
   sheet = false,
+  className,
   children,
 }: {
   open: boolean;
@@ -141,6 +142,7 @@ export function Modal({
   title: string;
   /** Panel lateral que entra desde la derecha (filtros en móvil). */
   sheet?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -189,7 +191,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={sheet ? "modal modal-sheet" : "modal"}
+      className={`${sheet ? "modal modal-sheet" : "modal"}${className ? ` ${className}` : ""}`}
       aria-labelledby={titleId}
       onCancel={(e) => {
         // Escape también pasa por la animación de cierre.

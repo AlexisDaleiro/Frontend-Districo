@@ -264,52 +264,14 @@ test("las páginas nuevas animan su entrada y respetan movimiento reducido", asy
       document.documentElement.setAttribute("data-view-transitions", String(count + 1));
       return start(...args);
     }) as typeof document.startViewTransition;
-    const animate = Element.prototype.animate;
-    document.documentElement.setAttribute("data-page-reveals", "0");
-    Element.prototype.animate = function (this: Element, keyframes, options) {
-      if (this.matches(".company-page section")) {
-        const count = Number(
-          document.documentElement.getAttribute("data-page-reveals"),
-        );
-        document.documentElement.setAttribute("data-page-reveals", String(count + 1));
-      }
-      return animate.call(this, keyframes, options);
-    };
   });
-  await page.getByRole("link", { name: "Nuestra empresa" }).first().click();
-  await expect(page).toHaveURL(/\/tienda\/empresa$/);
+  await page.locator(".navline").getByRole("link", { name: "Contacto" }).click();
+  await expect(page).toHaveURL(/\/tienda\/contacto$/);
   // La navegación corre dentro de una View Transition (fundido y subida).
   await expect(page.locator("html")).toHaveAttribute(
     "data-view-transitions",
     /^[1-9]\d*$/,
   );
-  // Las secciones de más abajo entran al desplazarse.
-  await page.evaluate(() => scrollTo(0, 900));
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-page-reveals",
-    /^[1-9]\d*$/,
-  );
-  await page.evaluate(() => scrollTo(0, 0));
-  const companyImage = page.locator(".company-hero-visual img");
-  await expect
-    .poll(() =>
-      companyImage.evaluate((element) =>
-        (element as HTMLElement).style.getPropertyValue("--motion-parallax"),
-      ),
-    )
-    .not.toBe("");
-  const beforeScroll = await companyImage.evaluate((element) =>
-    (element as HTMLElement).style.getPropertyValue("--motion-parallax"),
-  );
-  await page.evaluate(() => scrollTo(0, 250));
-  await expect
-    .poll(() =>
-      companyImage.evaluate((element) =>
-        (element as HTMLElement).style.getPropertyValue("--motion-parallax"),
-      ),
-    )
-    .not.toBe(beforeScroll);
-
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/tienda");
   await expect(page.locator(".home-carousel-slide")).toHaveCSS(
@@ -321,13 +283,6 @@ test("las páginas nuevas animan su entrada y respetan movimiento reducido", asy
       element.getAnimations().some((animation) => animation.playState === "running"),
     ),
   ).toBe(false);
-  await page.goto("/tienda/empresa");
-  await page.evaluate(() => scrollTo(0, 250));
-  expect(
-    await page.locator(".company-hero-visual img").evaluate((element) =>
-      (element as HTMLElement).style.getPropertyValue("--motion-parallax"),
-    ),
-  ).toBe("");
 });
 
 for (const width of [390, 1280])
@@ -412,7 +367,6 @@ test("las páginas públicas cargan sin errores de script", async ({ page }) => 
   for (const name of [
     "Catálogo",
     "Marcas y laboratorios",
-    "Nuestra empresa",
     "Contacto",
   ]) {
     await page.locator(".navline").getByRole("link", { name }).click();
