@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { ArrowRight, ArrowUpRight, Mail } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { SiteLineShowcase } from "./site-line-showcase";
-import { storeRoutes } from "@/lib/store-routes";
 
 const lines = [
   {
@@ -130,21 +129,6 @@ export function SiteHomeReference() {
           </section>
         ))}
       </div>
-
-      <section className="reference-contact" id="contacto" aria-labelledby="reference-contact-title">
-        <div className="container reference-contact-grid">
-          <div>
-            <p className="reference-kicker">Cuenta comercial</p>
-            <h2 id="reference-contact-title">Sumá nuestras líneas a tu comercio.</h2>
-            <p>Alimento para mascotas, arenas sanitarias, cuidado animal y snacks de consumo masivo. Una sola cuenta, un solo reparto.</p>
-          </div>
-          <div className="reference-contact-actions">
-            <a className="reference-contact-primary" href="https://wa.me/59895673109?text=Hola%2C%20quisiera%20abrir%20una%20cuenta%20mayorista%20con%20Districo." target="_blank" rel="noopener noreferrer">Escribir por WhatsApp <ArrowUpRight size={18} aria-hidden="true" /></a>
-            <Link className="reference-contact-secondary" href={storeRoutes.requestAccount}>Solicitar cuenta <ArrowRight size={18} aria-hidden="true" /></Link>
-            <a className="reference-contact-email" href="mailto:contacto@districo.com.uy"><Mail size={17} aria-hidden="true" /> contacto@districo.com.uy</a>
-          </div>
-        </div>
-      </section>
     </>
   );
 }

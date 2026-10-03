@@ -2,6 +2,22 @@
 
 Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
 
+## Cabecera más baja en las páginas interiores (3/10/2026)
+
+- `.site-catalog-intro` (`src/app/site.css`), compartida por Productos, Marcas, Garantía, Nosotros y Contacto: opción «C · banda» elegida entre tres medidas. Relleno 145/76 → 100/36 px, título `clamp(40px, 7vw, 86px)` → `clamp(30px, 3.4vw, 46px)` (tracking -.07em → -.05em), bajada 15 px sin margen inferior.
+- `.site-catalog-intro .button { margin-top: 22px; }`: el botón «Solicitar cuenta» de /productos quedaba pegado a la bajada.
+- Medido (cabecera / primera pantalla): Productos, Marcas y Contacto pasan de 58–64 % a 31–36 % a 1440 px y de 57–60 % a 37–40 % a 390 px. Nosotros (foto de fachada) queda en 61 % y 84 %; Garantía (sello) en 59 % en móvil. Pendiente opcional: ajuste propio para esas dos.
+
+## Página /contacto al estilo Importadora (3/10/2026)
+
+- Página propia `src/app/(sitio)/contacto/page.tsx` + `src/components/site-contact.tsx`; textos de `Importadora/src/pages/contacto.astro`. Se quitó la sección `#contacto` del final de la landing (`site-home-reference.tsx`). Navbar público (`site-shell.tsx`): «Contacto» como último ítem, a `/contacto`.
+- Formulario (nombre*, comercio, localidad, consulta*) sin backend: «Enviar por WhatsApp» abre wa.me y «Enviar por correo» un mailto a contacto@districo.com.uy, ambos con el mensaje armado. Nota visible: la página no guarda ni envía datos (contrato del MASTER). No se copió Formspree.
+- Recuadro «Directo»: 0800 1004 en lima, (+598) 2320 1381, correo, direcciones y «Solicitar cuenta mayorista». Estilos `.reference-contact*` en `site-reference.css`.
+- Puntos de venta: reutiliza `StoreLocator` de /tienda/contacto (Leaflet, nota visible de datos de demostración), con la disposición de `Importadora/src/components/StoreLocator.astro`: sección `.site-locator` con relleno propio, encabezado título/texto en dos columnas, filtros y listado+mapa en un solo panel con borde, contador en barra petróleo, mapa de 500 px a la derecha. En móvil «Filtros» y el listado se pliegan (`aria-expanded`). `store-locator.tsx` suma los botones y el envoltorio `.contact-filter-panel` (`display: contents`); en la tienda los botones están ocultos (`globals.css`). `leaflet.css` se importa solo en /contacto.
+- Restaurado desde cero sobre `9fd0f7fe` (los cambios sin commitear se habían perdido).
+- Verificado: typecheck, lint, e2e `landing` + `motion` 24/24 (navbar con Contacto, mensaje de WhatsApp, panel a 1440 px y plegado a 390 px, sin scroll horizontal en /contacto de 360 a 1440 px). Sin revisión visual humana; el botón de correo no tiene prueba automática.
+- Pendiente aparte: «contacto registra consulta…» de `flows` falla en /tienda/admin/consultas («Comercio Contacto» no aparece); falla también sin estos cambios.
+
 ## Prueba de cuenta alineada al rediseño (3/10/2026)
 
 - «cliente edita su cuenta y administra varias direcciones» (`tests/e2e/flows.spec.ts`) fallaba desde el rediseño de la cuenta (`02b68c34`): el correo ya no es el primer dato fijo y la edición se abre con «Editar datos». La prueba busca el correo por su rótulo y abre la edición antes de cambiar el nombre comercial. Sin cambios en la interfaz.

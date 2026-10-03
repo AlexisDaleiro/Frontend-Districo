@@ -32,6 +32,9 @@ export function StoreLocator() {
   const [userLocation, setUserLocation] = useState<UserLocation>();
   const [locationMessage, setLocationMessage] = useState("");
   const [locating, setLocating] = useState(false);
+  // Solo se pliegan en el sitio público en móvil (.site-locator); en la tienda los botones quedan ocultos.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
 
   const brands = unique(demoStores.flatMap((store) => store.brands));
   const departments = unique(demoStores.map((store) => store.department));
@@ -146,9 +149,12 @@ export function StoreLocator() {
       <div className="contact-demo-note" role="note"><strong>Vista de demostración.</strong> Estos comercios y ubicaciones son ficticios; se reemplazarán por el padrón confirmado de DISTRICO.</div>
       <div className="contact-filters" aria-label="Filtrar puntos de venta">
         <label className="field contact-search-field">Buscar<span className="contact-search-control"><Search size={18} /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Comercio, localidad o marca" /></span></label>
+        <button className="contact-filters-toggle" type="button" aria-expanded={filtersOpen} aria-controls="store-filter-panel" onClick={() => setFiltersOpen((open) => !open)}>Filtros{brand || department || city ? ` (${[brand, department, city].filter(Boolean).length})` : ""}</button>
+        <div className={`contact-filter-panel${filtersOpen ? " is-open" : ""}`} id="store-filter-panel">
         <label className="field">Marca<select value={brand} onChange={(event) => setBrand(event.target.value)}><option value="">Todas las marcas</option>{brands.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
         <label className="field">Departamento<select value={department} onChange={(event) => { setDepartment(event.target.value); setCity(""); }}><option value="">Todos los departamentos</option>{departments.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
         <label className="field">Localidad<select value={city} onChange={(event) => setCity(event.target.value)}><option value="">Todas las localidades</option>{cities.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
+        </div>
         <div className="contact-filter-actions">
           <button className="button secondary small" type="button" onClick={locate} disabled={locating}><LocateFixed size={17} />{locating ? "Buscando…" : "Usar mi ubicación"}</button>
           <button className="text-button" type="button" onClick={clearFilters}><X size={16} /> Limpiar filtros</button>
@@ -157,8 +163,8 @@ export function StoreLocator() {
       {locationMessage && <p className="contact-location-message" role="status">{locationMessage}</p>}
       <div className="contact-locator-layout">
         <div className="contact-store-results" aria-live="polite">
-          <p className="contact-result-count">{filtered.length} {filtered.length === 1 ? "punto" : "puntos"} de venta</p>
-          <div className="contact-store-list">
+          <p className="contact-result-count">{filtered.length} {filtered.length === 1 ? "punto" : "puntos"} de venta<button className="contact-list-toggle" type="button" aria-expanded={listOpen} aria-controls="store-results-list" onClick={() => setListOpen((open) => !open)}><span className="visually-hidden">{listOpen ? "Ocultar listado" : "Mostrar listado"}</span></button></p>
+          <div className={`contact-store-list${listOpen ? " is-open" : ""}`} id="store-results-list">
             {filtered.map((store) => (
               <article className={`contact-store-card ${selected === store.id ? "is-selected" : ""}`} key={store.id}>
                 <div className="contact-store-title"><h3>{store.name}</h3><span>Demo</span></div>

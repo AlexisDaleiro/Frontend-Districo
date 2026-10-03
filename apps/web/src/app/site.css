@@ -227,10 +227,11 @@
 .site-footer .footer-grid a:not(.site-socials a) { width: max-content; }
 .site-footer .footer-grid a svg { display: inline; vertical-align: middle; }
 
-.site-catalog-intro { padding: 145px 0 76px; background: var(--ink); color: white; }
+.site-catalog-intro { padding: 100px 0 36px; background: var(--ink); color: white; }
 .site-catalog-intro .eyebrow { color: var(--lime); }
-.site-catalog-intro h1 { max-width: 820px; font-size: clamp(40px, 7vw, 86px); font-weight: 800; line-height: 1.02; letter-spacing: -.07em; }
-.site-catalog-intro p:not(.eyebrow) { max-width: 640px; margin-block: 20px 25px; color: var(--on-ink-muted); font-size: 16px; }
+.site-catalog-intro h1 { max-width: 820px; font-size: clamp(30px, 3.4vw, 46px); font-weight: 800; line-height: 1.02; letter-spacing: -.05em; }
+.site-catalog-intro p:not(.eyebrow) { max-width: 640px; margin-block: 12px 0; color: var(--on-ink-muted); font-size: 15px; }
+.site-catalog-intro .button { margin-top: 22px; }
 .site-warranty-hero { display: grid; gap: 28px; align-items: center; }
 .site-warranty-seal { display: grid; place-content: center; width: 132px; aspect-ratio: 1; border: 2px solid var(--lime); border-radius: 50%; text-align: center; }
 .site-warranty-seal strong { color: var(--lime); font-size: 34px; font-weight: 850; letter-spacing: -.05em; line-height: 1; }
@@ -424,4 +425,34 @@
   .site-milestones-nav { gap: 16px; }
   .site-milestones-rail button { flex-basis: 108px; }
   .site-milestones-panel { grid-template-columns: minmax(150px, .32fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 5vw, 72px); }
+}
+
+/* Puntos de venta en /contacto, como el StoreLocator de Importadora: filtros, listado y mapa en un solo panel. */
+.site-locator { padding-block: clamp(44px, 5vw, 76px); border-top: 1px solid var(--line); background: white; }
+.site-locator .site-section-heading { margin-bottom: clamp(22px, 2.5vw, 32px); }
+.site-locator .site-section-heading h2 { font-size: clamp(30px, 3.4vw, 46px); }
+.site-locator .contact-locator { margin-top: 0; }
+.site-locator .contact-demo-note { margin-bottom: 12px; }
+.site-locator .contact-filters { margin-top: 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
+.site-locator .contact-location-message { margin: 0; padding: 12px 16px; border-inline: 1px solid var(--line); background: color-mix(in srgb, var(--lime) 12%, white); }
+.site-locator .contact-locator-layout { gap: 0; margin-top: 0; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); overflow: clip; }
+.site-locator .contact-result-count { position: relative; margin: 0; padding: 14px 20px; background: var(--ink); color: white; font-size: 13px; font-variant-numeric: tabular-nums; }
+.site-locator .contact-store-list { max-height: 454px; padding: 12px; }
+.site-locator .contact-map-wrap { position: relative; top: auto; min-height: 500px; border-radius: 0; }
+.site-locator .contact-map { height: 500px; }
+@media (max-width: 900px) {
+  .site-locator .contact-map-wrap { order: 0; min-height: 300px; }
+  .site-locator .contact-map { height: 300px; }
+}
+@media (max-width: 759.98px) {
+  .site-locator .site-section-heading { display: grid; gap: 12px; }
+  .site-locator .contact-filters { grid-template-columns: 1fr; }
+  .site-locator .contact-filters-toggle { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .site-locator .contact-filters-toggle::after, .site-locator .contact-list-toggle::after { content: ""; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: translateY(-25%) rotate(45deg); }
+  .site-locator .contact-filters-toggle[aria-expanded="true"]::after, .site-locator .contact-list-toggle[aria-expanded="true"]::after { transform: translateY(25%) rotate(-135deg); }
+  .site-locator .contact-filter-panel { display: grid; gap: 14px; }
+  .site-locator .contact-filter-panel:not(.is-open) { display: none; }
+  .site-locator .contact-list-toggle { display: flex; align-items: center; justify-content: flex-end; position: absolute; inset: 0; padding-right: 22px; border: 0; background: transparent; color: white; cursor: pointer; }
+  .site-locator .contact-list-toggle:focus-visible { outline: 2px solid white; outline-offset: -4px; }
+  .site-locator .contact-store-list:not(.is-open) { display: none; }
 }
