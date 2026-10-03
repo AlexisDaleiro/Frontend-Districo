@@ -190,7 +190,22 @@ test("marcas públicas: tarjetas y acceso al catálogo", async ({
   const cards = page.locator(".reference-brand-card");
   await expect(cards.first()).toBeVisible();
   await expect(cards).toHaveCount(16);
+  await expect(cards.first().locator(".reference-brand-photo")).toHaveAttribute("src", /granplus\.jpg/);
+  await expect(cards.first().locator(".reference-brand-wordmark")).toHaveText("Gran Plus");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("16 marcas");
+  await page.getByRole("button", { name: "Farmacia y Laboratorio" }).click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first().locator(".reference-brand-wordmark")).toHaveText("Laboratorios");
+  await expect(cards.first()).toHaveAttribute("href", "/productos?categoryId=veterinaria");
+  await page.getByRole("button", { name: "Todas" }).click();
+  for (const width of [768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rows = await cards.evaluateAll((nodes) => {
+      const tops = nodes.map((node) => Math.round(node.getBoundingClientRect().top));
+      return [...new Set(tops)].map((top) => tops.filter((value) => value === top).length);
+    });
+    expect(rows).toEqual([4, 4, 4, 4]);
+  }
   await cards.first().click();
   await expect(page).toHaveURL(/\/productos\?search=Gran%20Plus/);
 });

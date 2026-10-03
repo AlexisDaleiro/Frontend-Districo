@@ -6,24 +6,6 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteBrandCard } from "./site-brand-card";
 import { siteBrands } from "@/lib/site-brands";
 
-const panelPhotos: Record<string, string> = {
-  "Gran Plus": "granplus.jpg",
-  Biofresh: "biofresh.jpg",
-  "Three Dogs": "three-dogs.jpg",
-  TOH: "toh.jpg",
-  Procão: "procao.jpg",
-  "Three Cats": "three-cats.jpg",
-  Stack: "stack.jpg",
-  "Guabi Natural": "guabi-natural.jpg",
-  Primocão: "primocao.jpg",
-  Primogato: "primogato.jpg",
-  YowUp: "yowup.jpg",
-  LoPets: "lopets.jpg",
-  Pipicat: "pipicat.jpg",
-  Beny: "beny.jpg",
-  "4 Pets": "4-pets.jpg",
-};
-
 export function SiteBrandStrip() {
   const trackRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
@@ -76,13 +58,10 @@ export function SiteBrandStrip() {
       </div>
       <div className="site-brand-strip-stage">
         <div ref={trackRef} className="site-brand-strip-track" role="region" aria-label="Marcas que distribuye DISTRICO" tabIndex={0}>
-          {siteBrands.map((brand, index) => (
+          {siteBrands.map((brand) => (
             <SiteBrandCard
               key={brand.name}
               brand={brand}
-              index={index}
-              textOnly
-              photo={panelPhotos[brand.name] ? `/images/brand-panels/${panelPhotos[brand.name]}` : "/images/hero-raicor.jpg"}
               sizes="(min-width: 1240px) 13vw, (min-width: 640px) 24vw, 42vw"
             />
           ))}

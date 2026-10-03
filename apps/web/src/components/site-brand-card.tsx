@@ -3,23 +3,37 @@ import { ArrowUpRight } from "lucide-react";
 import { Picture } from "./ui";
 import type { siteBrands } from "@/lib/site-brands";
 
-const petPhotos = [3, 2, 1, 5, 6, 7, 4, 8].map(
-  (number) => `/images/brand-pets-${String(number).padStart(2, "0")}.webp`,
-);
+const panelPhotos: Record<string, string> = {
+  "Gran Plus": "granplus.jpg",
+  Biofresh: "biofresh.jpg",
+  "Three Dogs": "three-dogs.jpg",
+  TOH: "toh.jpg",
+  Procão: "procao.jpg",
+  "Three Cats": "three-cats.jpg",
+  Stack: "stack.jpg",
+  "Guabi Natural": "guabi-natural.jpg",
+  Primocão: "primocao.jpg",
+  Primogato: "primogato.jpg",
+  YowUp: "yowup.jpg",
+  LoPets: "lopets.jpg",
+  Pipicat: "pipicat.jpg",
+  Beny: "beny.jpg",
+  "4 Pets": "4-pets.jpg",
+};
 
-export function SiteBrandCard({ brand, index, sizes, photo, textOnly = false }: { brand: (typeof siteBrands)[number]; index: number; sizes: string; photo?: string; textOnly?: boolean }) {
+export function SiteBrandCard({ brand, sizes }: { brand: (typeof siteBrands)[number]; sizes: string }) {
+  const displayName = brand.displayName ?? brand.name;
+  const photo = panelPhotos[brand.name]
+    ? `/images/brand-panels/${panelPhotos[brand.name]}`
+    : "/images/hero-raicor.jpg";
   return (
-    <Link className="reference-brand-card" href={brand.name === "Raicor" ? "/productos?categoryId=veterinaria" : `/productos?search=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${brand.name}`} style={{ backgroundColor: brand.color }}>
-      <Picture className="reference-brand-photo" src={photo ?? petPhotos[index % petPhotos.length]} alt="" loading="lazy" sizes={sizes} />
+    <Link className="reference-brand-card" href={brand.name === "Raicor" ? "/productos?categoryId=veterinaria" : `/productos?search=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${displayName}`} style={{ backgroundColor: brand.color }}>
+      <Picture className="reference-brand-photo" src={photo} alt="" loading="lazy" sizes={sizes} />
       <span className="reference-brand-shade" aria-hidden="true" />
       <span className="reference-brand-mark">
-        {brand.logo && !textOnly ? (
-          <Picture src={`/images/brands/${brand.logo}`} alt="" loading="lazy" sizes="140px" />
-        ) : (
-          <span className="reference-brand-wordmark">{brand.name}</span>
-        )}
+        <span className="reference-brand-wordmark">{displayName}</span>
       </span>
-      <span className="reference-brand-name">{brand.name}<ArrowUpRight size={15} aria-hidden="true" /></span>
+      <span className="reference-brand-name">{displayName}<ArrowUpRight size={15} aria-hidden="true" /></span>
     </Link>
   );
 }

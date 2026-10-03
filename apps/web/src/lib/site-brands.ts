@@ -11,7 +11,7 @@ export const brandLines = [
 
 export type BrandLine = (typeof brandLines)[number][0];
 
-export const siteBrands: readonly { name: string; logo?: string; color: string; line: BrandLine }[] = [
+export const siteBrands: readonly { name: string; displayName?: string; logo?: string; color: string; line: BrandLine }[] = [
   { name: "Gran Plus", logo: "gran-plus.png", color: "#84152a", line: "alimento" },
   { name: "Biofresh", logo: "biofresh.png", color: "#5b8474", line: "alimento" },
   { name: "Three Dogs", logo: "three-dogs.png", color: "#6d82aa", line: "alimento" },
@@ -27,5 +27,5 @@ export const siteBrands: readonly { name: string; logo?: string; color: string; 
   { name: "Pipicat", logo: "pipicat.png", color: "#6c9ca0", line: "arenas" },
   { name: "Beny", logo: "beny.png", color: "#aa8c51", line: "alimento" },
   { name: "4 Pets", logo: "4pets.png", color: "#7a9262", line: "arenas" },
-  { name: "Raicor", color: "#7479af", line: "farmacia" },
+  { name: "Raicor", displayName: "Laboratorios", color: "#7479af", line: "farmacia" },
 ];
