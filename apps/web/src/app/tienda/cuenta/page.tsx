@@ -1,79 +1,140 @@
 "use client";
+
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowRight, Building2, MapPin, Package, ShoppingBag } from "lucide-react";
+import { useState } from "react";
 import { AccessGate } from "@/components/auth";
 import { AccountDetails } from "@/components/account-details";
-import { useSession } from "@/components/providers";
-import { ActionLink, PageHeading, ErrorBox } from "@/components/ui";
-import { label } from "@/lib/commerce";
-import { useState } from "react";
+import { useApi, useSession } from "@/components/providers";
+import { ActionLink, ErrorBox, PageHeading } from "@/components/ui";
+import { can, label, money, reviewRequired } from "@/lib/commerce";
 import { storeRoutes } from "@/lib/store-routes";
+import type { Customer, Order } from "@/lib/types";
+
+function AccountOverview({ customer }: { customer: Customer }) {
+  const orders = useApi<Order[]>("orders/me");
+  const latestOrder = [...(orders.data ?? [])].sort(
+    (first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt),
+  )[0];
+  const primaryAddress = customer.addresses?.[0];
+  const addressText = primaryAddress
+    ? [primaryAddress.address, primaryAddress.city, primaryAddress.department].filter(Boolean).join(", ")
+    : [customer.address, customer.city, customer.department].filter(Boolean).join(", ");
+
+  return (
+    <div className="account-overview">
+      <section className="account-overview-card" aria-labelledby="account-latest-order">
+        <div className="account-overview-heading">
+          <span className="account-card-icon"><Package size={20} aria-hidden="true" /></span>
+          <Link href={storeRoutes.orders}>Ver todos <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
+        <p className="account-card-kicker">Actividad comercial</p>
+        <h2 id="account-latest-order">Último pedido</h2>
+        {orders.isPending ? (
+          <p className="account-card-muted" role="status">Cargando pedidos…</p>
+        ) : orders.error ? (
+          <p className="account-card-muted">No pudimos cargar tus pedidos ahora. Podés consultarlos desde “Ver todos”.</p>
+        ) : latestOrder ? (
+          <>
+            <div className="account-order-line">
+              <strong>{latestOrder.orderNumber}</strong>
+              <span className={`status-pill ${latestOrder.status === "PENDING_REVIEW" ? "pending" : ""}`} data-status={latestOrder.status}>{label(latestOrder.status)}</span>
+            </div>
+            <p className="account-card-muted">
+              {new Date(latestOrder.createdAt).toLocaleDateString("es-UY")} · {latestOrder.items.length} {latestOrder.items.length === 1 ? "producto" : "productos"} · {money(latestOrder.total, latestOrder.currency)}
+            </p>
+            <Link className="account-card-link" href={storeRoutes.order(latestOrder.id)}>Ver detalle del pedido <ArrowRight size={16} aria-hidden="true" /></Link>
+          </>
+        ) : (
+          <>
+            <p className="account-card-muted">Todavía no hay pedidos enviados desde esta cuenta.</p>
+            <Link className="account-card-link" href={storeRoutes.products}>Explorar productos <ArrowRight size={16} aria-hidden="true" /></Link>
+          </>
+        )}
+      </section>
+
+      <section className="account-overview-card" aria-labelledby="account-delivery-title">
+        <div className="account-overview-heading">
+          <span className="account-card-icon"><MapPin size={20} aria-hidden="true" /></span>
+          <a href="#direcciones">Gestionar <ArrowRight size={16} aria-hidden="true" /></a>
+        </div>
+        <p className="account-card-kicker">Entrega</p>
+        <h2 id="account-delivery-title">Dirección principal</h2>
+        {addressText ? (
+          <>
+            <strong className="account-address-name">{primaryAddress?.label || "Dirección registrada"}</strong>
+            <p className="account-card-muted">{addressText}</p>
+            {!!customer.addresses?.length && <p className="account-card-footnote">{customer.addresses.length} {customer.addresses.length === 1 ? "dirección guardada" : "direcciones guardadas"}</p>}
+          </>
+        ) : (
+          <p className="account-card-muted">Agregá una dirección para poder seleccionarla al enviar tu pedido.</p>
+        )}
+        <a className="account-card-link" href="#direcciones">{addressText ? "Ver direcciones" : "Agregar dirección"} <ArrowRight size={16} aria-hidden="true" /></a>
+      </section>
+    </div>
+  );
+}
+
 export default function Page() {
   const { user, logout } = useSession();
   const router = useRouter();
   const [error, setError] = useState<unknown>();
+  const customer = user?.customerAccount;
+  const clientAccount = user?.role === "CLIENT" && customer;
+  const canOrder = can(user, "CAN_PLACE_ORDERS");
+
   return (
-    <div className="container section">
+    <div className="container section account-page">
       <AccessGate>
-        <PageHeading
-          eyebrow="Tu espacio mayorista"
-          title={user?.customerAccount?.businessName ?? "Mi cuenta"}
-        >
-          {user?.email}
-        </PageHeading>
-        {user?.customerAccount && (
-          <div className="panel">
-            <p>
-              Estado de cuenta:{" "}
-              <strong>{label(user.customerAccount.accountStatus)}</strong>
-            </p>
-            <p>
-              Situación comercial:{" "}
-              <strong>{label(user.customerAccount.creditStatus)}</strong>
-            </p>
-            <p>
-              Productos restringidos:{" "}
-              <strong>
-                {user.permissions.includes("CAN_BUY_MEDICATIONS")
-                  ? "Habilitado"
-                  : "Sin habilitación"}
-              </strong>
-            </p>
-          </div>
+        {clientAccount ? (
+          <>
+            <section className="account-dashboard-hero" aria-labelledby="account-dashboard-title">
+              <div className="account-dashboard-copy">
+                <p className="eyebrow">Tu espacio mayorista</p>
+                <h1 id="account-dashboard-title">{customer.businessName}</h1>
+                <p>Todo lo que necesitás para gestionar tus compras con DISTRICO.</p>
+                <div className="account-dashboard-statuses">
+                  <span className="account-status-chip" data-status={customer.accountStatus}>Cuenta: {label(customer.accountStatus)}</span>
+                  <span className="account-status-chip" data-status={customer.creditStatus}>Situación comercial: {label(customer.creditStatus)}</span>
+                </div>
+                {reviewRequired(customer.creditStatus) && <p className="account-dashboard-note">Los nuevos pedidos pueden quedar sujetos a revisión comercial.</p>}
+                {!canOrder && <p className="account-dashboard-note">Tu cuenta todavía no tiene habilitada la compra. Podés explorar el catálogo y consultar tus pedidos.</p>}
+              </div>
+              <div className="account-dashboard-actions">
+                <Link className="button lime" href={storeRoutes.products}><ShoppingBag size={18} aria-hidden="true" /> {canOrder ? "Armar pedido" : "Explorar catálogo"}</Link>
+                <Link className="button secondary" href={storeRoutes.orders}><Package size={18} aria-hidden="true" /> Mis pedidos</Link>
+                {canOrder && <Link className="account-dashboard-cart" href={storeRoutes.cart}>Ir al carrito <ArrowRight size={16} aria-hidden="true" /></Link>}
+              </div>
+            </section>
+
+            <AccountOverview customer={customer} />
+
+            <div className="account-detail-heading">
+              <span className="account-card-icon"><Building2 size={20} aria-hidden="true" /></span>
+              <div>
+                <p className="account-card-kicker">Configuración</p>
+                <h2>Datos de tu empresa</h2>
+              </div>
+            </div>
+            <AccountDetails customer={customer} email={user.email} />
+          </>
+        ) : (
+          <>
+            <PageHeading eyebrow="Tu espacio mayorista" title={customer?.businessName ?? "Mi cuenta"}>{user?.email}</PageHeading>
+            {customer && <AccountDetails customer={customer} email={user.email} />}
+            {user && user.role !== "CLIENT" && <ActionLink href={storeRoutes.admin}>Administración</ActionLink>}
+          </>
         )}
-        {user?.customerAccount && (
-          <AccountDetails customer={user.customerAccount} email={user.email} />
-        )}
-        {user?.role === "CLIENT" && <div className="account-panels">
-          <div className="card stack">
-            <h2>Mis pedidos</h2>
-            <p className="muted">
-              Consultá el detalle y estado de los pedidos enviados.
-            </p>
-            <ActionLink href={storeRoutes.orders}>Ver pedidos</ActionLink>
-          </div>
-          <div className="card stack">
-            <h2>Mi próximo pedido</h2>
-            <p className="muted">Explorá productos y revisá tu carrito.</p>
-            <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
-          </div>
-        </div>}
-        <div className="actions">
-          {user && user.role !== "CLIENT" && (
-            <ActionLink href={storeRoutes.admin}>Administración</ActionLink>
-          )}
-          <button
-            className="button secondary"
-            onClick={async () => {
-              try {
-                await logout();
-                router.push(storeRoutes.home);
-              } catch (e) {
-                setError(e);
-              }
-            }}
-          >
-            Cerrar sesión
-          </button>
+        <div className="account-session-actions">
+          <button className="button secondary" onClick={async () => {
+            try {
+              await logout();
+              router.push(storeRoutes.home);
+            } catch (cause) {
+              setError(cause);
+            }
+          }}>Cerrar sesión</button>
         </div>
         {error !== undefined && <ErrorBox error={error} />}
       </AccessGate>

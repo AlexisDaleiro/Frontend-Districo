@@ -24,7 +24,7 @@ export function Login() {
   async function submit(data: z.infer<typeof loginSchema>) {
     setError(undefined);
     try {
-      const u = await login(data.email, data.password);
+      await login(data.email, data.password);
       router.push(storeRoutes.home);
     } catch (e) {
       setError(e);

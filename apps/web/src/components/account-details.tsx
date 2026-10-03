@@ -12,12 +12,13 @@ const emptyAddress: AddressDraft = { label: "", address: "", city: "", departmen
 
 export function AccountDetails({ customer, email }: { customer: Customer; email: string }) {
   const client = useQueryClient();
-  const { notify } = useSession();
+  const { notify, user } = useSession();
   const [profile, setProfile] = useState({
     businessName: customer.businessName,
     legalName: customer.legalName,
     rut: customer.rut,
   });
+  const [profileFormOpen, setProfileFormOpen] = useState(false);
   const [addressDraft, setAddressDraft] = useState<AddressDraft>(emptyAddress);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addressFormOpen, setAddressFormOpen] = useState(false);
@@ -37,6 +38,7 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
     try {
       await request("account/me", "PATCH", profile);
       await refresh();
+      setProfileFormOpen(false);
       notify("Datos de la cuenta actualizados.");
     } catch (cause) {
       setError(cause);
@@ -94,12 +96,22 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
   return (
     <div className="account-details">
       <section className="account-detail-section">
-        <h2>Datos del cliente</h2>
+        <div className="account-section-heading">
+          <h2>Datos comerciales</h2>
+          {!profileFormOpen && <button className="button small secondary" type="button" onClick={() => {
+            setProfile({ businessName: customer.businessName, legalName: customer.legalName, rut: customer.rut });
+            setProfileFormOpen(true);
+          }}><Pencil size={16} /> Editar datos</button>}
+        </div>
         <div className="account-readonly-fields">
+          <div><span>Nombre comercial</span><strong>{customer.businessName}</strong></div>
+          <div><span>Razón social</span><strong>{customer.legalName}</strong></div>
+          <div><span>RUT</span><strong>{customer.rut}</strong></div>
           <div><span>Correo electrónico</span><strong>{email}</strong></div>
           <div><span>Teléfono</span><strong>{customer.phone || "Sin registrar"}</strong></div>
+          <div><span>Productos de uso profesional</span><strong>{user?.permissions.includes("CAN_BUY_MEDICATIONS") ? "Habilitados" : "Sin habilitación"}</strong></div>
         </div>
-        <form onSubmit={(event) => void saveProfile(event)}>
+        {profileFormOpen && <form className="account-profile-form" onSubmit={(event) => void saveProfile(event)}>
           <div className="account-edit-fields">
             <label className="field">Nombre comercial
               <input className="form-input" value={profile.businessName} maxLength={120} required onChange={(event) => setProfile({ ...profile, businessName: event.target.value })} />
@@ -111,11 +123,14 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
               <input className="form-input" value={profile.rut} maxLength={24} required onChange={(event) => setProfile({ ...profile, rut: event.target.value })} />
             </label>
           </div>
-          <button className="button small" type="submit" disabled={busy}><Save size={16} /> Guardar datos</button>
-        </form>
+          <div className="actions">
+            <button className="button small" type="submit" disabled={busy}><Save size={16} /> Guardar datos</button>
+            <button className="button small secondary" type="button" disabled={busy} onClick={() => setProfileFormOpen(false)}>Cancelar</button>
+          </div>
+        </form>}
       </section>
 
-      <section className="account-detail-section">
+      <section className="account-detail-section" id="direcciones">
         <div className="account-section-heading">
           <h2>Direcciones</h2>
           {!addressFormOpen && (
