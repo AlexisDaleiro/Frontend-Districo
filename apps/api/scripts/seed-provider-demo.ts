@@ -35,7 +35,6 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
   }
   if (!plan.pending.length) return summary;
 
-  const brands = await tx.brand.findMany();
   const laboratories = await tx.laboratory.findMany();
   const existingPriceList = await tx.priceList.findFirst({
     where: { OR: [{ id: DEMO_PRICE_LIST.id }, { name: DEMO_PRICE_LIST.name }] },
@@ -44,35 +43,27 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
     throw new Error('Revisar la lista de precios existente antes de crear datos ficticios.');
   }
   const needed = [...new Map(plan.pending.map(({ laboratory }) => [laboratory.slug, laboratory])).values()];
-  const brandIds = new Map<string, string>();
   const laboratoryIds = new Map<string, string>();
-  const newBrands: Prisma.BrandCreateManyInput[] = [];
   const newLaboratories: Prisma.LaboratoryCreateManyInput[] = [];
   for (const { name, slug } of needed) {
-    const brand = brands.find((entry) => entry.slug === slug);
     const laboratory = laboratories.find((entry) => entry.slug === slug);
-    for (const entity of [brand, laboratory]) {
-      if (entity && (!entity.active || entity.deletedAt || entity.name !== name)) {
-        throw new Error(`Revisar la entidad existente ${slug}; no se sobrescribe ni reactiva.`);
-      }
+    if (laboratory && (!laboratory.active || laboratory.deletedAt || laboratory.name !== name)) {
+      throw new Error(`Revisar la entidad existente ${slug}; no se sobrescribe ni reactiva.`);
     }
-    const brandId = brand?.id ?? `provider-brand-${slug}`;
     const laboratoryId = laboratory?.id ?? `provider-laboratory-${slug}`;
-    brandIds.set(slug, brandId);
     laboratoryIds.set(slug, laboratoryId);
-    if (!brand) newBrands.push({ id: brandId, name, slug });
     if (!laboratory) newLaboratories.push({ id: laboratoryId, name, slug });
   }
   for (const { product, laboratory } of plan.pending) {
     if (
-      (product.brandId && product.brandId !== brandIds.get(laboratory.slug)) ||
+      (product.brandId && product.brandId !== `provider-brand-${laboratory.slug}`) ||
       (product.laboratoryId && product.laboratoryId !== laboratoryIds.get(laboratory.slug))
     ) {
       throw new Error(`El producto ${product.id} tiene una asignacion manual; no se sobrescribe.`);
     }
   }
   if (!apply)
-    return { ...summary, brandsCreated: newBrands.length, laboratoriesCreated: newLaboratories.length };
+    return { ...summary, laboratoriesCreated: newLaboratories.length };
 
   const directory = resolve(__dirname, '../imports');
   mkdirSync(directory, { recursive: true });
@@ -86,10 +77,8 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
       {
         capturedAt: new Date().toISOString(),
         products,
-        brands,
         laboratories,
         existingPriceList,
-        createdBrands: newBrands,
         createdLaboratories: newLaboratories,
         createdVariants: plan.pending.map(({ profile }) => profile.variantId),
         createdPrices: plan.pending.map(({ profile }) => profile.priceId),
@@ -101,7 +90,6 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
   );
   console.log(`Respaldo local: ${backupPath}`);
 
-  if (newBrands.length) await tx.brand.createMany({ data: newBrands });
   if (newLaboratories.length) await tx.laboratory.createMany({ data: newLaboratories });
   if (!existingPriceList) await tx.priceList.create({ data: DEMO_PRICE_LIST });
 
@@ -149,7 +137,7 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
     ];
     const data = {
       active: true,
-      brandId: brandIds.get(laboratory.slug)!,
+      brandId: null,
       laboratoryId: laboratoryIds.get(laboratory.slug)!,
       tags,
     };
@@ -194,7 +182,7 @@ async function prepare(tx: Prisma.TransactionClient, apply: boolean) {
       },
     },
   });
-  return { ...summary, brandsCreated: newBrands.length, laboratoriesCreated: newLaboratories.length };
+  return { ...summary, laboratoriesCreated: newLaboratories.length };
 }
 
 async function main() {

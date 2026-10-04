@@ -348,11 +348,49 @@ export class OrdersService {
       include: { reservations: true, user: true },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
+    if (order.status === OrderStatus.REJECTED && status === OrderStatus.REJECTED) {
+      return this.prisma.order.findUnique({ where: { id }, include: { items: true, reservations: true } });
+    }
+    if (order.status === OrderStatus.REJECTED && status !== OrderStatus.PENDING_REVIEW) {
+      throw new BadRequestException('Un pedido rechazado solo puede volver a revisión.');
+    }
     if ((status === OrderStatus.REJECTED || status === OrderStatus.CANCELLED) && order.paidTotal.gt(order.refundedTotal)) {
       throw new BadRequestException('El pedido tiene pagos registrados. Gestioná la devolución antes de anularlo.');
     }
 
     await this.prisma.$transaction(async (tx) => {
+      if (order.status === OrderStatus.REJECTED) {
+        const changed = await tx.order.updateMany({
+          where: { id, status: OrderStatus.REJECTED },
+          data: { status: OrderStatus.PENDING_REVIEW, requiresManualReview: true, reviewReason: reviewReason?.trim() || 'Pedido reabierto para revisión' },
+        });
+        if (!changed.count) throw new BadRequestException('El pedido cambió de estado. Actualizá la página.');
+        const items = await tx.orderItem.findMany({ where: { orderId: id }, select: { variantId: true, quantity: true } });
+        const reservations = await tx.stockReservation.findMany({ where: { orderId: id }, select: { variantId: true, quantity: true, status: true } });
+        if (!items.length) throw new BadRequestException('El pedido no tiene productos para reservar.');
+        const required = new Map<string, number>();
+        for (const item of items) required.set(item.variantId, (required.get(item.variantId) ?? 0) + item.quantity);
+        for (const reservation of reservations) {
+          if (reservation.status === StockReservationStatus.ACTIVE || reservation.status === StockReservationStatus.CONSUMED) {
+            required.set(reservation.variantId, (required.get(reservation.variantId) ?? 0) - reservation.quantity);
+          }
+        }
+        for (const [variantId, quantity] of required) {
+          if (quantity < 0) throw new BadRequestException('Las reservas del pedido no coinciden con sus productos.');
+          if (!quantity) continue;
+          const reserved = await tx.$executeRaw`
+            UPDATE "ProductVariant"
+            SET "reservedStock" = "reservedStock" + ${quantity}
+            WHERE "id" = ${variantId} AND "active" = true AND "deletedAt" IS NULL
+              AND "physicalStock" - "reservedStock" >= ${quantity}
+          `;
+          if (reserved !== 1) throw new BadRequestException('No hay stock disponible para reabrir este pedido.');
+          await tx.stockReservation.create({
+            data: { orderId: id, variantId, quantity, expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
+          });
+        }
+        return;
+      }
       if (status === OrderStatus.APPROVED || status === OrderStatus.PROCESSING) {
         await this.consumeReservations(order.id, tx);
       }

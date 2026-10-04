@@ -173,6 +173,32 @@ test("pedido con revisión requiere aceptación", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
   await expect(page.locator(".status-pill")).toContainText("En revisión");
 });
+
+test("administración puede volver a revisar un pedido rechazado", async ({ page }) => {
+  test.setTimeout(90000);
+  await login(page, "Cliente con revisión de pedidos");
+  await page.goto("/tienda/producto/biofresh-para-cachorros-razas-medianas");
+  await page.getByRole("button", { name: "Guardar en carrito" }).click();
+  await expect(page.getByRole("link", { name: "Ver mi carrito", exact: true })).toBeVisible();
+  await page.goto("/tienda/carrito");
+  await page.getByRole("button", { name: "Continuar al checkout" }).click();
+  await page.getByLabel("Acepto que este pedido").check();
+  await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
+  await page.goto("/tienda/cuenta");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await login(page, "Administración");
+  await page.goto("/tienda/admin/pedidos");
+  await page.getByLabel("Filtrar estado de pedidos").selectOption("PENDING_REVIEW");
+  await page.locator("tbody tr").getByRole("link", { name: /Gestionar/ }).click();
+  const detail = page.locator(".admin-record-page");
+  await detail.getByLabel("Nuevo estado").selectOption("REJECTED");
+  await detail.getByRole("button", { name: "Guardar estado" }).click();
+  await expect(detail.getByText("Actual: Rechazado")).toBeVisible();
+  await expect(detail.getByLabel("Nuevo estado").locator("option")).toHaveText(["Rechazado", "Pendiente (en revisión)"]);
+  await detail.getByLabel("Nuevo estado").selectOption("PENDING_REVIEW");
+  await detail.getByRole("button", { name: "Guardar estado" }).click();
+  await expect(detail.getByText("Actual: Pendiente (en revisión)")).toBeVisible();
+});
 test("administración gestiona un pedido en revisión y ajusta reservas", async ({
   page,
 }) => {

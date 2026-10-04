@@ -215,6 +215,56 @@ test('checkout rejects a suspended account even with an old token', async () => 
   await assert.rejects(() => orders.checkout({ sub: 'client-1', email: 'client@example.test', role: Role.CLIENT, permissions: [Permission.CAN_PLACE_ORDERS] }), ForbiddenException);
 });
 
+test('reopens a rejected order only into review and reserves its released stock', async () => {
+  const created: { variantId: string; quantity: number }[] = [];
+  let stockAvailable = true;
+  let auditCount = 0;
+  const order = {
+    id: 'order-1', status: OrderStatus.REJECTED, paidTotal: new Prisma.Decimal(0),
+    refundedTotal: new Prisma.Decimal(0), user: { email: 'client@example.test' }, reservations: [],
+  };
+  const tx = {
+    order: { updateMany: async () => ({ count: 1 }) },
+    orderItem: { findMany: async () => [{ variantId: 'variant-1', quantity: 2 }] },
+    stockReservation: {
+      findMany: async () => [{ variantId: 'variant-1', quantity: 2, status: 'RELEASED' }],
+      create: async ({ data }: { data: { variantId: string; quantity: number } }) => { created.push(data); },
+    },
+    $executeRaw: async () => stockAvailable ? 1 : 0,
+  };
+  const prisma = {
+    order: { findUnique: async () => order },
+    $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx),
+  } as unknown as PrismaService;
+  const service = new OrdersService(prisma, {} as never, {} as never, { log: async () => { auditCount++; } } as never, { notify: async () => {} } as never);
+  await service.updateStatus(order.id, OrderStatus.REJECTED);
+  assert.equal(auditCount, 0);
+  await assert.rejects(() => service.updateStatus(order.id, OrderStatus.PROCESSING), /solo puede volver a revisión/);
+  stockAvailable = false;
+  await assert.rejects(() => service.updateStatus(order.id, OrderStatus.PENDING_REVIEW), /No hay stock/);
+  assert.equal(auditCount, 0);
+  assert.equal(created.length, 0);
+  stockAvailable = true;
+  await service.updateStatus(order.id, OrderStatus.PENDING_REVIEW, 'admin-1');
+  assert.equal(auditCount, 1);
+  assert.deepEqual(created.map(({ variantId, quantity }) => ({ variantId, quantity })), [{ variantId: 'variant-1', quantity: 2 }]);
+});
+
+test('reopening does not reserve stock already consumed before rejection', async () => {
+  let reserved = false;
+  const order = { id: 'order-1', status: OrderStatus.REJECTED, paidTotal: new Prisma.Decimal(0), refundedTotal: new Prisma.Decimal(0), user: { email: 'client@example.test' }, reservations: [] };
+  const tx = {
+    order: { updateMany: async () => ({ count: 1 }) },
+    orderItem: { findMany: async () => [{ variantId: 'variant-1', quantity: 2 }] },
+    stockReservation: { findMany: async () => [{ variantId: 'variant-1', quantity: 2, status: 'CONSUMED' }], create: async () => { reserved = true; } },
+    $executeRaw: async () => { reserved = true; return 1; },
+  };
+  const prisma = { order: { findUnique: async () => order }, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const service = new OrdersService(prisma, {} as never, {} as never, { log: async () => {} } as never, { notify: async () => {} } as never);
+  await service.updateStatus(order.id, OrderStatus.PENDING_REVIEW);
+  assert.equal(reserved, false);
+});
+
 test('checkout requires one of the signed-in customer addresses when there are several', async () => {
   const prisma = { cart: { findUnique: async () => ({ items: [{}], user: { customerAccount: {
     accountStatus: AccountStatus.APPROVED,

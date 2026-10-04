@@ -67,9 +67,10 @@ describe("Ficha: precio y compra según permisos", () => {
   });
 });
 describe("gestión de pedidos", () => {
-  it("no ofrece cambios desde estados finales ni volver atrás", () => {
-    for (const final of ["DELIVERED", "REJECTED", "CANCELLED"])
+  it("permite revisar un rechazo, pero no cambia estados finales ni vuelve atrás", () => {
+    for (const final of ["DELIVERED", "CANCELLED"])
       expect(orderTransitions[final]).toBeUndefined();
+    expect(orderTransitions.REJECTED).toEqual(["PENDING_REVIEW"]);
     expect(orderTransitions.APPROVED).not.toContain("SUBMITTED");
     expect(orderTransitions.PENDING_REVIEW).toContain("APPROVED");
   });
@@ -78,5 +79,6 @@ describe("gestión de pedidos", () => {
     expect(orderStockEffect("SUBMITTED", "REJECTED")).toMatch(/libera/);
     expect(orderStockEffect("APPROVED", "CANCELLED")).toMatch(/no devuelve/);
     expect(orderStockEffect("APPROVED", "PROCESSING")).toMatch(/no modifica/);
+    expect(orderStockEffect("REJECTED", "PENDING_REVIEW")).toMatch(/reservar/);
   });
 });
