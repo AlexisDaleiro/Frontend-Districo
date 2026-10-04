@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -8,9 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  ZoomIn,
 } from "lucide-react";
 import { usePublicApi } from "./providers";
 import { ErrorBox, Picture } from "./ui";
+import { benefitIcons } from "@/lib/benefit-icons";
 import { catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import type {
@@ -287,8 +291,28 @@ export function PublicCatalog() {
   );
 }
 
+type TechnicalBlock = { label: string; html?: string; text?: string };
+type ProductSheet = {
+  technical?: TechnicalBlock[];
+  benefits?: { icon: string; label: string }[];
+};
+
 export function PublicProductDetail({ slug }: { slug: string }) {
   const product = usePublicApi<Product>(`products/${encodeURIComponent(slug)}`);
+  const [imageId, setImageId] = useState<string>();
+  const sourceUrl = product.data?.sourceUrl?.toLowerCase().replace(/\/+$/, "");
+  // La API no guarda ficha técnica ni características: salen de
+  // scripts/fichas-tecnicas.mts.
+  const sheets = useQuery({
+    queryKey: ["fichas-tecnicas"],
+    queryFn: async () => {
+      const response = await fetch("/data/fichas-tecnicas.json");
+      if (!response.ok) throw new Error(String(response.status));
+      return (await response.json()) as Record<string, ProductSheet>;
+    },
+    enabled: Boolean(sourceUrl),
+    staleTime: Infinity,
+  });
   if (product.isPending)
     return (
       <div className="container site-detail-loading">
@@ -306,43 +330,147 @@ export function PublicProductDetail({ slug }: { slug: string }) {
       </div>
     );
   const item = product.data;
-  const image = item.media.find((media) => media.type === "IMAGE");
+  const images = item.media.filter((media) => media.type === "IMAGE");
+  const image = images.find((media) => media.id === imageId) ?? images[0];
+  const category = item.categories.at(-1)?.category;
+  const owner = item.brand ?? item.laboratory;
+  const ownerFilter = owner
+    ? `${item.brand ? "brandId" : "laboratoryId"}=${encodeURIComponent(owner.id)}`
+    : "";
+  const presentations = [
+    ...new Set(
+      item.variants
+        .filter((variant) => variant.active !== false)
+        .map((variant) => variant.presentation || variant.name),
+    ),
+  ];
+  const attributes = item.attributes ?? [];
+  const description = item.description?.replace(/<[^>]+>/g, " ").trim();
+  const sheet = (sourceUrl && sheets.data?.[sourceUrl]) || {};
+  const technical = sheet.technical ?? [];
+  const benefits = (sheet.benefits ?? []).filter((b) => benefitIcons[b.icon]);
   return (
-    <div className="container site-detail-page">
-      <nav className="breadcrumbs" aria-label="Ruta de navegación">
-        <Link href="/">Inicio</Link>
-        <ChevronRight size={13} />
-        <Link href="/productos">Productos</Link>
-        <ChevronRight size={13} />
-        <span>{item.name}</span>
-      </nav>
-      <div className="site-detail-grid">
-        <div className="site-detail-image">
-          <Picture
-            src={image?.url ?? "/images/placeholder.svg"}
-            alt={image?.alt || item.name}
-            sizes="(max-width: 800px) 100vw, 50vw"
-          />
-        </div>
-        <div className="site-detail-copy">
-          <p className="eyebrow">
-            {item.brand?.name ?? item.laboratory?.name ?? "DISTRICO"}
-          </p>
-          <h1>{item.name}</h1>
-          {item.shortDescription && (
-            <p className="site-detail-lead">{item.shortDescription}</p>
+    <>
+      <div className="container site-sheet-page">
+        <nav className="breadcrumbs" aria-label="Ruta de navegación">
+          <Link href="/productos">Productos</Link>
+          {category && (
+            <>
+              <ChevronRight size={13} />
+              <Link
+                href={`/productos?categoryId=${encodeURIComponent(category.id)}`}
+              >
+                {category.name}
+              </Link>
+            </>
           )}
-          {item.description && (
-            <p>{item.description.replace(/<[^>]+>/g, " ")}</p>
-          )}
-          <div className="site-detail-access">
-            <p>
-              Ingresá con una cuenta aprobada para consultar precios,
-              presentaciones y hacer pedidos.
-            </p>
-            <div className="actions">
+          <ChevronRight size={13} />
+          <span>{item.name}</span>
+        </nav>
+        <article className="site-sheet">
+          <div className="site-sheet-media">
+            <div
+              className="site-sheet-zoom"
+              onPointerMove={(e) => {
+                if (e.pointerType !== "mouse") return;
+                const r = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty(
+                  "--zoom-origin",
+                  `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`,
+                );
+              }}
+            >
+              <Picture
+                key={image?.id ?? "placeholder"}
+                src={image?.url ?? "/images/placeholder.svg"}
+                alt={image?.alt || item.name}
+                sizes="(max-width: 940px) 92vw, 500px"
+                fetchPriority="high"
+              />
+              <span className="site-sheet-zoom-badge" aria-hidden="true">
+                <ZoomIn size={20} />
+              </span>
+            </div>
+            {images.length > 1 && (
+              <ul className="site-sheet-thumbs">
+                {images.map((media, index) => (
+                  <li key={media.id}>
+                    <button
+                      type="button"
+                      aria-label={`Ver imagen ${index + 1} de ${images.length}`}
+                      aria-pressed={media.id === image?.id}
+                      onClick={() => setImageId(media.id)}
+                    >
+                      <Picture src={media.url} alt="" sizes="72px" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="site-sheet-info">
+            {category && <p className="eyebrow">{category.name}</p>}
+            <h1>{item.name}</h1>
+            {owner && (
+              <p className="site-sheet-brand">
+                {item.brand ? "Marca" : "Laboratorio"}{" "}
+                <Link href={`/productos?${ownerFilter}`}>{owner.name}</Link>
+              </p>
+            )}
+            {item.shortDescription && (
+              <p className="site-sheet-lead">{item.shortDescription}</p>
+            )}
+            {presentations.length > 0 && (
+              <div>
+                <p className="site-sheet-label">Presentaciones</p>
+                <ul className="site-sheet-chips">
+                  {presentations.map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(benefits.length > 0 || attributes.length > 0) && (
+              <div className="site-sheet-features">
+                <p className="site-sheet-label">Características principales</p>
+                {benefits.length > 0 && (
+                  <ul className="site-sheet-benefits">
+                    {benefits.map((benefit) => (
+                      <li key={benefit.label}>
+                        <svg
+                          viewBox="0 0 64 64"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          focusable="false"
+                          // Trazos fijos de src/lib/benefit-icons.ts, no datos externos.
+                          dangerouslySetInnerHTML={{
+                            __html: benefitIcons[benefit.icon],
+                          }}
+                        />
+                        <span>{benefit.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {attributes.length > 0 && (
+                  <dl>
+                    {attributes.map(({ attributeValue }) => (
+                      <div key={attributeValue.id}>
+                        <dt>{attributeValue.attribute.name}</dt>
+                        <dd>{attributeValue.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            )}
+            <div className="actions site-sheet-cta">
               <Link className="button lime" href={storeRoutes.login}>
-                Ingresar <ArrowRight size={17} />
+                Ingresar para ver precios <ArrowRight size={17} />
               </Link>
               <Link
                 className="button secondary"
@@ -351,9 +479,123 @@ export function PublicProductDetail({ slug }: { slug: string }) {
                 Solicitar cuenta
               </Link>
             </div>
+            <p className="site-sheet-note">
+              DISTRICO distribuye a comercios: precios y pedidos solo con una
+              cuenta aprobada.
+            </p>
           </div>
-        </div>
+        </article>
+        {(description || technical.length > 0) && (
+          <section
+            className={`site-sheet-detail${description && technical.length ? " is-split" : ""}`}
+          >
+            {description && (
+              <div>
+                <h2>Sobre el producto</h2>
+                <p>{description}</p>
+              </div>
+            )}
+            {technical.length > 0 && (
+              <div>
+                <h2>Información técnica</h2>
+                {technical.map((block) => (
+                  <details className="site-tech" key={block.label}>
+                    <summary>{block.label}</summary>
+                    {block.html ? (
+                      // HTML propio, validado contra una lista de etiquetas al generarlo.
+                      <div
+                        className="site-tech-body"
+                        dangerouslySetInnerHTML={{ __html: block.html }}
+                      />
+                    ) : (
+                      <div className="site-tech-body">
+                        <p>{block.text}</p>
+                        <p className="site-tech-note">
+                          Los ingredientes se listan en orden de proporción en
+                          la fórmula.
+                        </p>
+                      </div>
+                    )}
+                  </details>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
-    </div>
+      {(category || owner) && (
+        <PublicRelatedProducts
+          filter={
+            category
+              ? `categoryId=${encodeURIComponent(category.id)}`
+              : ownerFilter
+          }
+          exclude={item.id}
+        />
+      )}
+    </>
+  );
+}
+
+function PublicRelatedProducts({
+  filter,
+  exclude,
+}: {
+  filter: string;
+  exclude: string;
+}) {
+  const related = usePublicApi<ProductCardList>(
+    `products/cards?${filter}&limit=12`,
+  );
+  const track = useRef<HTMLUListElement>(null);
+  const items = related.data?.items.filter((p) => p.id !== exclude) ?? [];
+  // Complementaria: sin datos, con error o sin otros productos no se muestra.
+  if (!items.length) return null;
+  const step = (direction: number) => {
+    const card = track.current?.firstElementChild as HTMLElement | null;
+    if (card)
+      track.current?.scrollBy({ left: direction * (card.offsetWidth + 16) });
+  };
+  return (
+    <section className="site-related" aria-labelledby="related-title">
+      <div className="container">
+        <div className="site-related-head">
+          <h2 id="related-title">Productos recomendados</h2>
+          {items.length > 1 && (
+            <div className="site-related-controls">
+              <button
+                type="button"
+                aria-label="Productos anteriores"
+                aria-controls="related-track"
+                onClick={() => step(-1)}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label="Productos siguientes"
+                aria-controls="related-track"
+                onClick={() => step(1)}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </div>
+        <ul
+          className="site-related-track"
+          id="related-track"
+          ref={track}
+          tabIndex={0}
+          aria-label="Productos recomendados"
+        >
+          {items.map((p) => (
+            <li key={p.id}>
+              <PublicProductCard product={p} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }

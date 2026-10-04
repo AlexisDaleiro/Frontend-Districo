@@ -249,7 +249,7 @@ test("imagen no disponible tiene sustituto y búsqueda vacía tiene salida", asy
     (route) => route.abort(),
   );
   await page.goto("/productos/biofresh-para-cachorros-razas-medianas");
-  await expect(page.locator(".site-detail-image img")).toHaveAttribute(
+  await expect(page.locator(".site-sheet-zoom img")).toHaveAttribute(
     "src",
     "/images/placeholder.svg",
   );

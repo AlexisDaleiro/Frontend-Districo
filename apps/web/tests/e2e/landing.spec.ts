@@ -128,10 +128,10 @@ test("catálogo público muestra datos de la API sin precios", async ({
   );
   await page.locator("a.site-product-image").first().click();
   await expect(page).toHaveURL(/\/productos\/[^/]+$/, { timeout: 15000 });
-  await expect(page.locator(".site-detail-access")).toContainText(
+  await expect(page.locator(".site-sheet-note")).toContainText(
     "cuenta aprobada",
   );
-  await expect(page.locator(".site-detail-page")).not.toContainText("$");
+  await expect(page.locator(".site-sheet-page")).not.toContainText("$");
 });
 
 test("la tienda requiere sesión y la cuenta activa entra allí desde la raíz", async ({
