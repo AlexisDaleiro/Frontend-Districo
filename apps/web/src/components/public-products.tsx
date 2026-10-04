@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -13,6 +12,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { usePublicApi } from "./providers";
+import { TechnicalAccordions, useProductSheet } from "./product-sheet";
 import { ErrorBox, Picture } from "./ui";
 import { benefitIcons } from "@/lib/benefit-icons";
 import { catalogCardsPath } from "@/lib/catalog-query";
@@ -291,28 +291,10 @@ export function PublicCatalog() {
   );
 }
 
-type TechnicalBlock = { label: string; html?: string; text?: string };
-type ProductSheet = {
-  technical?: TechnicalBlock[];
-  benefits?: { icon: string; label: string }[];
-};
-
 export function PublicProductDetail({ slug }: { slug: string }) {
   const product = usePublicApi<Product>(`products/${encodeURIComponent(slug)}`);
   const [imageId, setImageId] = useState<string>();
-  const sourceUrl = product.data?.sourceUrl?.toLowerCase().replace(/\/+$/, "");
-  // La API no guarda ficha técnica ni características: salen de
-  // scripts/fichas-tecnicas.mts.
-  const sheets = useQuery({
-    queryKey: ["fichas-tecnicas"],
-    queryFn: async () => {
-      const response = await fetch("/data/fichas-tecnicas.json");
-      if (!response.ok) throw new Error(String(response.status));
-      return (await response.json()) as Record<string, ProductSheet>;
-    },
-    enabled: Boolean(sourceUrl),
-    staleTime: Infinity,
-  });
+  const sheet = useProductSheet(product.data?.sourceUrl);
   if (product.isPending)
     return (
       <div className="container site-detail-loading">
@@ -346,7 +328,6 @@ export function PublicProductDetail({ slug }: { slug: string }) {
   ];
   const attributes = item.attributes ?? [];
   const description = item.description?.replace(/<[^>]+>/g, " ").trim();
-  const sheet = (sourceUrl && sheets.data?.[sourceUrl]) || {};
   const technical = sheet.technical ?? [];
   const benefits = (sheet.benefits ?? []).filter((b) => benefitIcons[b.icon]);
   return (
@@ -498,26 +479,7 @@ export function PublicProductDetail({ slug }: { slug: string }) {
             {technical.length > 0 && (
               <div>
                 <h2>Información técnica</h2>
-                {technical.map((block) => (
-                  <details className="site-tech" key={block.label}>
-                    <summary>{block.label}</summary>
-                    {block.html ? (
-                      // HTML propio, validado contra una lista de etiquetas al generarlo.
-                      <div
-                        className="site-tech-body"
-                        dangerouslySetInnerHTML={{ __html: block.html }}
-                      />
-                    ) : (
-                      <div className="site-tech-body">
-                        <p>{block.text}</p>
-                        <p className="site-tech-note">
-                          Los ingredientes se listan en orden de proporción en
-                          la fórmula.
-                        </p>
-                      </div>
-                    )}
-                  </details>
-                ))}
+                <TechnicalAccordions blocks={technical} />
               </div>
             )}
           </section>

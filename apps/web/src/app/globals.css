@@ -1369,6 +1369,27 @@ footer :focus-visible {
   font-size: 18px;
   color: var(--ink);
 }
+/* Información técnica en acordeón (ficha pública y tienda). */
+/* Sin esto las tablas abiertas ensanchan la grilla del detalle en mobile. */
+.detail-sections, .detail-sections > section { min-width: 0; }
+.tech-acc { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); interpolate-size: allow-keywords; }
+.tech-acc::details-content { block-size: 0; overflow: hidden; transition: block-size var(--dur-base) var(--ease-out), content-visibility var(--dur-base) allow-discrete; }
+.tech-acc[open]::details-content { block-size: auto; }
+.tech-acc summary { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px; font-weight: 750; cursor: pointer; list-style: none; user-select: none; }
+.tech-acc summary::-webkit-details-marker { display: none; }
+.tech-acc summary::after { content: "+"; font-size: 20px; line-height: 1; }
+.tech-acc[open] summary::after { content: "−"; }
+.tech-acc summary:hover { color: var(--lime-text); }
+.tech-acc summary:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: var(--radius); }
+.tech-acc-body { padding: 0 18px 18px; overflow-x: auto; color: var(--text); font-size: 14px; }
+.tech-acc-body p { margin: 0 0 12px; }
+.tech-acc-body table { min-width: max-content; margin-top: 8px; border-collapse: collapse; background: white; }
+.tech-acc-body th, .tech-acc-body td { padding: 8px 11px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.tech-acc-body th { color: var(--ink); font-weight: 750; }
+.tech-acc-body thead th { background: var(--paper); white-space: nowrap; }
+.tech-acc-body thead th:first-child, .tech-acc-body tbody th:not([colspan]) { position: sticky; left: 0; z-index: 1; background: var(--paper); }
+.tech-acc-note { font-size: 12px; opacity: .75; }
+@media (prefers-reduced-motion: reduce) { .tech-acc::details-content { transition: none; } }
 /* Barra de compra en mobile: entra desde abajo cuando el bloque de compra
    quedó fuera de la vista. */
 .detail-buybar {

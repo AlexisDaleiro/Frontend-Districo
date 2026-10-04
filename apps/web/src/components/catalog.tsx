@@ -16,6 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
+import { TechnicalAccordions, useProductSheet } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import {
@@ -718,6 +719,7 @@ function ProductInfo({
   variant?: Variant;
 }) {
   const categories = product.categories.filter((c) => c.category);
+  const technical = useProductSheet(product.sourceUrl).technical ?? [];
   // Solo filas con dato: la ficha no inventa valores.
   const rows: [string, ReactNode][] = [
     [
@@ -766,24 +768,6 @@ function ProductInfo({
   ];
   return (
     <div className="detail-sections">
-      <section aria-labelledby="detalle-descripcion">
-        <h2 id="detalle-descripcion">Descripción</h2>
-        <p style={{ whiteSpace: "pre-line" }}>
-          {product.description?.replace(/<[^>]+>/g, " ") ||
-            "Consultá a DISTRICO para obtener más información."}
-        </p>
-        {product.sourceUrl && (
-          <a
-            className="text-link"
-            style={{ marginTop: 16 }}
-            href={product.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Información del proveedor <ArrowUpRight size={14} />
-          </a>
-        )}
-      </section>
       <section aria-labelledby="detalle-ficha">
         <h2 id="detalle-ficha">Ficha técnica</h2>
         <dl className="detail-specs">
@@ -797,6 +781,32 @@ function ProductInfo({
             ))}
         </dl>
       </section>
+      {/* Después de la ficha: la información técnica reemplaza a la descripción cuando existe. */}
+      {technical.length > 0 ? (
+        <section aria-labelledby="detalle-tecnica">
+          <h2 id="detalle-tecnica">Información técnica</h2>
+          <TechnicalAccordions blocks={technical} />
+        </section>
+      ) : (
+        <section aria-labelledby="detalle-descripcion">
+          <h2 id="detalle-descripcion">Descripción</h2>
+          <p style={{ whiteSpace: "pre-line" }}>
+            {product.description?.replace(/<[^>]+>/g, " ") ||
+              "Consultá a DISTRICO para obtener más información."}
+          </p>
+          {product.sourceUrl && (
+            <a
+              className="text-link"
+              style={{ marginTop: 16 }}
+              href={product.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Información del proveedor <ArrowUpRight size={14} />
+            </a>
+          )}
+        </section>
+      )}
     </div>
   );
 }
