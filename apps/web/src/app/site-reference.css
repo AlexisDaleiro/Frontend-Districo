@@ -1,6 +1,7 @@
 .reference-lines { scroll-margin-top: 76px; background: linear-gradient(180deg in oklab, #003647 0%, #003647 5%, #003647 10%, #55684d 18%, #55684d 24%, #3f6759 33%, #3f6759 39%, #fac541 47%, #fac541 53%, #a8410b 61%, #a8410b 67%, #2e5e7e 75%, #2e5e7e 82%, #44476d 91%, #44476d 95%, #001a22 100%); }
 .reference-line { position: relative; isolation: isolate; overflow: hidden; color: white; }
-.reference-line::before { content: ""; position: absolute; z-index: 0; top: 46%; left: var(--line-glow-x); width: min(74vw, 720px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--line-accent) 38%, transparent), transparent 72%); opacity: var(--line-glow-opacity, .8); transform: translate3d(-50%, calc(-50% + var(--line-glow-y, 0px)), 0) scale(var(--line-glow-scale, 1)); pointer-events: none; }
+/* El halo ocupa toda la sección: su degradado no se recorta en una capa circular transformada. */
+.reference-line::before { content: ""; position: absolute; z-index: 0; inset: 0; background: radial-gradient(circle var(--line-glow-radius, min(37vw, 360px)) at var(--line-glow-x) 50%, color-mix(in srgb, var(--line-accent) 38%, transparent), transparent 100%); opacity: .8; pointer-events: none; }
 .reference-line--dark { color: #231e0c; }
 .reference-line-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(30px, 4vw, 64px); min-height: 730px; padding-block: 75px; }
 .reference-line-grid.is-reversed .reference-line-copy { order: 2; }
@@ -24,8 +25,9 @@
 .reference-showcase-item { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: translateY(34px) scale(.92); transition: opacity 420ms ease, transform 420ms ease-in; pointer-events: none; }
 .reference-showcase-item.is-active { opacity: 1; transform: none; transition: opacity 600ms ease 200ms, transform 850ms var(--ease-out) 200ms; }
 .reference-showcase-item img { display: block; width: auto; height: min(340px, 68cqi); max-width: 66cqi; object-fit: contain; filter: drop-shadow(0 30px 32px rgb(0 0 0 / .22)); transition: transform .22s ease; }
-.reference-line--compact-image .reference-showcase-stage { height: min(460px, 100cqi); overflow: hidden; }
-.reference-line--compact-image .reference-showcase-item img { scale: var(--product-scale); translate: 0 var(--product-offset); }
+.reference-line--compact-image .reference-showcase-stage { height: min(460px, 100cqi); }
+.reference-line--compact-image .reference-showcase-item { overflow: hidden; }
+.reference-line--compact-image .reference-showcase-item img { scale: var(--product-scale); translate: 0 var(--product-offset); filter: none; }
 .reference-line--compact-image .reference-showcase-thumbs img { scale: 2; }
 .reference-line--compact-image .reference-showcase-thumbs button { overflow: hidden; }
 .reference-showcase-item.is-active img { transform: perspective(800px) rotateX(var(--product-tilt-x, 0deg)) rotateY(var(--product-tilt-y, 0deg)) translateY(var(--product-lift, 0px)); }
@@ -121,7 +123,7 @@
 .reference-contact.site-contact-light .reference-contact-direct .reference-contact-big { color: var(--ink); font-size: clamp(24px, 2.4vw, 32px); }
 .reference-contact.site-contact-light .reference-contact-direct p { color: var(--text); }
 @media (max-width: 767px) {
-  .reference-line::before { left: 50%; width: min(100vw, 620px); }
+  .reference-line::before { --line-glow-x: 50%; --line-glow-radius: min(50vw, 310px); }
   .reference-line-grid { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding-block: 70px 58px; }
   .reference-line-grid.is-reversed .reference-line-copy, .reference-line-grid.is-reversed .reference-line-visual { order: initial; }
   .reference-line-copy h2 { font-size: clamp(38px, 9.5vw, 52px); }
@@ -141,4 +143,4 @@
 @media (min-width: 940px) { .site-brand-strip-track { --visible: 5; } }
 @media (min-width: 1240px) { .site-brand-strip-track { --visible: 8; } .site-brand-strip-heading { grid-template-columns: 1fr 1fr; } }
 @media (prefers-reduced-motion: reduce) { .site-brand-strip-dots button span { transition: none; } }
-@media (prefers-reduced-motion: reduce) { .reference-showcase { translate: none; } .reference-line::before { transform: translate3d(-50%, -50%, 0) !important; } .reference-showcase-item, .reference-showcase-item.is-active, .reference-showcase-item img { transition: none; } .reference-showcase-item.is-active img, .reference-line-ring { transform: none !important; } }
+@media (prefers-reduced-motion: reduce) { .reference-showcase { translate: none; } .reference-showcase-item, .reference-showcase-item.is-active, .reference-showcase-item img { transition: none; } .reference-showcase-item.is-active img, .reference-line-ring { transform: none !important; } }

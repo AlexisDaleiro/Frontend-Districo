@@ -198,9 +198,6 @@ export function MotionSystem() {
         line.style.setProperty("--line-ring-y", `${(progress * distance * 0.55).toFixed(2)}px`);
         line.style.setProperty("--line-ring-rotate", `${(progress * 7).toFixed(2)}deg`);
         line.style.setProperty("--line-ring-scale", (0.95 + focus * 0.07).toFixed(3));
-        line.style.setProperty("--line-glow-y", `${(-progress * distance * 0.7).toFixed(2)}px`);
-        line.style.setProperty("--line-glow-scale", (0.91 + focus * 0.18).toFixed(3));
-        line.style.setProperty("--line-glow-opacity", (0.62 + focus * 0.32).toFixed(3));
       }
     };
 
