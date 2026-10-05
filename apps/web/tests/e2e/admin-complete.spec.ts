@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { staffFeatures } from "../../src/lib/staff-access";
 async function admin(page: Page) {
   await page.goto("/tienda/ingresar");
   await expect(async () => {
@@ -16,7 +17,11 @@ test("roles configura permisos de ver y editar por rol", async ({ page }) => {
   await page.getByRole("link", { name: "Roles" }).click();
   await expect(page).toHaveURL(/\/tienda\/admin\/roles$/);
   await expect(page.getByRole("heading", { name: "Permisos por rol" })).toBeVisible();
-  await expect(page.locator(".staff-role-access tbody tr")).toHaveCount(13);
+  await expect(page.locator(".staff-role-access tbody tr")).toHaveCount(staffFeatures.length);
+  for (const [, title] of staffFeatures) {
+    await expect(page.getByRole("checkbox", { name: `Ver ${title}`, exact: true })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: `Editar ${title}`, exact: true })).toBeVisible();
+  }
   await expect(page.getByRole("checkbox", { name: "Ver Consultas" })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Editar Consultas" })).toBeChecked();
   await page.getByRole("checkbox", { name: "Editar Catálogo" }).check();
@@ -221,14 +226,11 @@ test("crea promociones simples y por vencimiento", async ({ page }) => {
   await page
     .getByRole("textbox", { name: "Nombre *", exact: true })
     .fill("Descuento de prueba");
-  await page
-    .getByLabel("Compra que activa el beneficio")
-    .selectOption({ index: 1 });
-  await page
-    .getByLabel("Productos que reciben el beneficio")
-    .selectOption({ index: 1 });
-  await page.getByLabel("Valor del beneficio").fill("10");
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  const promotionDialog = page.getByRole("dialog", { name: "Crear promoción" });
+  await promotionDialog.getByRole("group", { name: "Elegir Productos" }).getByRole("checkbox").first().check();
+  await promotionDialog.getByRole("spinbutton", { name: "Porcentaje *" }).fill("10");
+  await promotionDialog.getByRole("button", { name: "Guardar promoción" }).click();
+  await expect(promotionDialog).not.toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Descuento de prueba" }),
   ).toBeVisible();

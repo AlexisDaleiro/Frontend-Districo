@@ -395,7 +395,9 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "Administración");
   await page.goto("/tienda/admin/consultas");
-  await expect(page.locator(".admin-cards")).toContainText("Comercio Contacto");
+  const inquiryRow = page.getByRole("row").filter({ hasText: "Comercio Contacto" });
+  await expect(inquiryRow).toBeVisible();
+  await inquiryRow.getByRole("button", { name: "Ver detalle" }).click();
   await page.getByRole("button", { name: "Gestionar" }).click();
   const inquiryDialog = page.getByRole("dialog");
   await inquiryDialog.locator('select[name="status"]').selectOption("IN_PROGRESS");
@@ -403,8 +405,9 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
     .locator('textarea[name="internalNote"]')
     .fill("Contactar durante la tarde");
   await inquiryDialog.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.locator(".admin-cards")).toContainText("En seguimiento");
-  await expect(page.locator(".admin-cards")).toContainText(
+  await expect(inquiryDialog).not.toBeVisible();
+  await expect(inquiryRow).toContainText("En seguimiento");
+  await expect(page.locator(".admin-inquiry-detail")).toContainText(
     "Contactar durante la tarde",
   );
 });
