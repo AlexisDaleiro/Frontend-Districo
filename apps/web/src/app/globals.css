@@ -3666,6 +3666,33 @@ td .button {
 .directory-grid small {
   color: var(--muted);
 }
+.brand-directory { background: #f6f7f5; min-height: 60vh; }
+.brand-directory .page-heading h1 { font-size: clamp(28px, 3vw, 38px); }
+.brand-directory-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 34px; }
+.brand-directory-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.brand-directory-filters button { min-height: 44px; padding: 10px 18px; border: 1px solid #dfe5e2; border-radius: 99px; background: white; color: var(--ink); font-size: 13px; font-weight: 700; }
+.brand-directory-filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: white; }
+.brand-directory-section + .brand-directory-section { border-top: 1px solid #dfe5e2; padding-top: 32px; margin-top: 40px; }
+.brand-directory-section > h2 { font-size: 20px; margin-bottom: 20px; }
+.brand-gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.brand-gallery-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 160px; padding: 18px 16px; border: 1px solid #dfe5e2; border-radius: 14px; background: white; color: var(--ink); transition: border-color .2s ease, box-shadow .2s ease; }
+.brand-gallery-card:hover { border-color: #98ada6; box-shadow: 0 6px 20px rgb(22 61 74 / .08); color: var(--ink); }
+.brand-gallery-logo { display: grid; place-items: center; width: 100%; min-height: 65px; }
+.brand-gallery-logo .brand-mark { width: min(100%, 140px); height: 60px; }
+.brand-gallery-card h3 { font-size: 16px; font-weight: 700; text-align: center; overflow-wrap: anywhere; }
+.brand-gallery-initials { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: #f1f5f3; color: var(--ink); font-size: 20px; font-weight: 800; }
+.brand-directory-empty { padding: 26px 0; color: var(--muted); }
+@media (min-width: 768px) and (max-width: 1023px) {
+  .brand-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .brand-directory-toolbar { gap: 14px; }
+  .brand-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .brand-gallery-card { min-height: 130px; padding: 14px 12px; gap: 10px; }
+  .brand-gallery-logo { min-height: 55px; }
+  .brand-gallery-logo .brand-mark { height: 50px; }
+  .brand-gallery-card h3 { font-size: 14px; }
+}
 .account-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
