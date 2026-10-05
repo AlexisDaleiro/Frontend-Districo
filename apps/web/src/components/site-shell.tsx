@@ -181,7 +181,13 @@ export function PublicFooter() {
           <p>A. Antonio Lusich esq. Vicenza · Maldonado</p>
           <a href="tel:+59842252155">(+598) 4225 2155</a>
           <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
-          <h3>Seguinos</h3>
+        </div>
+      </div>
+      <div className="container footer-bottom">
+        <span>© {new Date().getFullYear()} DISTRICO S.A.</span>
+        <span>Sitio institucional</span>
+        <div className="site-footer-social">
+          <span>Seguinos</span>
           <div className="site-socials">
             <a
               href="https://www.facebook.com/districosa/"
@@ -200,14 +206,10 @@ export function PublicFooter() {
               <Linkedin size={20} />
             </a>
           </div>
-          <Link className="text-link" href={storeRoutes.requestAccount}>
-            Solicitar cuenta <ArrowUpRight size={16} />
-          </Link>
         </div>
-      </div>
-      <div className="container footer-bottom">
-        <span>© {new Date().getFullYear()} DISTRICO S.A.</span>
-        <span>Sitio institucional</span>
+        <Link className="text-link" href={storeRoutes.requestAccount}>
+          Solicitar cuenta <ArrowUpRight size={16} />
+        </Link>
       </div>
     </footer>
   );
