@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowRight,
-  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Search,
   ZoomIn,
 } from "lucide-react";
 import { usePublicApi } from "./providers";
+import { CatalogPagination } from "./catalog-pagination";
 import { TechnicalAccordions, useProductSheet } from "./product-sheet";
 import { ErrorBox, Picture } from "./ui";
 import { benefitIcons } from "@/lib/benefit-icons";
@@ -56,7 +55,7 @@ export function PublicProductCard({ product }: { product: ProductCardData }) {
           className="text-link"
           href={`/productos/${encodeURIComponent(product.slug)}`}
         >
-          Conocer producto <ArrowUpRight size={16} />
+          Conocer producto
         </Link>
       </div>
     </article>
@@ -107,7 +106,7 @@ export function FeaturedProducts() {
             </p>
           </div>
           <Link className="button secondary" href="/productos">
-            Más productos <ArrowRight size={17} />
+            Más productos
           </Link>
         </div>
         {featured.isPending ? (
@@ -127,14 +126,14 @@ export function FeaturedProducts() {
           <div className="site-empty">
             <p>Estamos preparando nuestra selección destacada.</p>
             <Link className="text-link" href="/productos">
-              Explorá todos los productos <ArrowRight size={16} />
+              Explorá todos los productos
             </Link>
           </div>
         )}
         <div className="site-featured-cta">
           <p>Los precios y pedidos están disponibles para cuentas aprobadas.</p>
           <Link href={storeRoutes.login} className="text-link">
-            Ingresá para comprar <ArrowUpRight size={16} />
+            Ingresá para comprar
           </Link>
         </div>
       </div>
@@ -169,14 +168,13 @@ export function PublicCatalog() {
     <div className="site-catalog-page">
       <section className="site-catalog-intro">
         <div className="container">
-          <p className="eyebrow">Nuestras líneas</p>
           <h1>Marcas y productos para cada negocio.</h1>
           <p>
             Explorá el catálogo público. Una cuenta aprobada te permite
             consultar precios y gestionar pedidos.
           </p>
           <Link className="button lime" href={storeRoutes.requestAccount}>
-            Solicitar cuenta <ArrowRight size={17} />
+            Solicitar cuenta
           </Link>
         </div>
       </section>
@@ -261,31 +259,15 @@ export function PublicCatalog() {
           <div className="site-empty">
             <p>No encontramos productos con esos filtros.</p>
             <Link className="text-link" href="/productos">
-              Ver todo el catálogo <ArrowRight size={16} />
+              Ver todo el catálogo
             </Link>
           </div>
         )}
-        {pageCount > 1 && (
-          <nav className="site-pagination" aria-label="Páginas del catálogo">
-            <button
-              className="button secondary"
-              disabled={page <= 1}
-              onClick={() => change("page", String(page - 1))}
-            >
-              <ChevronLeft size={16} /> Anterior
-            </button>
-            <span>
-              Página {page} de {pageCount}
-            </span>
-            <button
-              className="button secondary"
-              disabled={page >= pageCount}
-              onClick={() => change("page", String(page + 1))}
-            >
-              Siguiente <ChevronRight size={16} />
-            </button>
-          </nav>
-        )}
+        <CatalogPagination
+          page={page}
+          totalPages={pageCount}
+          onPageChange={(target) => change("page", String(target))}
+        />
       </div>
     </div>
   );
@@ -451,7 +433,7 @@ export function PublicProductDetail({ slug }: { slug: string }) {
             )}
             <div className="actions site-sheet-cta">
               <Link className="button lime" href={storeRoutes.login}>
-                Ingresar para ver precios <ArrowRight size={17} />
+                Ingresar para ver precios
               </Link>
               <Link
                 className="button secondary"

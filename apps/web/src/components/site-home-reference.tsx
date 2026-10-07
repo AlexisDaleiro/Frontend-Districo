@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { ArrowUpRight } from "lucide-react";
 import { SiteLineShowcase } from "./site-line-showcase";
 
 const lines = [
@@ -126,14 +125,13 @@ export function SiteHomeReference() {
           >
             <div className={`container reference-line-grid${index % 2 ? " is-reversed" : ""}`}>
               <div className="reference-line-copy">
-                <p className="reference-kicker">Nuestras líneas / 0{index + 1}</p>
                 <h2 id={`reference-line-${index}`}>{line.title}</h2>
                 <p>{line.description}</p>
                 <ul className="reference-line-tags" aria-label="Categorías">
                   {line.tags.map((tag) => <li key={tag}>{tag}</li>)}
                 </ul>
                 <Link href={line.href} className="reference-line-cta">
-                  Ver productos <ArrowUpRight size={18} aria-hidden="true" />
+                  Ver productos
                 </Link>
               </div>
               <div className="reference-line-visual">

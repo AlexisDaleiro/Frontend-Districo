@@ -98,26 +98,6 @@
   isolation: isolate;
 }
 
-.page-heading::before,
-.hero-copy::before,
-.company-hero-copy::before,
-.auth-aside::before,
-.summary::before,
-.cta-band::before {
-  content: "";
-  position: absolute;
-  width: clamp(85px, 16vw, 210px);
-  aspect-ratio: 1;
-  right: 2%;
-  top: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--lime-soft), transparent 70%);
-  opacity: 0.35;
-  pointer-events: none;
-  z-index: 0;
-  animation: motion-breathe 9s ease-in-out infinite alternate;
-}
-
 .page-heading > *,
 .hero-copy > *,
 .company-hero-copy > *,
@@ -126,17 +106,6 @@
 .cta-band > * {
   position: relative;
   z-index: 1;
-}
-
-@keyframes motion-breathe {
-  from {
-    transform: translate3d(0, 0, 0) scale(0.88);
-    opacity: 0.2;
-  }
-  to {
-    transform: translate3d(-14px, 10px, 0) scale(1.13);
-    opacity: 0.48;
-  }
 }
 
 /* Brillo que cruza la banda de llamada una vez, al entrar en pantalla. */
@@ -762,12 +731,6 @@ button {
     will-change: auto;
   }
 
-  .page-heading::before,
-  .hero-copy::before,
-  .company-hero-copy::before,
-  .auth-aside::before,
-  .summary::before,
-  .cta-band::before,
   .cta-band::after,
   .status-pill.pending,
   .empty > svg,
@@ -783,7 +746,6 @@ button {
   .site-hero-lead,
   .site-hero-copy .actions,
   .site-hero-visual,
-  .site-hero-orbit,
   .site-purpose-image img {
     animation: none !important;
     translate: none !important;

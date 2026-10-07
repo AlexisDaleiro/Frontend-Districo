@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { Picture } from "./ui";
 import type { siteBrands } from "@/lib/site-brands";
 
@@ -33,7 +32,6 @@ export function SiteBrandCard({ brand, sizes }: { brand: (typeof siteBrands)[num
       <span className="reference-brand-mark">
         <span className="reference-brand-wordmark">{displayName}</span>
       </span>
-      <span className="reference-brand-name">{displayName}<ArrowUpRight size={15} aria-hidden="true" /></span>
     </Link>
   );
 }

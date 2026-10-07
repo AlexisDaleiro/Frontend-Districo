@@ -76,7 +76,7 @@ test("el panel del carrito permite revisar y editar sin salir de la página", as
   await expect(page).toHaveURL(/biofresh-para-cachorros-razas-medianas$/);
   await page.getByRole("button", { name: "Carrito, 1 productos" }).click();
   await panel.getByRole("button", { name: /^Quitar / }).click();
-  await expect(panel.getByRole("heading", { name: "Tu carrito está esperando" })).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Tu carrito está vacío" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Carrito, 0 productos" })).toBeAttached();
   await panel.getByRole("link", { name: "Explorar catálogo" }).click();
   await expect(page).toHaveURL(/[/]tienda[/]productos$/);

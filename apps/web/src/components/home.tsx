@@ -2,9 +2,6 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
-  PackageCheck,
-  Handshake,
-  ShieldCheck,
 } from "lucide-react";
 import {
   apiQueryKey,
@@ -48,7 +45,6 @@ export function Home() {
         <section className="needs" aria-label="Comprar por necesidad">
           <div className="needs-intro">
             <strong>¿Qué estás buscando?</strong>
-            <p>Una solución para cada necesidad.</p>
           </div>
           {categories.error ? (
             <ErrorBox
@@ -68,7 +64,7 @@ export function Home() {
             </div>
           ) : !mapped.length ? (
             <Link className="text-link" href={storeRoutes.products}>
-              Explorá el catálogo completo <ArrowUpRight size={16} />
+              Explorá el catálogo completo
             </Link>
           ) : (
             <div className="need-list">
@@ -90,39 +86,18 @@ export function Home() {
           )}
         </section>
         <HomeCarousel brands={brands.data} />
-        <div className="benefits">
-          <div>
-            <PackageCheck size={24} />
-            <span>
-              <strong>Selección mayorista</strong>Productos para tu negocio
-            </span>
-          </div>
-          <div>
-            <ShieldCheck size={24} />
-            <span>
-              <strong>Marcas de confianza</strong>Calidad y respaldo
-            </span>
-          </div>
-          <div>
-            <Handshake size={24} />
-            <span>
-              <strong>Atención cercana</strong>Te acompañamos a crecer
-            </span>
-          </div>
-        </div>
         {lines.length > 0 && (
           <section className="section">
             <div className="section-title">
               <div>
-                <p className="eyebrow">Un catálogo, muchas posibilidades</p>
-                <h2>Encontrá tu próxima solución.</h2>
+                <h2>Líneas de producto</h2>
               </div>
               <Link className="text-link" href={storeRoutes.products}>
-                Ver todo <ArrowUpRight size={16} />
+                Ver todo
               </Link>
             </div>
             <div className="line-grid">
-              {lines.map((n, i) => (
+              {lines.map((n) => (
                 <Link
                   className="line-card"
                   key={n.id}
@@ -136,21 +111,7 @@ export function Home() {
                     loading="lazy"
                     sizes="(max-width: 767px) 100vw, 33vw"
                   />
-                  <p className="eyebrow">0{i + 1} / Nuestras líneas</p>
-                  <h3>
-                    {n.name === "Alimentación"
-                      ? "Bienestar animal"
-                      : n.name === "Veterinaria"
-                        ? "Cuidado profesional"
-                        : "Pequeños gustos"}
-                  </h3>
-                  <p>
-                    {n.name === "Alimentación"
-                      ? "Nutrición para cada etapa."
-                      : n.name === "Veterinaria"
-                        ? "Soluciones para el cuidado animal."
-                        : "Snacks para disfrutar y compartir."}
-                  </p>
+                  <h3>{n.name}</h3>
                   <span className="round-arrow">
                     <ArrowUpRight size={18} />
                   </span>
@@ -167,7 +128,7 @@ export function Home() {
               className="eyebrow"
               style={{ textAlign: "center", marginBottom: 28 }}
             >
-              Marcas que forman parte de cada día
+              Marcas que distribuimos
             </p>
             <div className="brand-list">
               {brands.data.slice(0, 6).map((b) => (
@@ -180,7 +141,7 @@ export function Home() {
                 </Link>
               ))}
               <Link className="text-link" href={storeRoutes.brands}>
-                Conocé todas <ArrowUpRight size={16} />
+                Conocé todas
               </Link>
             </div>
           </div>
@@ -190,14 +151,10 @@ export function Home() {
         <section className="section">
           <div className="section-title">
             <div>
-              <p className="eyebrow">Para tener en cuenta</p>
-              <h2>Una selección para tu negocio.</h2>
-              <p className="muted">
-                Explorá las presentaciones y encontrá lo que necesitás.
-              </p>
+              <h2>Productos destacados</h2>
             </div>
             <Link className="text-link" href={storeRoutes.products}>
-              Ver catálogo <ArrowUpRight size={16} />
+              Ver catálogo
             </Link>
           </div>
           {featured.isPending ? (
@@ -211,19 +168,17 @@ export function Home() {
             <ProductGrid products={featured.data.items} />
           ) : (
             <p className="muted">
-              Estamos preparando nuestra selección. Explorá el catálogo
-              completo.
+              Todavía no hay productos destacados.
             </p>
           )}
         </section>
         {!user && (
           <section className="cta-band" style={{ marginBottom: 64 }}>
             <div>
-              <p className="eyebrow">Tu negocio, nuestro compromiso</p>
-              <h2>El próximo paso lo damos juntos.</h2>
+              <h2>¿Todavía no tenés cuenta?</h2>
               <p>
-                Accedé al catálogo mayorista y gestioná tus pedidos en un solo
-                lugar.
+                Con una cuenta aprobada ves precios y stock, y hacés tus
+                pedidos desde acá.
               </p>
             </div>
             <ActionLink href={storeRoutes.requestAccount} secondary>

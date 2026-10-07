@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, ArrowUpRight, CheckCircle, RotateCcw, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Trash2, CheckCircle, RotateCcw, ShoppingBag, ShieldCheck } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { AccessGate } from "./auth";
 import { Quantity } from "./catalog";
@@ -227,8 +227,8 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   if (!q.data.items.length)
     return (
-      <Empty title="Tu carrito está esperando">
-        <p>Explorá el catálogo y elegí las presentaciones para tu negocio.</p>
+      <Empty title="Tu carrito está vacío">
+        <p>Elegí presentaciones en el catálogo para armar tu pedido.</p>
         <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
       </Empty>
     );
@@ -265,7 +265,6 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
                   href={storeRoutes.product(r.product.slug)}
                 >
                   {r.product.name}
-                  <ArrowUpRight size={15} />
                 </Link>
               </p>
             ))}
@@ -331,7 +330,6 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
             onClick={() => checkout.mutate()}
           >
             {checkout.isPending ? "Enviando…" : "Enviar pedido a DISTRICO"}
-            <ArrowUpRight size={17} />
           </button>
         ) : (
           <button
@@ -339,7 +337,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
             disabled={q.isFetching || blocked || pendingLines.length > 0}
             onClick={() => router.push(storeRoutes.checkout)}
           >
-            Continuar al checkout <ArrowUpRight size={17} />
+            Continuar al checkout
           </button>
         )}
         {DEMO && (
@@ -380,8 +378,8 @@ export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
       }}
     >
       {!q.data.items.length ? (
-        <Empty title="Tu carrito está esperando">
-          <p>Explorá el catálogo y elegí las presentaciones para tu negocio.</p>
+        <Empty title="Tu carrito está vacío">
+          <p>Elegí presentaciones en el catálogo para armar tu pedido.</p>
           <ActionLink href={storeRoutes.products}>Explorar catálogo</ActionLink>
         </Empty>
       ) : (
@@ -418,7 +416,7 @@ export function CartPreview({ onNavigate }: { onNavigate: () => void }) {
                 router.push(storeRoutes.checkout);
               }}
             >
-              Finalizar pedido <ArrowUpRight size={17} />
+              Finalizar pedido
             </button>
             <ActionLink href={storeRoutes.cart} secondary>
               Ver carrito
@@ -433,7 +431,7 @@ export function CartPage() {
   return (
     <div className="container section cart-page order-flow-page">
       <div className="cart-page-heading">
-        <PageHeading eyebrow="Tu pedido mayorista" title="Tu carrito">Revisá los productos antes de continuar con el pedido.</PageHeading>
+        <PageHeading title="Tu carrito">Revisá los productos antes de continuar con el pedido.</PageHeading>
         <div className="cart-page-steps" aria-label="Progreso del pedido">
           <span aria-current="step"><strong>01</strong> Carrito</span>
           <span><strong>02</strong> Confirmación</span>
@@ -448,7 +446,7 @@ export function CartPage() {
 export function CheckoutPage() {
   return (
     <div className="container section order-flow-page checkout-page">
-      <PageHeading eyebrow="Revisá tu pedido" title="Confirmar pedido" />
+      <PageHeading title="Confirmar pedido" />
       <AccessGate>
         <CartContent checkoutMode />
       </AccessGate>

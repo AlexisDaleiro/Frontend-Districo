@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteBrandCard } from "./site-brand-card";
 import { siteBrands } from "@/lib/site-brands";
 
@@ -51,7 +51,6 @@ export function SiteBrandStrip() {
     <section className="site-brand-strip" aria-labelledby="site-brand-strip-title">
       <div className="container site-brand-strip-heading">
         <div>
-          <p className="reference-kicker">Representaciones</p>
           <h2 id="site-brand-strip-title">Las marcas que distribuimos</h2>
         </div>
         <p>Marcas para mascotas, snacks y cuidado veterinario que llegan a comercios de todo Uruguay.</p>
@@ -97,7 +96,7 @@ export function SiteBrandStrip() {
             ><span /></button>
           ))}
         </div>
-        <Link href="/marcas" className="button lime">Ver todas las marcas <ArrowRight size={17} aria-hidden="true" /></Link>
+        <Link href="/marcas" className="button lime">Ver todas las marcas</Link>
       </div>
     </section>
   );

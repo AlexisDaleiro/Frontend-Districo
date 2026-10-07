@@ -43,21 +43,12 @@
   margin: 0 auto;
 }
 
-.site-hero-story-visual .site-hero-orbit {
-  width: 72%;
-  top: 12%;
-  right: 10%;
-  border: clamp(24px, 3.5vw, 42px) solid var(--lime);
-  background: transparent;
-  box-shadow: 0 0 0 48px rgb(201 230 41 / .055);
-}
-
 .site-hero-story-media {
   position: absolute;
   z-index: 1;
   inset: 8% 12%;
   overflow: hidden;
-  border-radius: 15px;
+  border-radius: 6px;
   background: white;
   box-shadow: 0 25px 55px rgb(0 0 0 / .26);
   animation: site-chapter-image-in 700ms var(--ease-out) both;
@@ -72,22 +63,8 @@
   box-shadow: none;
   filter: drop-shadow(0 25px 30px rgb(0 0 0 / .27));
 }
-.site-hero-story-visual--photo .site-hero-story-media { inset: 14% 4%; }
+.site-hero-story-visual--photo .site-hero-story-media { inset: 9% 0; }
 .site-hero-story-visual--photo .site-hero-story-media img { object-fit: cover; }
-
-.site-hero-story-caption {
-  position: absolute;
-  z-index: 2;
-  right: 2%;
-  bottom: 8%;
-  padding: 11px 15px;
-  border-radius: 4px;
-  background: #edf5e6;
-  color: var(--ink-deep);
-  font-size: 12px;
-  font-weight: 800;
-  box-shadow: 0 12px 24px rgb(0 0 0 / .12);
-}
 
 @keyframes site-chapter-in {
   from { opacity: 0; transform: translateY(20px); }
@@ -100,10 +77,15 @@
 }
 
 @media (min-width: 768px) {
+  /* El hero toma la altura de su contenido: con 100svh quedaba una franja vacía antes de las marcas. */
+  .site-hero--story { min-height: 0; }
   .site-hero--story .site-hero-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 24px;
+    padding-bottom: 64px;
   }
+  .site-hero-story-visual { min-height: 0; aspect-ratio: 4 / 3; }
+  .site-hero-story-visual--photo .site-hero-story-media { inset: 0; }
 }
 
 @media (max-width: 767px) {
@@ -113,18 +95,14 @@
   .site-hero--story .site-hero-lead { margin-top: 14px; }
   .site-hero--story .site-hero-copy .actions { margin-top: 26px; }
   .site-hero-story-visual { min-height: 270px; width: min(100%, 390px); aspect-ratio: .94; }
-  .site-hero-story-visual .site-hero-orbit { border-width: 24px; box-shadow: 0 0 0 25px rgb(201 230 41 / .055); }
-  .site-hero-story-caption { right: 0; bottom: 13%; padding: 8px 10px; font-size: 10px; }
 }
 
 @media (max-width: 359px) {
   .site-hero--story .site-hero-grid { padding-top: 91px; padding-bottom: 8px; }
   .site-hero-story-visual { width: min(100%, 255px); min-height: 200px; aspect-ratio: 1.08; }
-  .site-hero-story-caption { right: -8px; bottom: 6%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-hero-chapter-copy,
-  .site-hero-story-media,
-  .site-hero-story-visual .site-hero-orbit { animation: none !important; }
+  .site-hero-story-media { animation: none !important; }
 }

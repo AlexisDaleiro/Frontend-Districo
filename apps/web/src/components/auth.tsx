@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle, ArrowRight } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { DEMO, request, useSession } from "./providers";
 import { ActionLink, Empty, ErrorBox, Loading, PageHeading } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
@@ -43,11 +43,8 @@ export function Login() {
     <div className="container section">
       <div className="auth-layout">
         <div>
-          <PageHeading
-            eyebrow="Bienvenido de nuevo"
-            title="Tu negocio, conectado."
-          >
-            Ingresá a tu cuenta mayorista.
+          <PageHeading title="Ingresá a tu cuenta">
+            Para comercios con cuenta mayorista aprobada.
           </PageHeading>
           <form className="stack" onSubmit={form.handleSubmit(submit)}>
             <label className="field">
@@ -80,20 +77,14 @@ export function Login() {
             {error !== undefined && <ErrorBox error={error} />}
             <button className="button" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Ingresando…" : "Ingresar"}
-              <ArrowRight size={17} />
             </button>
           </form>
         </div>
         <aside className="auth-aside">
-          <p className="eyebrow">Crezcamos juntos</p>
-          <h2>
-            Todo lo que necesitás,
-            <br />
-            en un mismo lugar.
-          </h2>
+          <h2>¿Todavía no sos cliente?</h2>
           <p>
-            Consultá precios, armá tus pedidos y acompañá su evolución desde tu
-            cuenta.
+            Con una cuenta aprobada ves precios y stock, hacés pedidos y seguís
+            su estado.
           </p>
           <div className="actions">
             <ActionLink href={storeRoutes.requestAccount} secondary>
@@ -221,10 +212,7 @@ export function Apply() {
   ];
   return (
     <div className="container section" style={{ maxWidth: 920 }}>
-      <PageHeading
-        eyebrow="Empecemos a trabajar juntos"
-        title="Solicitá tu cuenta mayorista."
-      >
+      <PageHeading title="Solicitá tu cuenta mayorista.">
         Contanos sobre tu comercio. Nuestro equipo revisará tu solicitud y los
         permisos correspondientes.
       </PageHeading>
@@ -286,7 +274,6 @@ export function Apply() {
           {error !== undefined && <ErrorBox error={error} />}
           <button className="button" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Enviando…" : "Enviar solicitud"}
-            <ArrowRight size={17} />
           </button>
           <p className="info-note">
             La solicitud no habilita la compra hasta su aprobación.

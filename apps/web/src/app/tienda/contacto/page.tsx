@@ -12,7 +12,7 @@ export default function Page() {
     <div className="contact-page">
       <header className="contact-hero">
         <div className="container">
-          <PageHeading eyebrow="Contacto" title="Hablemos de tu comercio">
+          <PageHeading title="Hablemos de tu comercio">
             Atendemos veterinarias, pet shops, agropecuarias y grandes
             superficies de todo el país. Escribinos y un vendedor de tu zona se
             pone en contacto.
@@ -25,8 +25,7 @@ export default function Page() {
         aria-labelledby="contact-form-title"
       >
         <div>
-          <p className="eyebrow">Escribinos</p>
-          <h2 id="contact-form-title">¿Cómo podemos ayudarte?</h2>
+          <h2 id="contact-form-title">Escribinos</h2>
           <ContactForm />
         </div>
         <aside className="contact-direct-card" aria-label="Contacto directo">
@@ -58,8 +57,7 @@ export default function Page() {
       <section className="contact-branches" aria-labelledby="branches-title">
         <div className="container">
           <div className="contact-section-heading">
-            <p className="eyebrow">Estamos cerca</p>
-            <h2 id="branches-title">Dos sedes para acompañarte.</h2>
+            <h2 id="branches-title">Nuestras sedes</h2>
           </div>
           <div className="contact-branch-grid">
             <article className="contact-branch-card">

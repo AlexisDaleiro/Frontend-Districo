@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { ArrowRight, ArrowUpRight, Mail, Phone } from "lucide-react";
+import { ArrowUpRight, Mail, Phone } from "lucide-react";
 import { storeRoutes } from "@/lib/store-routes";
 
 // Sin backend de mensajes: el formulario solo arma el texto y abre WhatsApp o el correo del visitante.
@@ -54,8 +54,8 @@ export function SiteContact() {
           <a className="reference-contact-big" href="tel:08001004"><Phone size={20} aria-hidden="true" /> 0800 1004</a>
           <a href="tel:+59823201381">(+598) 2320 1381</a>
           <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
-          <p>César Mayo Gutiérrez 3024 bis, Montevideo · Sucursal Maldonado</p>
-          <Link className="reference-contact-secondary" href={storeRoutes.requestAccount}>Solicitar cuenta mayorista <ArrowRight size={18} aria-hidden="true" /></Link>
+          <p>César Mayo Gutiérrez 3024 bis, Montevideo. Sucursal en Maldonado.</p>
+          <Link className="reference-contact-secondary" href={storeRoutes.requestAccount}>Solicitar cuenta mayorista</Link>
         </aside>
       </div>
     </section>

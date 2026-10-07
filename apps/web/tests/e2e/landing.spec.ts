@@ -176,7 +176,7 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
 test("movimiento reducido deja el hero sin bucles", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".site-hero-orbit")).toHaveCSS(
+  await expect(page.locator(".site-hero-story-media")).toHaveCSS(
     "animation-name",
     "none",
   );

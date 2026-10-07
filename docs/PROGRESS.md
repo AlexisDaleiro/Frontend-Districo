@@ -1,6 +1,54 @@
 # Registro de avance
 
-Última actualización: 3 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 7 de octubre de 2026. Rama de trabajo: `main`.
+
+## Ingreso sin espacio blanco bajo el footer (7/10/2026)
+
+- Causa reproducida a 1440 × 1080: el documento ocupaba 1080 px, pero el footer terminaba en 1017,45 px. `StoreFrame` ahora envuelve solo las rutas públicas de acceso en `.site-access-frame`, una columna flex con altura mínima `100svh`; el main crece para completar la ventana y el footer no se contrae (`site.css`). También aplica a solicitud de cuenta y recuperación de acceso que comparten ese marco.
+- Typecheck y ESLint de `store-frame.tsx`: correctos. Playwright en demo: a 1440 × 1080 el footer termina exactamente en 1080 px; a 1440 × 900 y 390 × 844 el footer coincide con el final del documento largo (diferencia menor a 1 px por redondeo). No se cambió la altura del contenido cuando ya supera la ventana.
+- Sin commit ni push. Siguiente acción: revisión visual de `/tienda/ingresar` en una ventana alta.
+
+## Paginador público igual al de la tienda B2B (7/10/2026)
+
+- Extraído el paginador existente de `apps/web/src/components/catalog.tsx` a `catalog-pagination.tsx`, compartido con `public-products.tsx`. `/productos` usa los mismos números, página activa, saltos, Anterior/Siguiente y estilos adaptables de la tienda. Eliminadas las reglas `.site-pagination` que quedaron sin uso en `site.css`.
+- Typecheck, ESLint de los tres componentes y `git diff --check`: correctos. Playwright contra el servidor demo existente en 3107: a 1440 y 390 px se navega por número a página 2 y se vuelve con Anterior, se conserva `search=a`, se deshabilitan los extremos y no hay desbordamiento. Capturas del paginador revisadas en ambos anchos.
+- Sin commit ni push. Siguiente acción: revisar visualmente `/productos` con el paginador compartido.
+
+## Continuación de Claude Code: visual de la tienda B2B (7/10/2026)
+
+- Recuperado el contexto de la sesión local `8b262352-9828-403a-8dbb-4378296f4d9b`: el pedido vigente era revisar la visual del ecommerce B2B para quitar recursos genéricos. La sesión se interrumpió al añadir un borde a «Uso profesional».
+- Cambios que ya dejó Claude: rótulos en tipo oración y sin espaciado artificial; eliminación de la mancha lima animada (`motion.css`), los aros de la cuenta y la barra de beneficios de portada; textos más concretos en inicio, ingreso, catálogo, carrito, pedidos, cuenta, contacto y administración; flechas retiradas de acciones con texto; etiquetas de producto solo cuando requieren permiso profesional; imágenes de catálogo y ficha sobre blanco (`globals.css`). Se conservan los cambios previos del sitio público.
+- Continuación: añadido `border: 1px solid var(--line)` a `.product-card .tag` en `apps/web/src/app/globals.css`. El contorno mantiene visible «Uso profesional» sobre el fondo blanco de la imagen.
+- Typecheck y lint del frontend correctos. Revisión visual de inicio en escritorio, catálogo y cuenta en móvil; capturas de esas tres pantallas a 1440 y 390 px sin desbordamiento horizontal. Borde de la etiqueta comprobado en ambos anchos. Capturas locales en `apps/web/test-results/claude-handoff/` (artefactos de prueba, no para commit).
+- Las pruebas de navegador reutilizan el servidor demo existente de Claude en 3107, PID 29232: iniciar otro servidor con `.next-e2e` encuentra su bloqueo. Windows requiere ejecutar Next/Playwright fuera del sandbox; no se modificó el servidor existente ni el backend.
+- Verificación: `$env:E2E_PORT='3107'; $env:E2E_USE_EXISTING_SERVER='1'; npm run test:e2e -- flows.spec.ts motion.spec.ts`: 29/29 correctas (21 funcionales y 8 de animaciones), en 3 minutos. `git diff --check`: correcto. Las pruebas del ingreso que antes eran intermitentes pasaron en esta corrida; no se cambió la autenticación ni se afirma resuelta su intermitencia.
+- Pendiente: revisión humana del diseño. Siguiente acción: revisar `/tienda`, `/tienda/productos` y `/tienda/cuenta` con estos cambios; cualquier prueba local debe usar el servidor demo existente o un directorio de build diferente. No se hizo commit ni push.
+
+
+## Sitio público sin rasgos de plantilla, segunda pasada (7/10/2026)
+
+- Garantía, «Cómo se hace el cambio»: los tres pasos dejan de ir en tarjetas con borde y se unen con un riel, vertical en móvil y horizontal desde 768 px (`.site-warranty-steps li::before` en `src/app/site.css`). Se conserva la numeración porque es una secuencia real. El sello dice «Satisfacción» en tipo oración.
+- Ficha pública: los rótulos «Presentaciones» y «Características principales» (`.site-sheet-label`) dejan las mayúsculas espaciadas.
+- Hover: las tarjetas de producto ya no se levantan con sombra. Ahora se oscurece el borde y se mantiene el zoom de la foto (`src/app/site-motion.css`). Las tarjetas de marca ya no suben 5 px: la foto pasa de opacidad .8 a 1. Las miniaturas de las líneas ya no suben 2 px (`src/app/site-reference.css`).
+- Pie: se quitó «Sitio institucional», que no informaba nada. La fila inferior pasa de 10 px a 13 px (`.site-footer .footer-bottom`).
+- Pruebas: `tsc --noEmit` y ESLint correctos. E2E `landing` + `motion` 27/28. Falló «los diálogos animan su salida…», que queda en `/tienda/ingresar` y pasa sola. Es la tercera prueba distinta de `/tienda` que falla así en tres corridas: el ingreso demo a veces no redirige a `/tienda`. Conviene investigarlo aparte. Revisión visual con capturas a 1440 y 390 px.
+- Sin tocar, para decidir: los textos genéricos («Un socio que responde.», «Marcas y productos para cada negocio.», «Una idea que representa cómo elegimos trabajar y crecer cada día.»); el cierre oscuro centrado con dos botones, repetido al final de Garantía, Marcas y Nosotros (formato elegido el 3/10); el círculo lima detrás del producto en la ficha (copiado de Importadora); el tinte de color de las fotos de marcas.
+
+## Sitio público sin rasgos de plantilla (6/10/2026)
+
+- Revisión visual completa del sitio público a 1440 y 390 px. Se mantiene la dirección «Vitrina editorial», la paleta y Manrope; se quitan los recursos genéricos.
+- Corrección: con «reducir movimiento» del sistema, los packshots de las líneas de la landing se veían al 50 %. El escenario es un `<button disabled>` y heredaba `button:disabled { opacity: .5 }` de `globals.css`. Ahora `.reference-showcase-stage:disabled` conserva opacidad 1 (`src/app/site-reference.css`).
+- Líneas de la landing: el aro detrás del producto pasa a ser un estante de vitrina (`.reference-line-ring`), con el producto apoyado abajo (`place-items: end center`) y una sombra de contacto corta. Se quitaron el rótulo «Nuestras líneas / 0N» (numeración que no era una secuencia) y las variables `--line-ring-*` que ya no se usan (`src/components/motion-system.tsx`).
+- Rótulos: `.eyebrow` (solo dentro de `.site-page`), `.reference-kicker`, etiquetas de línea, etiquetas del formulario de contacto y «Directo» pasan a tipo oración, sin mayúsculas espaciadas. Se borraron los rótulos que repetían el título: Representaciones, Nosotros, Historia, Nuestros valores, Infraestructura, Cuenta comercial, Contacto, Dónde comprar, Reclamos y «Nuestras líneas» en /productos. Quedan los que aportan: misión, visión, cultura, trabajá con nosotros, garantía y marcas incluidas.
+- Flechas: se quitaron de los botones y enlaces internos (hero, header, footer, líneas, marcas, catálogo, Nosotros, Contacto). Quedan solo en los que abren WhatsApp en otra pestaña.
+- Hero: sin palabra resaltada en lima, sin aro lima animado (`.site-hero-orbit` y `@keyframes site-orbit` borrados), sin el círculo fino de `.site-hero::before`, sin el resplandor lima del grano y sin el chip de eslogan. Rótulo fijo «Distribuidora uruguaya desde 1995»; foto más grande con radio 6 px. Nosotros: «todos nosotros juntos» ya no va en lima.
+- Marcas: la tarjeta ya no repite el nombre en mayúsculas debajo del logotipo de texto.
+- Nosotros, «La operación»: las cifras dejan las tarjetas con borde y pasan a columnas con filete superior.
+- Catálogo público: la imagen de la tarjeta pasa de fondo gris a blanco con filete inferior; antes se veía como una caja blanca dentro de otra gris.
+- Footer: «ISO 9001 · Desde 1995» decía algo falso (la certificación es de 2019) y pasa a «Certificación ISO 9001». Las direcciones usan coma en lugar de punto medio.
+- Pruebas: `tsc --noEmit` y ESLint de los archivos tocados correctos; e2e `landing` + `motion` 28/28 con `E2E_PORT=3107`. En `landing.spec.ts`, la prueba de movimiento reducido del hero ahora mira `.site-hero-story-media`, porque el aro ya no existe. Revisión visual con capturas propias en 1440 y 390 px; falta la revisión humana.
+- Franja vacía bajo el hero: a 1440 × 900 había 270 px entre la foto y el título de marcas. Sumaban tres cosas: el hero de `100svh` con el contenido centrado, la caja de la foto cuadrada con la foto 4:3 dentro y el relleno superior de la banda de marcas. Desde 768 px el hero toma la altura de su contenido (`min-height: 0`, 64 px abajo) y la caja pasa a 4:3 sin márgenes internos (`src/app/site-hero-story.css`). La banda de marcas lleva arriba `clamp(48px, 5vw, 72px)` (`src/app/site-reference.css`). Resultado: el hero mide 638 px a 1440 × 900 y 624 px a 1280 × 720; hay 136 px entre la foto y el título de marcas, que ahora entra en la primera pantalla. Los tres capítulos del hero mantienen la altura, sin saltos. Móvil sin cambios. E2E `landing` + `motion`: 27/28 en dos corridas. En cada una falló una prueba distinta de `/tienda` (que no se tocó): «páginas nuevas… movimiento reducido» y «el carrusel avanza…». Las dos pasan solas, así que son intermitentes.
+- Pendientes opcionales: el carrusel del hero rota cada 5,2 s sin control de pausa visible (WCAG 2.2.2); `src/components/site-brands.tsx` parece sin uso. La tienda (`/tienda`) no se tocó.
 
 ## Ficha pública de producto al estilo Importadora (3/10/2026)
 

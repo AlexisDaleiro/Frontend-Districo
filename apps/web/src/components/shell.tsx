@@ -167,8 +167,7 @@ function HeaderSearch() {
               href={allResults}
               onClick={finish}
             >
-              Ver todos los resultados ({results.data.meta.total}){" "}
-              <ArrowUpRight size={15} aria-hidden="true" />
+              Ver todos los resultados ({results.data.meta.total})
             </Link>
           </>
         ) : (
@@ -236,7 +235,7 @@ export function Header() {
       )}
       <div className="topbar">
         <div className="container">
-          <span>Marcas que acompañan. Un socio que responde.</span>
+          <span>Venta mayorista para comercios de todo Uruguay</span>
           <div className="topbar-links">
             <a
               href="https://www.facebook.com/districosa/"
@@ -358,7 +357,6 @@ export function Header() {
                 href={user ? storeRoutes.admin : storeRoutes.requestAccount}
               >
                 {user ? "Administración" : "Quiero ser cliente"}
-                <ArrowUpRight size={16} />
               </Link>
             )}
           </nav>
@@ -453,11 +451,10 @@ export function Footer() {
             height={38}
           />
           <p>
-            Conectamos tu negocio con marcas
-            <br />
-            que hacen la diferencia.
+            Distribución mayorista de alimento para mascotas, arenas
+            sanitarias, cuidado animal y snacks en todo Uruguay.
           </p>
-          <span className="footer-pill">Distribución mayorista · Uruguay</span>
+          <span className="footer-pill">Certificación ISO 9001</span>
         </div>
         <div>
           <h3>Explorá</h3>
@@ -468,7 +465,7 @@ export function Footer() {
           ))}
         </div>
         <div>
-          <h3>Estamos cerca</h3>
+          <h3>Contacto</h3>
           <a href="tel:08001004">0800 1004</a>
           <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
           <p>
@@ -476,16 +473,14 @@ export function Footer() {
           </p>
         </div>
         <div>
-          <h3>Crezcamos juntos</h3>
-          <p>
-            Una selección de marcas para
-            <br />
-            cada necesidad de tu negocio.
-          </p>
-          {!user && (
-            <Link className="text-link" href={storeRoutes.requestAccount}>
-              Solicitar acceso mayorista <ArrowUpRight size={16} />
-            </Link>
+          <h3>Cuenta mayorista</h3>
+          {user ? (
+            <>
+              <Link href={storeRoutes.account}>Mi cuenta</Link>
+              <Link href={storeRoutes.orders}>Mis pedidos</Link>
+            </>
+          ) : (
+            <Link href={storeRoutes.requestAccount}>Solicitar acceso mayorista</Link>
           )}
         </div>
       </div>
@@ -493,7 +488,7 @@ export function Footer() {
         <span>© {new Date().getFullYear()} DISTRICO S.A.</span>
         <span>
           {DEMO
-            ? "Versión de demostración · Sin cobros reales"
+            ? "Versión de demostración, sin cobros reales"
             : "Portal mayorista"}
         </span>
       </div>

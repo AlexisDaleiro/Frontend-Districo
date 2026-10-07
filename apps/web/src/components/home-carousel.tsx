@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
 import {
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Pause,
@@ -179,7 +178,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
             <p>{slide.description}</p>
             <div className="actions">
               <Link className="button" href={href}>
-                {slide.action} <ArrowRight size={17} />
+                {slide.action}
               </Link>
             </div>
           </div>

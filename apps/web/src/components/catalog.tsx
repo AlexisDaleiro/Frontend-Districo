@@ -16,6 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
+import { CatalogPagination } from "./catalog-pagination";
 import { TechnicalAccordions, useProductSheet } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
@@ -70,13 +71,9 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         className="product-image"
         aria-label={`Ver ${product.name}`}
       >
-        <span className="tag">
-          {product.requiresMedicationPermission
-            ? "Uso profesional"
-            : product.featured
-              ? "Selección DISTRICO"
-              : "Catálogo"}
-        </span>
+        {product.requiresMedicationPermission && (
+          <span className="tag">Uso profesional</span>
+        )}
         <Picture
           src={
             product.media.find((m) => m.type === "IMAGE")?.url ??
@@ -90,7 +87,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       <p className="product-meta">
         {product.brand?.name ??
           product.laboratory?.name ??
-          "Selección mayorista"}
+          " "}
       </p>
       <Link href={storeRoutes.product(product.slug)}>
         <h3>{product.name}</h3>
@@ -248,104 +245,6 @@ function CategoryPicker({
     </details>
   );
 }
-function CatalogPagination({
-  page,
-  totalPages,
-  onPageChange,
-}: {
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  const visiblePages = [...new Set([1, page - 1, page, page + 1, totalPages])]
-    .filter((target) => target >= 1 && target <= totalPages)
-    .sort((a, b) => a - b);
-  const pageItems: ReactNode[] = [];
-
-  visiblePages.forEach((target, index) => {
-    const previous = visiblePages[index - 1];
-    if (previous && target - previous === 2) {
-      pageItems.push(
-        <button
-          key={previous + 1}
-          type="button"
-          className="pagination-page"
-          aria-label={`Ir a la página ${previous + 1}`}
-          onClick={() => onPageChange(previous + 1)}
-        >
-          {previous + 1}
-        </button>,
-      );
-    } else if (previous && target - previous > 2) {
-      const jumpTarget =
-        target <= page
-          ? Math.max(previous + 1, page - 5)
-          : Math.min(target - 1, page + 5);
-      pageItems.push(
-        <button
-          key={`gap-${previous}`}
-          type="button"
-          className="pagination-gap"
-          aria-label={`Saltar a la página ${jumpTarget}`}
-          onClick={() => onPageChange(jumpTarget)}
-        >
-          …
-        </button>,
-      );
-    }
-
-    pageItems.push(
-      target === page ? (
-        <span
-          key={target}
-          className="pagination-current"
-          aria-current="page"
-          aria-label={`Página ${page} de ${totalPages}`}
-        >
-          {target}
-        </span>
-      ) : (
-        <button
-          key={target}
-          type="button"
-          className="pagination-page"
-          aria-label={`Ir a la página ${target}`}
-          onClick={() => onPageChange(target)}
-        >
-          {target}
-        </button>
-      ),
-    );
-  });
-
-  return (
-    <nav
-      className="pagination catalog-pagination"
-      aria-label="Páginas del catálogo"
-    >
-      <button
-        type="button"
-        className="catalog-pagination-direction"
-        disabled={page <= 1}
-        onClick={() => onPageChange(page - 1)}
-      >
-        ← Anterior
-      </button>
-      <div className="pagination-pages">{pageItems}</div>
-      <button
-        type="button"
-        className="catalog-pagination-direction"
-        disabled={page >= totalPages}
-        onClick={() => onPageChange(page + 1)}
-      >
-        Siguiente →
-      </button>
-    </nav>
-  );
-}
-
 export function Catalog({ categoryId }: { categoryId?: string }) {
   const params = useSearchParams(),
     router = useRouter();
@@ -463,9 +362,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
         <ChevronRight size={12} />
         <span>Catálogo</span>
       </div>
-      <PageHeading eyebrow="Todo para tu negocio" title="Nuestro catálogo">
-        Encontrá la solución indicada, con el respaldo de nuestras marcas.
-      </PageHeading>
+      <PageHeading title="Nuestro catálogo" />
       <div className="catalog-layout">
         <aside className="filters" aria-label="Filtros del catálogo">
           {filterContent}
@@ -775,14 +672,13 @@ function RelatedProducts({ product }: { product: Product }) {
     <section className="detail-related">
       <div className="section-title">
         <div>
-          <p className="eyebrow">Para completar el pedido</p>
           <h2>Más de {category?.name ?? "esta categoría"}</h2>
         </div>
         <Link
           className="text-link"
           href={catalogLink("categoryId", categoryId)}
         >
-          Ver todos <ArrowUpRight size={16} />
+          Ver todos
         </Link>
       </div>
       <ProductGrid products={items} />

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Picture } from "@/components/ui";
 import { SiteMilestones } from "@/components/site-milestones";
 import { storeRoutes } from "@/lib/store-routes";
@@ -16,7 +15,6 @@ export default function Page() {
       <section className="site-catalog-intro">
         <div className="container site-about-hero">
           <div>
-            <p className="eyebrow">Nosotros</p>
             <h1>Una empresa uruguaya con 30 años de ruta.</h1>
             <p>Districo S.A. nace en 1995 como Distribuidora Colón, fundada por Fernando Graviz sobre el antecedente de la Agropecuaria Colón que el Ing. Montiel Graviz había iniciado en 1960. De la venta de productos agroveterinarios a la distribución nacional de alimento para mascotas, arenas sanitarias, cuidado animal y snacks.</p>
           </div>
@@ -28,7 +26,6 @@ export default function Page() {
 
       <section className="site-section site-about-history" aria-labelledby="history-title">
         <div className="container">
-          <p className="reference-kicker">Historia</p>
           <h2 id="history-title">Los hitos de la empresa</h2>
           <SiteMilestones milestones={milestones} />
         </div>
@@ -37,7 +34,7 @@ export default function Page() {
       <section className="site-about-culture" aria-labelledby="culture-title">
         <div className="container">
           <p className="reference-kicker">Nuestra cultura</p>
-          <h2 id="culture-title">Nadie es más importante que <em>todos nosotros juntos.</em></h2>
+          <h2 id="culture-title">Nadie es más importante que todos nosotros juntos.</h2>
           <p>Una idea que representa cómo elegimos trabajar y crecer cada día.</p>
         </div>
       </section>
@@ -57,7 +54,6 @@ export default function Page() {
 
       <section className="site-section site-about-values" aria-labelledby="values-title">
         <div className="container">
-          <p className="reference-kicker">Nuestros valores</p>
           <h2 id="values-title">Nueve acuerdos sobre cómo trabajamos</h2>
           <dl>
             {values.map(([name, text]) => (
@@ -84,13 +80,12 @@ export default function Page() {
               </li>
             ))}
           </ul>
-          <a className="button lime" href="mailto:contacto@districo.com.uy?subject=Postulaci%C3%B3n%20%E2%80%94%20DISTRICO">Enviar mi CV <ArrowUpRight size={17} aria-hidden="true" /></a>
+          <a className="button lime" href="mailto:contacto@districo.com.uy?subject=Postulaci%C3%B3n%20%E2%80%94%20DISTRICO">Enviar mi CV</a>
         </div>
       </section>
 
       <section className="site-section site-about-infra" aria-labelledby="infra-title">
         <div className="container">
-          <p className="reference-kicker">Infraestructura</p>
           <h2 id="infra-title">La operación</h2>
           <ul className="site-about-facts">
             {infrastructure.map(([figure, title, text]) => (
@@ -113,13 +108,12 @@ export default function Page() {
       <section className="reference-contact reference-contact-centered">
         <div className="container reference-contact-grid">
           <div>
-            <p className="reference-kicker">Cuenta comercial</p>
             <h2>Sumá nuestras líneas a tu comercio.</h2>
             <p>Atendemos veterinarias, pet shops, agropecuarias y grandes superficies de todo el país.</p>
           </div>
           <div className="reference-contact-actions">
-            <Link className="reference-contact-primary" href={storeRoutes.requestAccount}>Solicitar cuenta <ArrowRight size={18} aria-hidden="true" /></Link>
-            <Link className="reference-contact-secondary" href="/marcas">Conocer las marcas <ArrowUpRight size={18} aria-hidden="true" /></Link>
+            <Link className="reference-contact-primary" href={storeRoutes.requestAccount}>Solicitar cuenta</Link>
+            <Link className="reference-contact-secondary" href="/marcas">Conocer las marcas</Link>
           </div>
         </div>
       </section>

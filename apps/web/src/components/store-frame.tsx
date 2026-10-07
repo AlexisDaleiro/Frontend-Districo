@@ -28,7 +28,7 @@ export function StoreFrame({ children }: { children: React.ReactNode }) {
   }, [publicAccess, loading, error, user, router]);
 
   const gated = !publicAccess && (loading || error || !user);
-  return (
+  const frame = (
     <>
       {publicAccess ? <PublicHeader solid /> : !gated ? <Header /> : null}
       <main
@@ -54,5 +54,10 @@ export function StoreFrame({ children }: { children: React.ReactNode }) {
       </main>
       {publicAccess ? <PublicFooter /> : !gated ? <Footer /> : null}
     </>
+  );
+  return publicAccess ? (
+    <div className="site-access-frame">{frame}</div>
+  ) : (
+    frame
   );
 }

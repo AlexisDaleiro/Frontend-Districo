@@ -8,7 +8,6 @@ const revealSelector = [
   ".need",
   ".hero:not(.home-carousel-slide) .hero-copy",
   ".hero:not(.home-carousel-slide) .hero-visual",
-  ".benefits > div",
   ".section-title",
   ".line-card",
   ".brand-word",
@@ -65,7 +64,7 @@ const parallaxSelector =
   ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-story-media img, .site-operation-photo > img";
 const lineSelector = ".reference-line";
 const staggerSelector =
-  ".need-list, .benefits, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";
+  ".need-list, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";
 
 // Mientras corre la transición de página, lo que ya está en pantalla entra con
 // ella; solo las grillas escalonan por su cuenta.
@@ -193,11 +192,7 @@ export function MotionSystem() {
           (rect.top + rect.height / 2 - innerHeight / 2) / ((rect.height + innerHeight) / 2),
         ));
         const distance = innerWidth < 768 ? 22 : 38;
-        const focus = 1 - Math.abs(progress);
         line.style.setProperty("--line-product-y", `${(-progress * distance).toFixed(2)}px`);
-        line.style.setProperty("--line-ring-y", `${(progress * distance * 0.55).toFixed(2)}px`);
-        line.style.setProperty("--line-ring-rotate", `${(progress * 7).toFixed(2)}deg`);
-        line.style.setProperty("--line-ring-scale", (0.95 + focus * 0.07).toFixed(3));
       }
     };
 
@@ -275,9 +270,6 @@ export function MotionSystem() {
           element.style.removeProperty("--motion-parallax");
         for (const line of lines) {
           line.style.removeProperty("--line-product-y");
-          line.style.removeProperty("--line-ring-y");
-          line.style.removeProperty("--line-ring-rotate");
-          line.style.removeProperty("--line-ring-scale");
           line.style.removeProperty("--line-glow-y");
           line.style.removeProperty("--line-glow-scale");
           line.style.removeProperty("--line-glow-opacity");
@@ -315,9 +307,6 @@ export function MotionSystem() {
         element.style.removeProperty("--motion-parallax");
       for (const line of lines) {
         line.style.removeProperty("--line-product-y");
-        line.style.removeProperty("--line-ring-y");
-        line.style.removeProperty("--line-ring-rotate");
-        line.style.removeProperty("--line-ring-scale");
         line.style.removeProperty("--line-glow-y");
         line.style.removeProperty("--line-glow-scale");
         line.style.removeProperty("--line-glow-opacity");

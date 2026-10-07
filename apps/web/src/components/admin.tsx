@@ -1603,11 +1603,11 @@ export function Admin({ section = "" }: { section?: string }) {
             >
               <div className="admin-section">
                 <PageHeading
-                  eyebrow="DISTRICO · Administración"
+                  eyebrow="Administración"
                   title={
                     section && current
                       ? current[2]
-                      : "Tu operación, en un solo lugar."
+                      : "Resumen"
                   }
                 />
                 {canSeeAdminSection(user, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}

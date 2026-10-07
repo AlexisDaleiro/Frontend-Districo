@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type ImgHTMLAttributes,
 } from "react";
-import { X, ArrowRight, PackageOpen } from "lucide-react";
+import { X, PackageOpen } from "lucide-react";
 export function Picture({
   sizes,
   ...props
@@ -125,7 +125,6 @@ export function ActionLink({
   return (
     <Link className={`button ${secondary ? "secondary" : ""}`} href={href}>
       {children}
-      <ArrowRight size={17} />
     </Link>
   );
 }

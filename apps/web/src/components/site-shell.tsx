@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Facebook, Linkedin, Menu, Phone } from "lucide-react";
+import { Facebook, Linkedin, Menu, Phone } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Picture, Modal } from "./ui";
 import { WhatsAppFab } from "./whatsapp-fab";
@@ -107,7 +107,7 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
               className="button lime site-apply"
               href={storeRoutes.requestAccount}
             >
-              Solicitar cuenta <ArrowUpRight size={16} />
+              Solicitar cuenta
             </Link>
           </div>
           <button
@@ -160,7 +160,7 @@ export function PublicFooter() {
             Distribución de alimento para mascotas, arenas sanitarias,
             cuidado animal y snacks en todo Uruguay.
           </p>
-          <span className="footer-pill">ISO 9001 · Desde 1995</span>
+          <span className="footer-pill">Certificación ISO 9001</span>
         </div>
         <div>
           <h3>Explorá</h3>
@@ -170,7 +170,7 @@ export function PublicFooter() {
         </div>
         <div>
           <h3>Casa Matriz</h3>
-          <p>César Mayo Gutiérrez 3024 bis, esq. Camino Uruguay · Montevideo</p>
+          <p>César Mayo Gutiérrez 3024 bis, esq. Camino Uruguay, Montevideo</p>
           <a href="tel:08001004">
             <Phone size={14} /> 0800 1004
           </a>
@@ -178,14 +178,13 @@ export function PublicFooter() {
         </div>
         <div>
           <h3>Sucursal Maldonado</h3>
-          <p>A. Antonio Lusich esq. Vicenza · Maldonado</p>
+          <p>A. Antonio Lusich esq. Vicenza, Maldonado</p>
           <a href="tel:+59842252155">(+598) 4225 2155</a>
           <a href="mailto:contacto@districo.com.uy">contacto@districo.com.uy</a>
         </div>
       </div>
       <div className="container footer-bottom">
         <span>© {new Date().getFullYear()} DISTRICO S.A.</span>
-        <span>Sitio institucional</span>
         <div className="site-footer-social">
           <span>Seguinos</span>
           <div className="site-socials">
@@ -208,7 +207,7 @@ export function PublicFooter() {
           </div>
         </div>
         <Link className="text-link" href={storeRoutes.requestAccount}>
-          Solicitar cuenta <ArrowUpRight size={16} />
+          Solicitar cuenta
         </Link>
       </div>
     </footer>

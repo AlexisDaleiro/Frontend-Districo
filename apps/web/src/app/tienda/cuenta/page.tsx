@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, MapPin, Package, ShoppingBag } from "lucide-react";
+import { MapPin, Package, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { AccessGate } from "@/components/auth";
 import { AccountDetails } from "@/components/account-details";
@@ -27,9 +27,8 @@ function AccountOverview({ customer }: { customer: Customer }) {
       <section className="account-overview-card" aria-labelledby="account-latest-order">
         <div className="account-overview-heading">
           <span className="account-card-icon"><Package size={20} aria-hidden="true" /></span>
-          <Link href={storeRoutes.orders}>Ver todos <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link href={storeRoutes.orders}>Ver todos</Link>
         </div>
-        <p className="account-card-kicker">Actividad comercial</p>
         <h2 id="account-latest-order">Último pedido</h2>
         {orders.isPending ? (
           <p className="account-card-muted" role="status">Cargando pedidos…</p>
@@ -44,12 +43,12 @@ function AccountOverview({ customer }: { customer: Customer }) {
             <p className="account-card-muted">
               {new Date(latestOrder.createdAt).toLocaleDateString("es-UY")} · {latestOrder.items.length} {latestOrder.items.length === 1 ? "producto" : "productos"} · {money(latestOrder.total, latestOrder.currency)}
             </p>
-            <Link className="account-card-link" href={storeRoutes.order(latestOrder.id)}>Ver detalle del pedido <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link className="account-card-link" href={storeRoutes.order(latestOrder.id)}>Ver detalle del pedido</Link>
           </>
         ) : (
           <>
             <p className="account-card-muted">Todavía no hay pedidos enviados desde esta cuenta.</p>
-            <Link className="account-card-link" href={storeRoutes.products}>Explorar productos <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link className="account-card-link" href={storeRoutes.products}>Explorar productos</Link>
           </>
         )}
       </section>
@@ -57,9 +56,8 @@ function AccountOverview({ customer }: { customer: Customer }) {
       <section className="account-overview-card" aria-labelledby="account-delivery-title">
         <div className="account-overview-heading">
           <span className="account-card-icon"><MapPin size={20} aria-hidden="true" /></span>
-          <a href="#direcciones">Gestionar <ArrowRight size={16} aria-hidden="true" /></a>
+          <a href="#direcciones">Gestionar</a>
         </div>
-        <p className="account-card-kicker">Entrega</p>
         <h2 id="account-delivery-title">Dirección principal</h2>
         {addressText ? (
           <>
@@ -70,7 +68,7 @@ function AccountOverview({ customer }: { customer: Customer }) {
         ) : (
           <p className="account-card-muted">Agregá una dirección para poder seleccionarla al enviar tu pedido.</p>
         )}
-        <a className="account-card-link" href="#direcciones">{addressText ? "Ver direcciones" : "Agregar dirección"} <ArrowRight size={16} aria-hidden="true" /></a>
+        <a className="account-card-link" href="#direcciones">{addressText ? "Ver direcciones" : "Agregar dirección"}</a>
       </section>
     </div>
   );
@@ -91,9 +89,8 @@ export default function Page() {
           <>
             <section className="account-dashboard-hero" aria-labelledby="account-dashboard-title">
               <div className="account-dashboard-copy">
-                <p className="eyebrow">Tu espacio mayorista</p>
+                <p className="eyebrow">Cuenta mayorista</p>
                 <h1 id="account-dashboard-title">{customer.businessName}</h1>
-                <p>Todo lo que necesitás para gestionar tus compras con DISTRICO.</p>
                 <div className="account-dashboard-statuses">
                   <span className="account-status-chip" data-status={customer.accountStatus}>Cuenta: {label(customer.accountStatus)}</span>
                   <span className="account-status-chip" data-status={customer.creditStatus}>Situación comercial: {label(customer.creditStatus)}</span>
@@ -104,16 +101,14 @@ export default function Page() {
               <div className="account-dashboard-actions">
                 <Link className="button lime" href={storeRoutes.products}><ShoppingBag size={18} aria-hidden="true" /> {canOrder ? "Armar pedido" : "Explorar catálogo"}</Link>
                 <Link className="button secondary" href={storeRoutes.orders}><Package size={18} aria-hidden="true" /> Mis pedidos</Link>
-                {canOrder && <Link className="account-dashboard-cart" href={storeRoutes.cart}>Ir al carrito <ArrowRight size={16} aria-hidden="true" /></Link>}
+                {canOrder && <Link className="account-dashboard-cart" href={storeRoutes.cart}>Ir al carrito</Link>}
               </div>
             </section>
 
             <AccountOverview customer={customer} />
 
             <div className="account-detail-heading">
-              <span className="account-card-icon"><Building2 size={20} aria-hidden="true" /></span>
               <div>
-                <p className="account-card-kicker">Configuración</p>
                 <h2>Datos de tu empresa</h2>
               </div>
             </div>
@@ -121,7 +116,7 @@ export default function Page() {
           </>
         ) : (
           <>
-            <PageHeading eyebrow="Tu espacio mayorista" title={customer?.businessName ?? "Mi cuenta"}>{user?.email}</PageHeading>
+            <PageHeading eyebrow="Cuenta mayorista" title={customer?.businessName ?? "Mi cuenta"}>{user?.email}</PageHeading>
             {customer && <AccountDetails customer={customer} email={user.email} />}
             {user && user.role !== "CLIENT" && <ActionLink href={storeRoutes.admin}>Administración</ActionLink>}
           </>

@@ -86,7 +86,6 @@ export default function Page() {
       <section className="reference-contact reference-contact-centered">
         <div className="container reference-contact-grid">
           <div>
-            <p className="reference-kicker">Reclamos</p>
             <h2>¿Tu mascota no lo aceptó?</h2>
             <p>También podés hacerlo en persona: llevá el producto y el ticket al comercio donde lo compraste y completás el formulario ahí mismo.</p>
           </div>
