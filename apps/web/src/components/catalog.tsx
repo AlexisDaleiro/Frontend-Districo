@@ -248,6 +248,104 @@ function CategoryPicker({
     </details>
   );
 }
+function CatalogPagination({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const visiblePages = [...new Set([1, page - 1, page, page + 1, totalPages])]
+    .filter((target) => target >= 1 && target <= totalPages)
+    .sort((a, b) => a - b);
+  const pageItems: ReactNode[] = [];
+
+  visiblePages.forEach((target, index) => {
+    const previous = visiblePages[index - 1];
+    if (previous && target - previous === 2) {
+      pageItems.push(
+        <button
+          key={previous + 1}
+          type="button"
+          className="pagination-page"
+          aria-label={`Ir a la página ${previous + 1}`}
+          onClick={() => onPageChange(previous + 1)}
+        >
+          {previous + 1}
+        </button>,
+      );
+    } else if (previous && target - previous > 2) {
+      const jumpTarget =
+        target <= page
+          ? Math.max(previous + 1, page - 5)
+          : Math.min(target - 1, page + 5);
+      pageItems.push(
+        <button
+          key={`gap-${previous}`}
+          type="button"
+          className="pagination-gap"
+          aria-label={`Saltar a la página ${jumpTarget}`}
+          onClick={() => onPageChange(jumpTarget)}
+        >
+          …
+        </button>,
+      );
+    }
+
+    pageItems.push(
+      target === page ? (
+        <span
+          key={target}
+          className="pagination-current"
+          aria-current="page"
+          aria-label={`Página ${page} de ${totalPages}`}
+        >
+          {target}
+        </span>
+      ) : (
+        <button
+          key={target}
+          type="button"
+          className="pagination-page"
+          aria-label={`Ir a la página ${target}`}
+          onClick={() => onPageChange(target)}
+        >
+          {target}
+        </button>
+      ),
+    );
+  });
+
+  return (
+    <nav
+      className="pagination catalog-pagination"
+      aria-label="Páginas del catálogo"
+    >
+      <button
+        type="button"
+        className="catalog-pagination-direction"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+      >
+        ← Anterior
+      </button>
+      <div className="pagination-pages">{pageItems}</div>
+      <button
+        type="button"
+        className="catalog-pagination-direction"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Siguiente →
+      </button>
+    </nav>
+  );
+}
+
 export function Catalog({ categoryId }: { categoryId?: string }) {
   const params = useSearchParams(),
     router = useRouter();
@@ -483,7 +581,9 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
           ) : !products.data.items.length ? (
             <Empty title="No encontramos productos">
               <p>Probá con otra búsqueda o quitá algún filtro.</p>
-              <ActionLink href={storeRoutes.products}>Ver todo el catálogo</ActionLink>
+              <ActionLink href={storeRoutes.products}>
+                Ver todo el catálogo
+              </ActionLink>
             </Empty>
           ) : (
             <>
@@ -491,38 +591,16 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
                 key={filters.toString()}
                 products={products.data.items}
               />
-              <div className="pagination">
-                <button
-                  className="button secondary small"
-                  disabled={products.data.meta.page <= 1}
-                  onClick={() =>
-                    set("page", String(products.data.meta.page - 1))
-                  }
-                >
-                  Anterior
-                </button>
-                <span>
-                  {products.data.meta.page} /{" "}
-                  {Math.max(
-                    1,
-                    Math.ceil(
-                      products.data.meta.total / products.data.meta.limit,
-                    ),
-                  )}
-                </span>
-                <button
-                  className="button secondary small"
-                  disabled={
-                    products.data.meta.page * products.data.meta.limit >=
-                    products.data.meta.total
-                  }
-                  onClick={() =>
-                    set("page", String(products.data.meta.page + 1))
-                  }
-                >
-                  Siguiente
-                </button>
-              </div>
+              <CatalogPagination
+                page={products.data.meta.page}
+                totalPages={Math.max(
+                  1,
+                  Math.ceil(
+                    products.data.meta.total / products.data.meta.limit,
+                  ),
+                )}
+                onPageChange={(nextPage) => set("page", String(nextPage))}
+              />
             </>
           )}
         </div>
@@ -718,6 +796,7 @@ function ProductInfo({
   product: Product;
   variant?: Variant;
 }) {
+  const [activeSection, setActiveSection] = useState<"specs" | "extra">("specs");
   const categories = product.categories.filter((c) => c.category);
   const technical = useProductSheet(product.sourceUrl).technical ?? [];
   // Solo filas con dato: la ficha no inventa valores.
@@ -725,9 +804,7 @@ function ProductInfo({
     [
       "Marca",
       product.brand && (
-        <Link
-          href={catalogLink("brandId", product.brand.id)}
-        >
+        <Link href={catalogLink("brandId", product.brand.id)}>
           {product.brand.name}
         </Link>
       ),
@@ -739,9 +816,7 @@ function ProductInfo({
         categories.map((c, i) => (
           <span key={c.categoryId}>
             {i > 0 && " · "}
-            <Link
-              href={catalogLink("categoryId", c.categoryId)}
-            >
+            <Link href={catalogLink("categoryId", c.categoryId)}>
               {c.category?.name}
             </Link>
           </span>
@@ -767,46 +842,66 @@ function ProductInfo({
     ],
   ];
   return (
-    <div className="detail-sections">
-      <section aria-labelledby="detalle-ficha">
-        <h2 id="detalle-ficha">Ficha técnica</h2>
-        <dl className="detail-specs">
-          {rows
-            .filter(([, value]) => value)
-            .map(([title, value]) => (
-              <div key={title}>
-                <dt>{title}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-        </dl>
-      </section>
-      {/* Después de la ficha: la información técnica reemplaza a la descripción cuando existe. */}
-      {technical.length > 0 ? (
-        <section aria-labelledby="detalle-tecnica">
-          <h2 id="detalle-tecnica">Información técnica</h2>
-          <TechnicalAccordions blocks={technical} />
+    <div className="detail-details">
+      <div className="detail-section-nav" aria-label="Información del producto">
+        <button
+          type="button"
+          aria-pressed={activeSection === "specs"}
+          aria-controls="detail-panel-specs"
+          onClick={() => setActiveSection("specs")}
+        >
+          Ficha técnica
+        </button>
+        <button
+          type="button"
+          aria-pressed={activeSection === "extra"}
+          aria-controls="detail-panel-extra"
+          onClick={() => setActiveSection("extra")}
+        >
+          {technical.length > 0 ? "Información técnica" : "Descripción"}
+        </button>
+      </div>
+      <div className="detail-sections">
+        <section id="detail-panel-specs" aria-labelledby="detalle-ficha" hidden={activeSection !== "specs"}>
+          <h2 id="detalle-ficha">Ficha técnica</h2>
+          <dl className="detail-specs">
+            {rows
+              .filter(([, value]) => value)
+              .map(([title, value]) => (
+                <div key={title}>
+                  <dt>{title}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+          </dl>
         </section>
-      ) : (
-        <section aria-labelledby="detalle-descripcion">
-          <h2 id="detalle-descripcion">Descripción</h2>
-          <p style={{ whiteSpace: "pre-line" }}>
-            {product.description?.replace(/<[^>]+>/g, " ") ||
-              "Consultá a DISTRICO para obtener más información."}
-          </p>
-          {product.sourceUrl && (
-            <a
-              className="text-link"
-              style={{ marginTop: 16 }}
-              href={product.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Información del proveedor <ArrowUpRight size={14} />
-            </a>
-          )}
-        </section>
-      )}
+        {/* Después de la ficha: la información técnica reemplaza a la descripción cuando existe. */}
+        {technical.length > 0 ? (
+          <section id="detail-panel-extra" aria-labelledby="detalle-tecnica" hidden={activeSection !== "extra"}>
+            <h2 id="detalle-tecnica">Información técnica</h2>
+            <TechnicalAccordions blocks={technical} />
+          </section>
+        ) : (
+          <section id="detail-panel-extra" aria-labelledby="detalle-descripcion" hidden={activeSection !== "extra"}>
+            <h2 id="detalle-descripcion">Descripción</h2>
+            <p style={{ whiteSpace: "pre-line" }}>
+              {product.description?.replace(/<[^>]+>/g, " ") ||
+                "Consultá a DISTRICO para obtener más información."}
+            </p>
+            {product.sourceUrl && (
+              <a
+                className="text-link"
+                style={{ marginTop: 16 }}
+                href={product.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Información del proveedor <ArrowUpRight size={14} />
+              </a>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
@@ -913,9 +1008,7 @@ function ProductDetailContent({ product }: { product: Product }) {
         <div className="detail-info">
           <p className="eyebrow detail-eyebrow">
             {product.brand ? (
-              <Link
-                href={catalogLink("brandId", product.brand.id)}
-              >
+              <Link href={catalogLink("brandId", product.brand.id)}>
                 {product.brand.name}
               </Link>
             ) : (
@@ -924,26 +1017,31 @@ function ProductDetailContent({ product }: { product: Product }) {
             {category?.category && (
               <>
                 {(product.brand || product.laboratory) && " · "}
-                <Link
-                  href={catalogLink("categoryId", category.categoryId)}
-                >
+                <Link href={catalogLink("categoryId", category.categoryId)}>
                   {category.category.name}
                 </Link>
               </>
             )}
           </p>
           <h1>{product.name}</h1>
-          {product.shortDescription && (
-            <p className="muted detail-lead">{product.shortDescription}</p>
+          {product.shortDescription &&
+            product.shortDescription.trim().toLocaleLowerCase() !==
+              product.name.trim().toLocaleLowerCase() && (
+              <p className="muted detail-lead">{product.shortDescription}</p>
+            )}
+          {variant && (
+            <div className="detail-availability">
+              <span
+                className={variant.availableStock > 0 ? "" : "is-unavailable"}
+              >
+                {variant.availableStock > 0
+                  ? "Disponible para pedidos"
+                  : "Sin stock"}
+              </span>
+              <span>SKU {variant.sku}</span>
+            </div>
           )}
           <div className="detail-pills">
-            {variant && (
-              <span
-                className={`status-pill${variant.availableStock > 0 ? "" : " pending"}`}
-              >
-                {variant.availableStock > 0 ? "Disponible" : "Sin stock"}
-              </span>
-            )}
             {product.newProduct && <span className="status-pill">Nuevo</span>}
             {product.featured && <span className="status-pill">Destacado</span>}
             {product.requiresMedicationPermission && (
@@ -977,29 +1075,35 @@ function ProductDetailContent({ product }: { product: Product }) {
                           : hiddenPriceText(user, product)}
                       </strong>
                       <small>
-                        {v.availableStock > 0 ? "Disponible" : "Sin stock"} · Mín.{" "}
-                        {firstQuantity(v)}
+                        {v.availableStock > 0 ? "Disponible" : "Sin stock"} ·
+                        Mín. {firstQuantity(v)}
                       </small>
                     </button>
                   ))}
                 </div>
               </div>
               <div className="detail-purchase" id="comprar">
-                <div className="row between">
+                <div className="detail-price-heading">
                   {variant.price ? (
-                    <p className="price">
-                      {money(variant.price.amount, variant.price.currency)}
-                    </p>
+                    <div>
+                      <p className="detail-price-label">Precio por unidad</p>
+                      <p className="price">
+                        {money(variant.price.amount, variant.price.currency)}
+                      </p>
+                    </div>
                   ) : (
                     <span />
                   )}
-                  <span className="muted small-copy">SKU {variant.sku}</span>
                 </div>
                 {variant.presentation && (
                   <p className="muted small-copy">{variant.presentation}</p>
                 )}
                 <BuyForm key={variantId} product={product} variant={variant} />
               </div>
+              <p className="detail-assistance">
+                ¿Necesitás asesoramiento?{" "}
+                <Link href={storeRoutes.contact}>Consultá a DISTRICO</Link>
+              </p>
               {user && canBuy(user, product) && (
                 <BuyBar variant={variant} target="comprar" />
               )}
@@ -1016,8 +1120,8 @@ function ProductDetailContent({ product }: { product: Product }) {
             </p>
           )}
         </div>
-        <ProductInfo product={product} variant={variant} />
       </div>
+      <ProductInfo product={product} variant={variant} />
       <RelatedProducts product={product} />
     </>
   );
@@ -1025,7 +1129,7 @@ function ProductDetailContent({ product }: { product: Product }) {
 export function ProductDetail({ slug }: { slug: string }) {
   const q = useApi<Product>(`products/${encodeURIComponent(slug)}`);
   return (
-    <div className="container section">
+    <div className="container section detail-page">
       <div className="breadcrumbs">
         <Link href={storeRoutes.home}>Inicio</Link>
         <ChevronRight size={12} />

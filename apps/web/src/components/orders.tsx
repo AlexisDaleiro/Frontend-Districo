@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, ArrowUpRight, CheckCircle, RotateCcw, Package, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Trash2, ArrowUpRight, CheckCircle, RotateCcw, ShoppingBag, ShieldCheck } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { AccessGate } from "./auth";
 import { Quantity } from "./catalog";
-import { ActionLink, Empty, ErrorBox, Loading, PageHeading } from "./ui";
+import { ActionLink, Empty, ErrorBox, Loading, PageHeading, Picture } from "./ui";
 import type { Cart, CartItem, Order, Product } from "@/lib/types";
 import {
   can,
@@ -68,7 +68,13 @@ function CartLine({
   }, [busy, isPending, isError, error, quantity, item.quantity, mutate]);
   return (
     <div className="cart-item">
-      <span className="cart-item-icon" aria-hidden="true"><Package size={25} /></span>
+      <span className="cart-item-icon">
+        {item.product.imageUrl ? (
+          <Picture src={item.product.imageUrl} alt="" sizes="56px" />
+        ) : (
+          <span className="cart-item-no-image">Sin imagen</span>
+        )}
+      </span>
       <div className="cart-item-content">
         <Link href={storeRoutes.product(item.product.slug)}>
           <h3>{item.product.name}</h3>

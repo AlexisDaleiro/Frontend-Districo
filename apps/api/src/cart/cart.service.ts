@@ -8,7 +8,17 @@ const RESERVATION_TTL_MS = 48 * 60 * 60 * 1000;
 
 const variantInclude = () =>
   ({
-    product: { include: { brand: true, laboratory: true } },
+    product: {
+      include: {
+        brand: true,
+        laboratory: true,
+        media: {
+          where: { type: 'IMAGE' },
+          orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
+          select: { url: true, variantId: true },
+        },
+      },
+    },
     prices: {
       where: {
         priceList: { active: true },
@@ -233,6 +243,8 @@ export class CartService implements OnModuleInit, OnModuleDestroy {
       const variant = item.productVariant;
       const currentPrice = variant.prices[0];
       const unitPrice = currentPrice ? Number(currentPrice.amount) : 0;
+      const image = variant.product.media.find((media) => media.variantId === variant.id)
+        ?? variant.product.media.find((media) => !media.variantId);
       return {
         id: item.id,
         quantity: item.quantity,
@@ -243,6 +255,7 @@ export class CartService implements OnModuleInit, OnModuleDestroy {
           requiresMedicationPermission: variant.product.requiresMedicationPermission,
           brand: variant.product.brand,
           laboratory: variant.product.laboratory,
+          imageUrl: image?.url ?? null,
         },
         variant: {
           id: variant.id,

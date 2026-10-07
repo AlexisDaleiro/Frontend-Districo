@@ -185,6 +185,10 @@ function userCart(s: State, u: User): Cart {
         name: product.name,
         slug: product.slug,
         requiresMedicationPermission: product.requiresMedicationPermission,
+        imageUrl: (
+          product.media.find((media) => media.type === "IMAGE" && media.variantId === variant.id) ??
+          product.media.find((media) => media.type === "IMAGE" && !media.variantId)
+        )?.url ?? null,
       },
       variant,
       quantity: item.quantity,

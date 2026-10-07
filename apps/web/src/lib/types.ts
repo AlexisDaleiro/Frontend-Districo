@@ -136,7 +136,7 @@ export type CartItem = {
   product: Pick<
     Product,
     "id" | "name" | "slug" | "requiresMedicationPermission"
-  >;
+  > & { imageUrl?: string | null };
   variant: Variant;
   unitPrice: number;
   currency: string;
