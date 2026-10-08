@@ -4820,10 +4820,27 @@ td .button {
 .admin-sales-metrics small.is-negative { color: #a8463a; }
 .admin-sales-detail { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr); gap: 35px; margin-top: 28px; }
 .admin-sales-detail h3 { font-size: 15px; margin-bottom: 14px; }
-.admin-sales-chart { display: flex; align-items: stretch; gap: 3px; height: 210px; border-bottom: 1px solid var(--line); }
-.admin-sales-bar-column { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: end; align-items: stretch; }
-.admin-sales-bar { width: 100%; background: #4b8f77; min-height: 0; }
-.admin-sales-bar-column span { display: block; min-height: 21px; white-space: nowrap; font-size: 10px; color: var(--muted); text-align: center; }
+.admin-sales-trend { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr); grid-template-rows: 214px 24px; }
+.admin-sales-trend-axis { position: relative; margin: 18px 0 0; }
+.admin-sales-trend-axis span { position: absolute; right: 9px; transform: translateY(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.admin-sales-trend-plot { position: relative; margin: 18px 12px 0 0; touch-action: pan-y; cursor: crosshair; outline: none; }
+.admin-sales-trend-plot:focus-visible { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--ink); border-radius: 2px; }
+.admin-sales-trend-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.admin-sales-trend-plot svg line { stroke: #ececec; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.admin-sales-trend-plot svg line.is-base { stroke: var(--line); }
+.admin-sales-trend-area { fill: color-mix(in srgb, var(--ink) 12%, transparent); }
+.admin-sales-trend-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.admin-sales-trend-plot svg .admin-sales-trend-guide { stroke: color-mix(in srgb, var(--ink) 45%, transparent); }
+.admin-sales-trend-end, .admin-sales-trend-dot { position: absolute; width: 11px; height: 11px; border: 2px solid white; border-radius: 50%; background: var(--lime); transform: translate(-50%, -50%); pointer-events: none; }
+.admin-sales-trend-dot { background: var(--ink); }
+.admin-sales-trend-end-label { position: absolute; transform: translate(calc(-100% - 6px), calc(-100% - 6px)); font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; pointer-events: none; text-shadow: 0 0 3px white, 0 0 3px white; }
+.admin-sales-trend-tip { position: absolute; z-index: 2; padding: 6px 9px; border-radius: 4px; background: var(--ink-deep); color: white; font-size: 12px; line-height: 1.45; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.admin-sales-trend-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none; }
+.admin-sales-trend-labels { grid-column: 2; position: relative; margin-right: 12px; }
+.admin-sales-trend-labels span { position: absolute; top: 6px; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.admin-sales-trend-labels span.is-start { transform: none; }
+.admin-sales-trend-labels span.is-end { transform: translateX(-100%); }
+.admin-sales-trend-labels span.is-current { color: var(--ink); font-weight: 700; }
 .admin-sales-top ol { list-style: decimal; padding-left: 20px; margin: 0; }
 .admin-sales-top li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .admin-sales-top li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4847,6 +4864,6 @@ td .button {
   .admin-sales-today { gap: 16px; padding: 14px; }
   .admin-sales-today strong { font-size: 18px; }
   .admin-sales-metrics strong { font-size: 17px; }
-  .admin-sales-chart { height: 165px; }
+  .admin-sales-trend { grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: 180px 24px; }
   .admin-banner-thumb { width: 100px; height: 54px; }
 }
