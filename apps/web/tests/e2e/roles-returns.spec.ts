@@ -1,0 +1,94 @@
+import { expect, test } from "@playwright/test";
+
+test.beforeEach(async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/tienda/ingresar");
+  await page.getByRole("button", { name: "Administración", exact: true }).click();
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/);
+});
+
+test("renombra, duplica con permisos y retira roles sin romper asignaciones", async ({ page }) => {
+  test.setTimeout(90000);
+  await page.goto("/tienda/admin/roles");
+  await page.getByRole("button", { name: "Crear rol", exact: true }).click();
+  let dialog = page.getByRole("dialog", { name: "Crear rol" });
+  await dialog.getByLabel("Nombre del rol").fill("Deposito");
+  await dialog.getByRole("button", { name: "Crear rol", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Rol a configurar" })).toHaveValue(/custom:/);
+  await page.getByRole("checkbox", { name: "Ver Catálogo", exact: true }).check();
+  await page.getByRole("button", { name: "Guardar permisos", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Guardar permisos", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Renombrar rol", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Renombrar rol" });
+  await dialog.getByLabel("Nombre del rol").fill("Logistica");
+  await dialog.getByRole("button", { name: "Renombrar rol", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Rol a configurar" }).locator("option:checked")).toHaveText("Logistica");
+  await page.getByRole("button", { name: "Duplicar rol", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Duplicar rol" });
+  await dialog.getByLabel("Nombre del rol").fill("Auxiliar");
+  await dialog.getByRole("button", { name: "Duplicar rol", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Rol a configurar" }).locator("option:checked")).toHaveText("Auxiliar");
+  await expect(page.getByRole("checkbox", { name: "Ver Catálogo", exact: true })).toBeChecked();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: "test-results/roles-mobile.png", fullPage: true });
+  await page.getByRole("button", { name: "Retirar rol", exact: true }).click();
+  await page.getByRole("dialog", { name: "Retirar rol" }).getByRole("button", { name: "Retirar rol", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Rol a configurar" }).locator("option").filter({ hasText: "Auxiliar" })).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/tienda/admin/personal");
+  await page.getByRole("button", { name: "Invitar persona" }).click();
+  dialog = page.getByRole("dialog", { name: "Invitar personal" });
+  await dialog.getByRole("textbox", { name: "Correo electrónico" }).fill("logistica@example.test");
+  await dialog.getByRole("combobox", { name: "Rol", exact: true }).selectOption({ label: "Logistica" });
+  await dialog.getByRole("button", { name: "Generar enlace" }).click();
+  await expect(page.getByRole("textbox", { name: "Enlace de activación" })).toBeVisible();
+  await page.goto("/tienda/admin/roles");
+  await page.getByRole("combobox", { name: "Rol a configurar" }).selectOption({ label: "Logistica" });
+  await expect(page.getByRole("button", { name: "Retirar rol", exact: true })).toBeDisabled();
+  await expect(page.getByText("1 usuarios asignados", { exact: false })).toBeVisible();
+});
+
+test("devuelve mercaderia parcial, confirma stock y conserva pagos e historial", async ({ page }) => {
+  test.setTimeout(90000);
+  await page.evaluate(() => {
+    const key = "districo-demo-v1"; const state = JSON.parse(localStorage.getItem(key)!);
+    const customer = state.users.find((item: { email: string }) => item.email === "cliente@gmail.com");
+    const variant = state.products[0].variants[0];
+    state.orders.push({ id: "return-ui", orderNumber: "DIS-DEV", userId: customer.id, customerAccount: customer.customerAccount, status: "DELIVERED", createdAt: new Date().toISOString(), currency: "UYU", subtotal: 100, discountTotal: 0, total: 100, paidTotal: 25, creditedTotal: 0,
+      items: [{ id: "line-ui", variantId: variant.id, productName: "Alimento prueba", variantName: "10 kg", sku: "TEST-10", quantity: 4, unitPrice: 25, subtotal: 100 }] });
+    state.consumedOrderIds.push("return-ui");
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.goto("/tienda/admin/pedidos/return-ui");
+  const section = page.locator(".order-product-returns");
+  await expect(section.getByRole("heading", { name: "Devoluciones de mercadería" })).toBeVisible();
+  await section.getByRole("checkbox", { name: "Devolver Alimento prueba 10 kg" }).check();
+  await section.getByLabel("Cantidad a devolver TEST-10", { exact: true }).fill("3");
+  await section.getByLabel("Cantidad a reincorporar TEST-10", { exact: true }).fill("2");
+  await section.getByLabel("Motivo de devolución de mercadería").fill("Dos cerrados, uno dañado");
+  const initialStock = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!).products[0].variants[0].physicalStock);
+  await section.getByRole("button", { name: "Revisar devolución" }).click();
+  await expect(section.getByRole("heading", { name: "Confirmar recepción" })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!).products[0].variants[0].physicalStock)).toBe(initialStock);
+  await page.screenshot({ path: "test-results/return-desktop.png", fullPage: true });
+  await section.getByRole("button", { name: "Confirmar recepción", exact: true }).click();
+  await expect(section.locator("summary")).toContainText("3 unidades devueltas");
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!));
+  expect(state.products[0].variants[0].physicalStock).toBe(initialStock + 2);
+  expect(state.orders.find((order: { id: string }) => order.id === "return-ui")).toMatchObject({ paidTotal: 25, creditedTotal: 0 });
+  await section.locator("summary").click();
+  await expect(section.getByText("admin@districo.com", { exact: false })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: "test-results/return-mobile.png", fullPage: true });
+  await section.getByRole("checkbox", { name: "Devolver Alimento prueba 10 kg" }).check();
+  await section.getByLabel("Motivo de devolución de mercadería").fill("Ultima unidad no apta para venta");
+  await section.getByRole("button", { name: "Revisar devolución" }).click();
+  await section.getByRole("button", { name: "Confirmar recepción", exact: true }).click();
+  await expect(section.locator("summary")).toHaveCount(2);
+  await expect(section.getByRole("checkbox")).toHaveCount(0);
+  await page.reload();
+  await expect(section.locator("summary")).toHaveCount(2);
+});

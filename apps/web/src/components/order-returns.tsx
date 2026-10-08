@@ -80,7 +80,7 @@ export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Or
   }
 
   return <section className="order-billing-history">
-    <h3>Devoluciones y notas de crédito</h3>
+    <h3>Notas de crédito y reintegros</h3>
     <div className="order-billing-summary">
       <div><span>Total acreditado</span><strong>{money(balance.credited, order.currency)}</strong></div>
       <div><span>Reintegrado</span><strong>{money(balance.refunded, order.currency)}</strong></div>

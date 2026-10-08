@@ -52,9 +52,11 @@ test('guard enforces saved view and edit rights across staff sections', async ()
   override = { canView: true, canEdit: false };
   assert.equal(await guard.canActivate(context('/api/products/admin/list', 'GET', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/products/123', 'PATCH', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/123/returns/preview', 'POST', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/orders/123/invoices/456', 'GET', Role.SALES)), false);
   override = { canView: true, canEdit: true };
   assert.equal(await guard.canActivate(context('/api/products/123', 'PATCH', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/123/returns', 'POST', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/admin/orders/123/invoices/456', 'GET', Role.SALES)), true);
   override = null;
   assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.SALES)), false);
@@ -100,6 +102,7 @@ test('seller record access follows the current customer assignment', async () =>
   assert.equal(await guard.canActivate(context('/api/admin/customers/other-1', 'PATCH')), false);
   assert.equal(await guard.canActivate(context('/api/admin/orders/other-2', 'GET')), false);
   assert.equal(await guard.canActivate(context('/api/admin/orders/other-2/status', 'PATCH')), false);
+  assert.equal(await guard.canActivate(context('/api/admin/orders/other-2/returns/preview', 'POST')), false);
   assert.equal(await guard.canActivate(context('/api/admin/customers/page', 'GET')), true);
   assert.equal(await guard.canActivate(context('/api/admin/orders/page', 'GET')), true);
 });

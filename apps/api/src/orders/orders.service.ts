@@ -18,6 +18,7 @@ const adminOrderInclude = {
   invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, invoiceNumber: true, originalName: true, mimeType: true, size: true, createdAt: true, uploadedById: true, voidedAt: true, voidedById: true, voidReason: true, replacesInvoiceId: true, replacementReason: true } },
   creditNotes: { orderBy: { createdAt: 'desc' } },
   refunds: { orderBy: { createdAt: 'desc' } },
+  returns: { orderBy: { createdAt: 'desc' }, include: { items: true } },
 } as const satisfies Prisma.OrderInclude;
 type AdminOrder = Prisma.OrderGetPayload<{ include: typeof adminOrderInclude }>;
 
@@ -330,6 +331,7 @@ export class OrdersService {
       ...order.invoices.flatMap((invoice) => [invoice.uploadedById, invoice.voidedById]),
       ...order.creditNotes.map((note) => note.recordedById),
       ...order.refunds.map((refund) => refund.recordedById),
+      ...(order.returns ?? []).map((receipt) => receipt.recordedById),
     ]).filter((id): id is string => !!id))];
     const actors = actorIds.length ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true } }) : [];
     const emails = new Map(actors.map((actor) => [actor.id, actor.email]));
@@ -339,6 +341,7 @@ export class OrdersService {
       invoices: order.invoices.map((invoice) => ({ ...invoice, uploadedByEmail: emails.get(invoice.uploadedById) ?? null, voidedByEmail: invoice.voidedById ? emails.get(invoice.voidedById) ?? null : null })),
       creditNotes: order.creditNotes.map((note) => ({ ...note, recordedByEmail: emails.get(note.recordedById) ?? null, storagePath: undefined })),
       refunds: order.refunds.map((refund) => ({ ...refund, recordedByEmail: emails.get(refund.recordedById) ?? null })),
+      returns: (order.returns ?? []).map((receipt) => ({ ...receipt, recordedByEmail: emails.get(receipt.recordedById) ?? null })),
     }));
   }
 

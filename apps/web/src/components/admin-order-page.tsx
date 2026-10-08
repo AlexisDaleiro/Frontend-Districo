@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
 import { AdminNav, OrderProgressControl } from "./admin";
 import { OrderBilling } from "./order-billing";
+import { OrderProductReturns } from "./order-product-returns";
 import { OrderItems } from "./orders";
 import { useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, PageHeading } from "./ui";
@@ -41,6 +42,7 @@ export function AdminOrderPage({ id, back }: { id: string; back?: string }) {
         </dl>
         {canEditAdminFeature(user, "pedidos") && <section className="admin-record-section"><OrderProgressControl key={`${order.id}-${order.status}`} order={order} onUpdated={refreshOrder} /></section>}
         <section className="admin-record-section"><h2>Productos del pedido</h2><OrderItems order={order} /><p className="muted small-copy">Importes registrados al confirmar el pedido; no cambian con precios posteriores.</p></section>
+        <section className="admin-record-section"><OrderProductReturns key={order.id} order={order} readOnly={!canEditAdminFeature(user, "pedidos")} onUpdated={refreshOrder} /></section>
         {canViewBilling && <section className="admin-record-section"><OrderBilling key={order.id} order={order} readOnly={!canEditAdminFeature(user, "facturacion")} onUpdated={refreshOrder} /></section>}
       </> : <Empty title="Pedido no encontrado" />}
     </main>

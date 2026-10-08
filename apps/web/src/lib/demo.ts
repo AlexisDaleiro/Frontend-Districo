@@ -16,6 +16,7 @@ import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
 import { orderBalance } from "./order-billing";
 import { demoAdminTools, type DemoToolsState } from "./demo-admin-tools";
+import { demoProductReturn } from "./demo-product-returns";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
@@ -46,7 +47,8 @@ type State = {
   banners?: { id: string; title: string; subtitle?: string; actionLabel: string; href: string; alt: string; imageUrl: string; position: number; active: boolean; startsAt?: string; endsAt?: string }[];
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
-  customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess }[];
+  customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess; retiredAt?: string }[];
+  roleHistory?: { action: string; roleId: string; actorId: string; createdAt: string; name: string; previousName: string }[];
   creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
   salespeople?: Record<string, { id: string; name: string; phone: string }>;
   consumedOrderIds?: string[];
@@ -109,6 +111,7 @@ function read() {
     data.creditChanges ??= {};
     data.salespeople ??= {};
     data.consumedOrderIds ??= [];
+    for (const order of data.orders) order.items.forEach((item, index) => { item.id ??= `${order.id}-item-${index}`; });
     return data;
   } catch {
     throw new ApiError(
@@ -897,7 +900,7 @@ export async function demoRequest<T>(
     }));
     else if (route === "admin/staff/access" && method === "GET") result = [
       ...staffRoles.map((role) => ({ role, id: null, name: null, access: s.staffRoleAccess?.[role] ?? defaultDemoRoleAccess(role) })),
-      ...(s.customRoles ?? []).map((item) => ({ role: "CUSTOM", id: item.id, name: item.name, access: item.access })),
+      ...(s.customRoles ?? []).filter((item) => !item.retiredAt).map((item) => ({ role: "CUSTOM", id: item.id, name: item.name, access: item.access, assignedUsers: s.users.filter((user) => user.customRoleId === item.id).length })),
     ];
     else if (route.startsWith("admin/staff/access/") && method === "PATCH") {
       const role = parts[3] as StaffRole;
@@ -921,7 +924,7 @@ export async function demoRequest<T>(
       result = { id: created.id, name: created.name };
     }
     else if (route.startsWith("admin/staff/roles/") && parts[4] === "access" && method === "PATCH") {
-      const item = s.customRoles?.find((entry) => entry.id === parts[3]);
+      const item = s.customRoles?.find((entry) => entry.id === parts[3] && !entry.retiredAt);
       const entries = b.entries as { feature: StaffFeature; canView: boolean; canEdit: boolean }[];
       if (!item) throw new ApiError("Rol no encontrado.", 404);
       if (!Array.isArray(entries) || entries.length !== staffFeatures.length ||
@@ -932,10 +935,35 @@ export async function demoRequest<T>(
       item.access = Object.fromEntries(entries.map((entry) => [entry.feature, { canView: entry.canView, canEdit: entry.canEdit }])) as DemoRoleAccess;
       result = { success: true };
     }
+    else if (route.startsWith("admin/staff/roles/") && ((parts.length === 4 && ["PATCH", "DELETE"].includes(method)) || parts[4] === "duplicate" && method === "POST")) {
+      const current = s.customRoles?.find((entry) => entry.id === parts[3] && !entry.retiredAt);
+      if (!current) throw new ApiError("El rol no existe o fue retirado.", 404);
+      const previousName = current.name;
+      const action = method === "DELETE" ? "retire" : method === "PATCH" ? "rename" : "duplicate";
+      let saved = current;
+      if (action === "retire") {
+        if (s.users.some((item) => item.customRoleId === current.id)) throw new ApiError("Reasigná los usuarios de este rol antes de retirarlo, incluidas las invitaciones pendientes.", 409);
+        current.retiredAt = new Date().toISOString();
+      } else {
+        const name = String(b.name ?? "").trim();
+        const key = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        if (name.length < 2 || name.length > 60 || !key) throw new ApiError("Ingresá un nombre válido para el rol.", 400);
+        if (s.customRoles?.some((item) => item.key === key && (action === "duplicate" || item.id !== current.id))) throw new ApiError("Ya existe un rol con ese nombre.", 409);
+        if (action === "rename") { current.name = name; current.key = key; }
+        else {
+          const actor = user!.role === "CUSTOM" ? s.customRoles?.find((item) => item.id === user!.customRoleId)?.access : completeDemoRoleAccess(user!.role as StaffRole, s.staffRoleAccess?.[user!.role as StaffRole]);
+          if (user!.role !== "ADMIN" && staffFeatures.some(([feature]) => current.access[feature].canView && !actor?.[feature].canView || current.access[feature].canEdit && !actor?.[feature].canEdit)) throw new ApiError("No podés otorgar permisos que no tenés.", 403);
+          saved = { id: id(), name, key, access: structuredClone(current.access) };
+          s.customRoles!.push(saved);
+        }
+      }
+      (s.roleHistory ??= []).push({ action, roleId: saved.id, actorId: user!.id, createdAt: new Date().toISOString(), name: saved.name, previousName });
+      result = { id: saved.id, name: saved.name };
+    }
     else if (route === "admin/staff/invitations" && method === "POST") {
       const email = String(b.email ?? "").trim().toLowerCase();
       if (!/^\S+@\S+\.\S+$/.test(email) || ![...staffRoles, "CUSTOM"].includes(String(b.role) as StaffRole) ||
-          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId))) throw new ApiError("Datos inválidos.", 400);
+          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId && !item.retiredAt))) throw new ApiError("Datos inválidos.", 400);
       let member = s.users.find((item) => item.email.toLowerCase() === email);
       if (member && (member.customerAccount || member.active !== false || member.emailVerified !== false || member.role === "CLIENT")) throw new ApiError("Ese correo ya pertenece a una cuenta activa o de cliente.", 409);
       if (!member) {
@@ -967,7 +995,7 @@ export async function demoRequest<T>(
       if (member.id === user!.id && b.role !== "ADMIN") throw new ApiError("No podés quitarte tu acceso de administrador.", 403);
       if (b.role !== "SALES" && s.salespeople?.[member.id] && s.users.some((entry) => entry.customerAccount?.salespersonId === s.salespeople?.[member.id]?.id)) throw new ApiError("Reasigná sus clientes antes de cambiar el rol del vendedor.", 400);
       if (![...staffRoles, "CUSTOM"].includes(String(b.role) as StaffRole) ||
-          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId))) throw new ApiError("Rol inválido.", 400);
+          (b.role === "CUSTOM" && !s.customRoles?.some((item) => item.id === b.customRoleId && !item.retiredAt))) throw new ApiError("Rol inválido.", 400);
       member.role = b.role as typeof member.role;
       member.customRoleId = member.role === "CUSTOM" ? String(b.customRoleId) : null;
       member.permissions = [];
@@ -1080,6 +1108,9 @@ export async function demoRequest<T>(
         ...o,
         user: { email: s.users.find((u) => u.id === o.userId)?.email ?? "" },
       }));
+    else if (route.startsWith("admin/orders/") && parts[3] === "returns" && method === "POST") {
+      result = await demoProductReturn(s, parts[2], b, user!, parts[4] === "preview", demoHash);
+    }
     else if (route.startsWith("admin/orders/") && ["credit-notes", "refunds"].includes(parts[3]) && method === "POST") {
       const order = s.orders.find((item) => item.id === parts[2]);
       if (!order) throw new ApiError("Pedido no encontrado.", 404);

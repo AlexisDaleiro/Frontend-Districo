@@ -13,6 +13,8 @@ function fixture() {
   const audits: string[] = [];
   let revokedTokens = 0;
   const tx = {
+    $queryRaw: async () => [],
+    customStaffRole: { findUnique: async ({ where }: any) => where.id === 'custom-1' ? { id: 'custom-1', name: 'Depósito', retiredAt: null } : null },
     user: {
       findUnique: async ({ where }: any) => where.email ? Object.values(users).find((user: any) => user.email === where.email) ?? null :
         where.id === 'admin-1' || where.id === 'other-admin' ? { id: where.id, role: Role.ADMIN, customRoleId: null } : users[where.id] ?? null,
@@ -34,7 +36,7 @@ function fixture() {
     userPermission: { deleteMany: async () => ({ count: 0 }) },
     auditLog: { create: async ({ data }: any) => { audits.push(data.action); return data; } },
   };
-  const prisma = { ...tx, customStaffRole: { findUnique: async ({ where }: any) => where.id === 'custom-1' ? { id: 'custom-1', name: 'Depósito' } : null },
+  const prisma = { ...tx,
     $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
   return { users, invitations, audits, prisma, get revokedTokens() { return revokedTokens; } };
 }

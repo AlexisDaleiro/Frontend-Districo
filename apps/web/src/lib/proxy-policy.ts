@@ -71,6 +71,8 @@ export function allowedPath(path: string, method: string) {
       "admin/bulk/customers/salesperson(/preview)?",
       `admin/salespeople/${id}/customers`,
       "admin/staff/roles",
+      `admin/staff/roles/${id}/duplicate`,
+      `admin/orders/${id}/returns(/preview)?`,
       "admin/(promotions|recommendations)",
     ],
     PATCH: [
@@ -83,6 +85,7 @@ export function allowedPath(path: string, method: string) {
       `admin/staff/${id}/role`,
       "admin/staff/access/(SALES|CATALOG|FINANCE)",
       `admin/staff/roles/${id}/access`,
+      `admin/staff/roles/${id}`,
       `admin/staff/${id}/active`,
       `admin/salespeople/${id}`,
       `admin/contact-inquiries/${id}`,
@@ -95,7 +98,7 @@ export function allowedPath(path: string, method: string) {
       `recommendations/${id}/active`,
       `(brands|categories|laboratories)/${id}`,
     ],
-    DELETE: [`cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
+    DELETE: [`admin/staff/roles/${id}`, `cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
   };
   return (rules[method] ?? []).some((pattern) =>
     new RegExp(`^${pattern}$`).test(path),

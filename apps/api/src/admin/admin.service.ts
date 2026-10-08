@@ -33,11 +33,11 @@ export class AdminService {
     const roles = [Role.ADMIN, Role.SALES, Role.CATALOG, Role.FINANCE];
     const [overrides, customRoles] = await Promise.all([
       this.prisma.staffRoleAccess.findMany({ where: { role: { in: roles } } }),
-      this.prisma.customStaffRole.findMany({ include: { accesses: true }, orderBy: { name: 'asc' } }),
+      this.prisma.customStaffRole.findMany({ where: { retiredAt: null }, include: { accesses: true, _count: { select: { users: true } } }, orderBy: { name: 'asc' } }),
     ]);
     return [
       ...roles.map((role) => ({ role, id: null, name: null, access: staffAccessMatrix(role, overrides.filter((entry) => entry.role === role)) })),
-      ...customRoles.map((item) => ({ role: Role.CUSTOM, id: item.id, name: item.name, access: staffAccessMatrix(Role.CUSTOM, item.accesses) })),
+      ...customRoles.map((item) => ({ role: Role.CUSTOM, id: item.id, name: item.name, assignedUsers: item._count?.users ?? 0, access: staffAccessMatrix(Role.CUSTOM, item.accesses) })),
     ];
   }
 
@@ -77,10 +77,11 @@ export class AdminService {
   }
 
   async updateCustomRoleAccess(id: string, entries: StaffAccessEntryDto[], actorId: string) {
-    if (!await this.prisma.customStaffRole.findUnique({ where: { id } })) throw new NotFoundException('Rol no encontrado.');
+    if (!await this.prisma.customStaffRole.findFirst({ where: { id, retiredAt: null } })) throw new NotFoundException('Rol no encontrado.');
     this.validateStaffAccess(entries);
     await this.assertGrantBounded(actorId, entries);
     await this.prisma.$transaction(async (tx) => {
+      await this.lockCustomRole(tx, Role.CUSTOM, id);
       for (const entry of entries) {
         await tx.customStaffRoleAccess.upsert({
           where: { roleId_feature: { roleId: id, feature: entry.feature } },
@@ -94,6 +95,45 @@ export class AdminService {
       } });
     });
     return this.staffRoleAccess();
+  }
+
+  async manageCustomRole(id: string, action: 'rename' | 'duplicate' | 'retire', nameInput: string | undefined, actorId: string) {
+    const name = nameInput?.trim();
+    const key = name ? slugify(name) : undefined;
+    if (action !== 'retire' && (!name || name.length < 2 || name.length > 60 || !key)) throw new BadRequestException('Ingresá un nombre válido para el rol.');
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.lockCustomRole(tx, Role.CUSTOM, id);
+        const current = await tx.customStaffRole.findUniqueOrThrow({ where: { id }, include: { accesses: true } });
+        if (action === 'retire') {
+          const assigned = await tx.user.count({ where: { customRoleId: id } });
+          if (assigned) throw new ConflictException(`Reasigná los ${assigned} usuarios de este rol antes de retirarlo, incluidas las invitaciones pendientes.`);
+          await tx.customStaffRole.update({ where: { id }, data: { retiredAt: new Date() } });
+          await tx.auditLog.create({ data: { action: 'STAFF_ROLE_RETIRED', entityType: 'CustomStaffRole', entityId: id, userId: actorId, metadata: { name: current.name } } });
+          return { id, name: current.name };
+        }
+        const existing = await tx.customStaffRole.findUnique({ where: { key: key! } });
+        if (existing && (action === 'duplicate' || existing.id !== id)) throw new ConflictException('Ya existe un rol con ese nombre.');
+        if (action === 'duplicate') await this.assertGrantBounded(actorId, current.accesses as StaffAccessEntryDto[]);
+        const saved = action === 'rename'
+          ? await tx.customStaffRole.update({ where: { id }, data: { name: name!, key: key! }, select: { id: true, name: true } })
+          : await tx.customStaffRole.create({ data: { name: name!, key: key!, accesses: { create: current.accesses.map(({ feature, canView, canEdit }) => ({ feature, canView, canEdit })) } }, select: { id: true, name: true } });
+        await tx.auditLog.create({ data: { action: action === 'rename' ? 'STAFF_ROLE_RENAMED' : 'STAFF_ROLE_DUPLICATED', entityType: 'CustomStaffRole', entityId: saved.id, userId: actorId,
+          metadata: { fromRoleId: id, previousName: current.name, name: saved.name } } });
+        return saved;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('Ya existe un rol con ese nombre.');
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') throw new ConflictException('El rol cambió. Actualizá la lista antes de continuar.');
+      throw error;
+    }
+  }
+
+  private async lockCustomRole(tx: Prisma.TransactionClient, role: Role, customRoleId?: string) {
+    if (role !== Role.CUSTOM) return;
+    await tx.$queryRaw`SELECT "id" FROM "CustomStaffRole" WHERE "id" = ${customRoleId} FOR UPDATE`;
+    const current = customRoleId && await tx.customStaffRole.findUnique({ where: { id: customRoleId } });
+    if (!current || current.retiredAt) throw new NotFoundException('El rol no existe o fue retirado.');
   }
 
   private async actorAccess(actorId: string) {
@@ -422,6 +462,7 @@ export class AdminService {
     const placeholderHash = await bcrypt.hash(randomBytes(32).toString('base64url'), 10);
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const staff = await this.prisma.$transaction(async (tx) => {
+      await this.lockCustomRole(tx, role, customRoleId);
       const existing = await tx.user.findUnique({ where: { email } });
       if (existing && (existing.customerAccountId || existing.active || existing.emailVerified || existing.role === Role.CLIENT)) {
         throw new ConflictException('Ese correo ya pertenece a una cuenta activa o de cliente.');
@@ -477,6 +518,7 @@ export class AdminService {
     if (id === actorId) throw new ForbiddenException('No podés cambiar tu propio rol.');
     await this.assertAssignableRole(actorId, role, customRoleId);
     return this.prisma.$transaction(async (tx) => {
+      await this.lockCustomRole(tx, role, customRoleId);
       const user = await tx.user.findUnique({ where: { id }, select: { id: true, email: true, role: true, active: true, customerAccountId: true,
         salesperson: { select: { _count: { select: { customers: true } } } } } });
       if (!user || user.customerAccountId) throw new NotFoundException('Usuario interno no encontrado.');
@@ -498,7 +540,8 @@ export class AdminService {
       if (customRoleId) throw new BadRequestException('Este rol no acepta un identificador personalizado.');
       return;
     }
-    if (!customRoleId || !await this.prisma.customStaffRole.findUnique({ where: { id: customRoleId } })) {
+    const customRole = customRoleId && await this.prisma.customStaffRole.findUnique({ where: { id: customRoleId } });
+    if (!customRole || customRole.retiredAt) {
       throw new BadRequestException('Seleccioná un rol existente.');
     }
   }

@@ -9,11 +9,12 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { OrderBillingService } from './order-billing.service';
 import { InvoiceStorageService } from './invoice-storage.service';
+import { ProductReturnsService } from './product-returns.service';
 
 @Module({
   imports: [PrismaModule, InventoryModule, PromotionsModule, AuditModule, NotificationsModule],
   controllers: [OrdersController, CheckoutController],
-  providers: [OrdersService, OrderBillingService, InvoiceStorageService],
-  exports: [OrdersService, OrderBillingService],
+  providers: [OrdersService, OrderBillingService, InvoiceStorageService, ProductReturnsService],
+  exports: [OrdersService, OrderBillingService, ProductReturnsService],
 })
 export class OrdersModule {}
