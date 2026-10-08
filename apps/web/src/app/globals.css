@@ -4806,7 +4806,7 @@ td .button {
 .admin-sales-periods { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 5px; }
 .admin-sales-periods button { border: 0; border-radius: 3px; background: transparent; padding: 7px 11px; font: inherit; font-size: 12px; color: var(--ink); cursor: pointer; white-space: nowrap; }
 .admin-sales-periods button[aria-pressed="true"] { background: var(--ink); color: white; }
-.admin-sales-today { display: flex; gap: 28px; align-items: center; margin-top: 22px; padding: 17px 20px; background: #eef5ee; border-left: 3px solid #479456; }
+.admin-sales-today { display: flex; gap: 28px; align-items: center; margin-top: 22px; padding: 17px 20px; background: var(--lime-soft); border-left: 3px solid var(--lime); }
 .admin-sales-today div, .admin-sales-metrics > div { display: grid; gap: 5px; min-width: 0; }
 .admin-sales-today span, .admin-sales-metrics span { font-size: 12px; color: var(--muted); }
 .admin-sales-today strong { font-size: 22px; line-height: 1.2; }
@@ -4816,7 +4816,7 @@ td .button {
 .admin-sales-metrics > div:last-child { border-right: 0; }
 .admin-sales-metrics strong { font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
 .admin-sales-metrics small { display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; }
-.admin-sales-metrics small.is-positive { color: #327947; }
+.admin-sales-metrics small.is-positive { color: var(--lime-text); }
 .admin-sales-metrics small.is-negative { color: #a8463a; }
 .admin-sales-detail { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr); gap: 35px; margin-top: 28px; }
 .admin-sales-detail h3 { font-size: 15px; margin-bottom: 14px; }
@@ -4826,7 +4826,7 @@ td .button {
 .admin-sales-trend-plot { position: relative; margin: 18px 12px 0 0; touch-action: pan-y; cursor: crosshair; outline: none; }
 .admin-sales-trend-plot:focus-visible { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--ink); border-radius: 2px; }
 .admin-sales-trend-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.admin-sales-trend-plot svg line { stroke: #ececec; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.admin-sales-trend-plot svg line { stroke: var(--paper); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .admin-sales-trend-plot svg line.is-base { stroke: var(--line); }
 .admin-sales-trend-area { fill: color-mix(in srgb, var(--ink) 12%, transparent); }
 .admin-sales-trend-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
