@@ -112,6 +112,15 @@ export class ProductsRepository {
 
   private async productWhere(filters: ProductFilterDto | AdminProductFilterDto, admin = false): Promise<Prisma.ProductWhereInput> {
     const categoryIds = filters.categoryId?.length ? await this.hierarchy.descendantIds(filters.categoryId) : undefined;
+    const and: Prisma.ProductWhereInput[] = filters.attributeValueIds?.map((attributeValueId) => ({ attributes: { some: { attributeValueId } } })) ?? [];
+    if (admin && (filters as AdminProductFilterDto).withoutPrice) {
+      const now = new Date();
+      const active = { active: true, deletedAt: null };
+      and.push({ OR: [{ variants: { none: active } }, { variants: { some: { ...active, prices: { none: {
+        priceList: { active: true }, amount: { gt: 0 }, validFrom: { lte: now }, OR: [{ validUntil: null }, { validUntil: { gte: now } }],
+      } } } } }] });
+    }
+    if (admin && (filters as AdminProductFilterDto).withoutStock) and.push({ variants: { none: { active: true, deletedAt: null, physicalStock: { gt: this.prisma.productVariant.fields.reservedStock } } } });
     return {
       deletedAt: null,
       active: admin ? (filters as AdminProductFilterDto).active : true,
@@ -121,9 +130,7 @@ export class ProductsRepository {
       requiresMedicationPermission: filters.medicationRequired,
       featured: filters.featured,
       categories: categoryIds ? { some: { categoryId: { in: categoryIds } } } : undefined,
-      AND: filters.attributeValueIds?.map((attributeValueId) => ({
-        attributes: { some: { attributeValueId } },
-      })),
+      AND: and.length ? and : undefined,
       OR: filters.search
         ? [
             { name: { contains: filters.search, mode: 'insensitive' } },

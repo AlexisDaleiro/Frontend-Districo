@@ -22,7 +22,7 @@ import { CreateRecommendationRuleDto } from '../recommendations/dto/create-recom
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AdminService } from './admin.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { CustomerListQueryDto, OrderListQueryDto } from './dto/admin-list-query.dto';
+import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto } from './dto/admin-list-query.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
 import { UpdateStaffRoleDto } from './dto/update-staff-role.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
@@ -73,6 +73,12 @@ export class AdminController {
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
   customersPage(@Query() query: CustomerListQueryDto, @CurrentUser() user: JwtUser) {
     return this.admin.customersPage(query, user);
+  }
+
+  @Get('customers/page/options')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  customerFilterOptions(@CurrentUser() user: JwtUser) {
+    return this.admin.customerFilterOptions(user);
   }
 
   @Get('customers/:id')
@@ -276,6 +282,17 @@ export class AdminController {
   @Get('staff/access')
   staffAccess() {
     return this.admin.staffRoleAccess();
+  }
+
+  @Get('staff/page')
+  staffPage(@Query() query: StaffListQueryDto) {
+    return this.admin.staffPage(query);
+  }
+
+  @Get('staff/page/options')
+  @Roles(Role.ADMIN)
+  staffFilterOptions() {
+    return this.admin.staffFilterOptions();
   }
 
   @Patch('staff/access/:role')

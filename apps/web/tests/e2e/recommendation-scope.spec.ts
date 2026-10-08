@@ -1,0 +1,103 @@
+import { expect, test } from "@playwright/test";
+
+async function login(page: import("@playwright/test").Page) {
+  await page.goto("/tienda/ingresar");
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 15000 });
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 15000 });
+  await page.goto("/tienda/admin/recomendaciones");
+}
+test("múltiples productos, edición, búsqueda y selección por marcas y categorías", async ({ page }, testInfo) => {
+  test.setTimeout(60000);
+  await login(page);
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const example = state.products[0];
+    for (let index = 0; index < 25; index++) state.products.push({ ...example, brand: null, id: `qa-product-${index}`, slug: `qa-product-${index}`, name: `QA producto ${index}`, variants: [{ ...example.variants[0], id: `qa-variant-${index}`, sku: `QA-${index}` }] });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear recomendación" }).click();
+  const dialog = page.getByRole("dialog", { name: "Crear recomendación" });
+  await dialog.getByRole("textbox", { name: "Nombre *", exact: true }).fill("Recomendación múltiple");
+  const trigger = dialog.getByRole("group", { name: "Se activa al comprar *", exact: true });
+  const target = dialog.getByRole("group", { name: "Recomendar *", exact: true });
+  await expect(trigger.locator(".promotion-options label").nth(1)).toBeVisible();
+  await trigger.locator(".promotion-options label").nth(0).getByRole("checkbox").check();
+  await trigger.locator(".promotion-options label").nth(1).getByRole("checkbox").check();
+  await target.locator(".promotion-options label").nth(2).getByRole("checkbox").check();
+  await target.locator(".promotion-options label").nth(3).getByRole("checkbox").check();
+  await target.getByRole("button", { name: "Página siguiente" }).click();
+  await expect(target.getByText("2 /", { exact: false })).toBeVisible();
+  await expect(target.locator(".promotion-selected span")).toHaveCount(2);
+  await target.getByRole("searchbox").fill("BIOFRESH");
+  await expect(async () => {
+    const names = await target.locator(".promotion-options label").allTextContents();
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.every((name) => name.toUpperCase().includes("BIOFRESH"))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await expect(target.locator(".promotion-selected span")).toHaveCount(2);
+  await dialog.evaluate((node) => { node.scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath("recommendations-editor-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await dialog.evaluate((node) => { node.scrollTop = 0; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("recommendations-mobile.png"), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await dialog.getByRole("button", { name: "Guardar recomendación" }).click();
+  await expect(dialog).not.toBeVisible();
+  const card = page.locator(".admin-cards .card").filter({ hasText: "Recomendación múltiple" });
+  await expect(card).toContainText("Se activa al comprar:");
+  let saved = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}").rules[0]);
+  expect(saved.triggerIds).toHaveLength(2); expect(saved.targetIds).toHaveLength(2);
+  await card.getByRole("button", { name: "Editar", exact: true }).click();
+  const edit = page.getByRole("dialog", { name: "Editar recomendación" });
+  const editTrigger = edit.getByRole("group", { name: "Se activa al comprar *", exact: true });
+  const editTarget = edit.getByRole("group", { name: "Recomendar *", exact: true });
+  await expect(editTrigger.locator(".promotion-selected span")).toHaveCount(2);
+  await expect(editTarget.locator(".promotion-selected span")).toHaveCount(2);
+  await editTrigger.getByRole("radio", { name: "Marcas", exact: true }).check();
+  await expect(editTrigger.locator(".promotion-options label").nth(1)).toBeVisible();
+  await editTrigger.locator(".promotion-options label").nth(0).getByRole("checkbox").check();
+  await editTrigger.locator(".promotion-options label").nth(1).getByRole("checkbox").check();
+  await editTarget.getByRole("radio", { name: "Categorías", exact: true }).check();
+  await expect(editTarget.locator(".promotion-options label").nth(1)).toBeVisible();
+  await editTarget.locator(".promotion-options label").nth(0).getByRole("checkbox").check();
+  await editTarget.locator(".promotion-options label").nth(1).getByRole("checkbox").check();
+  await edit.getByRole("button", { name: "Guardar recomendación" }).click();
+  await expect(edit).not.toBeVisible();
+  await page.reload();
+  await expect(card).toBeVisible();
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1") ?? "{}").rules[0]);
+  expect(saved.triggerType).toBe("BRAND"); expect(saved.triggerIds).toHaveLength(2);
+  expect(saved.targetType).toBe("CATEGORY"); expect(saved.targetIds).toHaveLength(2); expect(saved.products).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("recommendations-desktop.png"), fullPage: true });
+  await card.getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(card.getByText("Inactiva", { exact: true })).toBeVisible();
+  await card.getByRole("button", { name: "Activar", exact: true }).click();
+  await expect(card.getByText("Activa", { exact: true })).toBeVisible();
+  page.once("dialog", (event) => event.accept());
+  await card.getByRole("button", { name: "Eliminar Recomendación múltiple" }).click();
+  await expect(card).not.toBeVisible();
+});
+test("muestra productos recomendados en el carrito sin sugerir lo ya comprado", async ({ page }) => {
+  await login(page);
+  const expected = await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const products = state.products.filter((item: { requiresMedicationPermission: boolean; productType: string }) => !item.requiresMedicationPermission && item.productType === "FOOD").slice(0, 3);
+    const client = state.users.find((item: { email: string }) => item.email === "cliente@gmail.com");
+    state.rules = [{ id: "cart-rule", name: "Complementos", active: true, triggerType: "BRAND", triggerIds: [products[0].brand.id], targetType: "CATEGORY", targetIds: [products[0].categories[0].categoryId] }];
+    state.carts[client.id] = [{ id: "cart-item", variantId: products[0].variants[0].id, quantity: 1 }];
+    state.session = client.id;
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    return { trigger: products[0].name, target: products[1].name };
+  });
+  await page.goto("/tienda/carrito");
+  await expect(page.getByRole("heading", { name: "También puede interesarte" })).toBeVisible();
+  const section = page.locator(".cart-recommendations");
+  await expect(section.getByRole("link", { name: expected.target, exact: true })).toBeVisible();
+  await expect(section.getByRole("link", { name: expected.trigger, exact: true })).toHaveCount(0);
+});

@@ -1,4 +1,5 @@
 "use client";
+import { ShareAdminList, useAdminListField, useAdminListScroll } from "./admin-list-navigation";
 
 import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
@@ -129,10 +130,11 @@ export function AdminCategories({ edit }: { edit: OpenEditor }) {
   const { notify, user } = useSession();
   const canEdit = canEditAdminFeature(user, "categorias");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useAdminListField("search", "");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>();
   const [editingCategory, setEditingCategory] = useState<CategoryNode | null>(null);
+  useAdminListScroll(!q.isPending && !q.error);
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   const forest = categoryForest(q.data);
@@ -198,6 +200,7 @@ export function AdminCategories({ edit }: { edit: OpenEditor }) {
   return <section>
     <div className="admin-toolbar">
       <h2>Árbol de categorías</h2>
+      <ShareAdminList />
       {canEdit && <button className="button small" onClick={() => openEditor()}><Plus size={16} /> Nueva categoría</button>}
     </div>
     <input className="form-input admin-category-search" aria-label="Buscar categorías" placeholder="Buscar categoría" value={search} onChange={(event) => setSearch(event.target.value)} />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Package, ShoppingBag } from "lucide-react";
+import { FileText, MapPin, Package, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { AccessGate } from "@/components/auth";
 import { AccountDetails } from "@/components/account-details";
@@ -101,6 +101,7 @@ export default function Page() {
               <div className="account-dashboard-actions">
                 <Link className="button lime" href={storeRoutes.products}><ShoppingBag size={18} aria-hidden="true" /> {canOrder ? "Armar pedido" : "Explorar catálogo"}</Link>
                 <Link className="button secondary" href={storeRoutes.orders}><Package size={18} aria-hidden="true" /> Mis pedidos</Link>
+                <Link className="button secondary" href={storeRoutes.invoices}><FileText size={18} aria-hidden="true" /> Mis facturas</Link>
                 {canOrder && <Link className="account-dashboard-cart" href={storeRoutes.cart}>Ir al carrito</Link>}
               </div>
             </section>

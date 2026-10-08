@@ -8,7 +8,9 @@ import { AuditService } from '../audit/audit.service';
 import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { CustomerListQueryDto, OrderListQueryDto } from './dto/admin-list-query.dto';
+import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto } from './dto/admin-list-query.dto';
+import { customerDebtPredicate, customerListWhere } from './customer-list-filter';
+import { pendingInvitation, staffListWhere } from './staff-list-filter';
 import { defaultStaffAccess, staffAccessMatrix, staffFeatures, type StaffFeature } from '../common/staff-role-access';
 import { StaffAccessEntryDto } from './dto/update-staff-access.dto';
 import { JwtUser } from '../common/types/jwt-user.type';
@@ -257,28 +259,43 @@ export class AdminService {
     };
   }
 
+  customerFilterOptions(user: JwtUser) {
+    return this.prisma.salesperson.findMany({
+      where: user.role === Role.SALES ? { userId: user.sub } : undefined,
+      select: { id: true, name: true, user: { select: { email: true } } },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  staffFilterOptions() {
+    return this.prisma.customStaffRole.findMany({
+      select: { id: true, name: true, retiredAt: true }, orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   async customersPage(query: CustomerListQueryDto, user?: JwtUser) {
-    const search = query.search?.trim();
-    const where: Prisma.CustomerAccountWhereInput = {
-      salesperson: user?.role === Role.SALES ? { is: { userId: user.sub } } : undefined,
-      ...(search ? {
-      OR: [
-        { businessName: { contains: search, mode: 'insensitive' } },
-        { legalName: { contains: search, mode: 'insensitive' } },
-        { rut: { contains: search } },
-        { phone: { contains: search } },
-        { users: { some: { email: { contains: search, mode: 'insensitive' } } } },
-      ],
-      } : {}),
-    };
+    if (query.debt && (!user || !await this.canViewBilling(user))) throw new ForbiddenException('No tenés acceso a los saldos de clientes.');
+    const seller = user?.role === Role.SALES ? user.sub : undefined;
+    const where = customerListWhere(query, seller);
+    const include = { users: { select: { id: true, email: true, permissions: true, active: true } },
+      salesperson: { select: { id: true, name: true, userId: true, user: { select: { email: true } } } } } satisfies Prisma.CustomerAccountInclude;
+    if (query.debt) {
+      const predicate = customerDebtPredicate(query, seller);
+      const [ids, count] = await Promise.all([
+        this.prisma.$queryRaw<{ id: string }[]>`SELECT c."id" FROM "CustomerAccount" c WHERE ${predicate} ORDER BY c."createdAt" DESC, c."id" DESC LIMIT ${query.limit} OFFSET ${(query.page - 1) * query.limit}`,
+        this.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::integer AS total FROM "CustomerAccount" c WHERE ${predicate}`,
+      ]);
+      const found = ids.length ? await this.prisma.customerAccount.findMany({ where: { ...where, id: { in: ids.map((item) => item.id) } }, include }) : [];
+      const byId = new Map(found.map((item) => [item.id, item]));
+      return { items: ids.flatMap(({ id }) => { const item = byId.get(id); return item ? [item] : []; }), meta: { total: count[0]?.total ?? 0, page: query.page, limit: query.limit } };
+    }
     const [items, total] = await Promise.all([
       this.prisma.customerAccount.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.limit,
         take: query.limit,
-        include: { users: { select: { id: true, email: true, permissions: true, active: true } },
-          salesperson: { select: { id: true, name: true, userId: true, user: { select: { email: true } } } } },
+        include,
       }),
       this.prisma.customerAccount.count({ where }),
     ]);
@@ -432,6 +449,18 @@ export class AdminService {
 
   auditLogs() {
     return this.audit.findMany(200);
+  }
+
+  async staffPage(query: StaffListQueryDto) {
+    const now = new Date(), where = staffListWhere(query, now);
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({ where, skip: (query.page - 1) * query.limit, take: query.limit,
+        orderBy: [{ email: 'asc' }, { id: 'asc' }],
+        select: { id: true, email: true, role: true, customRoleId: true, customRole: { select: { id: true, name: true } }, active: true, emailVerified: true,
+          staffInvitations: { where: pendingInvitation(now), select: { id: true }, take: 1 } } }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items: users.map(({ staffInvitations, ...user }) => ({ ...user, invitationPending: !user.active && !user.emailVerified && staffInvitations.length > 0 })), meta: { total, page: query.page, limit: query.limit } };
   }
 
   staff() {

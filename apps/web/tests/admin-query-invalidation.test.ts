@@ -6,7 +6,7 @@ describe("admin query invalidation", () => {
     expect(affectedAdminQueries("admin/orders/one/returns", "admin/orders/one")).toBe(true);
     expect(affectedAdminQueries("admin/orders/one/returns", "products/cards?limit=8")).toBe(true);
     expect(affectedAdminQueries("admin/orders/one/returns", "cart")).toBe(true);
-    expect(affectedAdminQueries("admin/orders/one/returns", "admin/customers/page")).toBe(false);
+    expect(affectedAdminQueries("admin/orders/one/returns", "admin/customers/page")).toBe(true);
   });
   it("refreshes role assignment counts after invitations and role assignments", () => {
     expect(affectedAdminQueries("admin/staff/invitations", "admin/staff/access")).toBe(true);

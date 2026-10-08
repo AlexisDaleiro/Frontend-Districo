@@ -24,7 +24,7 @@ const brand = (
   productIds: ids.split(" "),
 });
 
-// Reviewed archive IDs, not name matching: TAPET belongs to Procao in the source taxonomy.
+// Reviewed archive IDs. TAPET is tracked separately according to the verified brand workbook.
 export const DISTRICO_BRANDS: DistricoBrand[] = [
   brand(
     "Guabi Natural",
@@ -81,8 +81,14 @@ export const DISTRICO_BRANDS: DistricoBrand[] = [
     "Proc\u00e3o",
     "procao",
     ["procao"],
-    "1517 1509 1316 1314 1310 1307 1305 1300 1290 1286 1280 1272 1267 1260 394 1295",
+    "1509 1316 1314 1310 1307 1305 1300 1290 1286 1280 1272 1267 1260 394 1295",
   ),
+  {
+    name: "TAPET",
+    slug: "tapet",
+    sourceUrls: [`${origin}/cuidado-mascotas/educadores/alfombra-de-entrenamiento-para-perros-tapet/`],
+    productIds: ["1517"],
+  },
   brand(
     "Amazonia",
     "amazonia",

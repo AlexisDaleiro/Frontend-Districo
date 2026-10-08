@@ -23,12 +23,18 @@ async function main() {
       const [conditions, rewards, recommendations] = await Promise.all([
         tx.promotionCondition.findMany({ where: { targetType: 'BRAND', targetId: { in: brandIds } }, select: { targetId: true } }),
         tx.promotionReward.findMany({ where: { targetType: 'BRAND', targetId: { in: brandIds } }, select: { targetId: true } }),
-        tx.recommendationRule.findMany({ where: { triggerType: 'BRAND', triggerId: { in: brandIds } }, select: { triggerId: true } }),
+        tx.recommendationRule.findMany({ where: { OR: [
+          { triggerType: 'BRAND', OR: [{ triggerId: { in: brandIds } }, { triggerIds: { hasSome: brandIds } }] },
+          { targetType: 'BRAND', targetIds: { hasSome: brandIds } },
+        ] }, select: { triggerType: true, triggerId: true, triggerIds: true, targetType: true, targetIds: true } }),
       ]);
       const plan = planLaboratoryBrandCleanup(brands, laboratories, [
         ...conditions.map((item) => item.targetId).filter((id): id is string => !!id),
         ...rewards.map((item) => item.targetId).filter((id): id is string => !!id),
-        ...recommendations.map((item) => item.triggerId),
+        ...recommendations.flatMap((item) => [
+          ...(item.triggerType === 'BRAND' ? [item.triggerId, ...item.triggerIds] : []),
+          ...(item.targetType === 'BRAND' ? item.targetIds : []),
+        ]),
       ]);
       if (values.apply) {
         for (const item of plan) {

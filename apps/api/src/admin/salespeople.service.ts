@@ -1,16 +1,19 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CustomerListQueryDto } from './dto/admin-list-query.dto';
+import { StaffListQueryDto } from './dto/admin-list-query.dto';
+import { pendingInvitation, staffListWhere } from './staff-list-filter';
 import { SaveSalespersonDto } from './dto/save-salesperson.dto';
 
 @Injectable()
 export class SalespeopleService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: CustomerListQueryDto) {
+  async list(query: StaffListQueryDto) {
+    const now = new Date();
     const search = query.search?.trim();
     const where: Prisma.UserWhereInput = {
+      ...staffListWhere(query, now),
       role: Role.SALES,
       customerAccountId: null,
       OR: search ? [
@@ -22,17 +25,19 @@ export class SalespeopleService {
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        orderBy: { email: 'asc' },
+        orderBy: [{ email: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.limit,
         take: query.limit,
         select: {
           id: true, email: true, active: true, emailVerified: true,
+          staffInvitations: { where: pendingInvitation(now), select: { id: true }, take: 1 },
           salesperson: { select: { id: true, name: true, phone: true, _count: { select: { customers: true } } } },
         },
       }),
       this.prisma.user.count({ where }),
     ]);
-    return { items: users.map(({ salesperson, ...user }) => ({ ...user,
+    return { items: users.map(({ salesperson, staffInvitations, ...user }) => ({ ...user,
+      invitationPending: !user.active && !user.emailVerified && (staffInvitations?.length ?? 0) > 0,
       profile: salesperson ? { id: salesperson.id, name: salesperson.name, phone: salesperson.phone, customerCount: salesperson._count.customers } : null,
     })), meta: { total, page: query.page, limit: query.limit } };
   }

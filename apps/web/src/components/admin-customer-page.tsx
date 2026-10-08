@@ -11,6 +11,7 @@ import { label, money } from "@/lib/commerce";
 import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { CustomerDetail } from "@/lib/types";
+import { useAdminReturnHref } from "./admin-list-navigation";
 
 function creditDescription(metadata: unknown) {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "Datos de crédito actualizados";
@@ -24,6 +25,7 @@ function creditDescription(metadata: unknown) {
 }
 
 export function AdminCustomerPage({ id }: { id: string }) {
+  const back = useAdminReturnHref("clientes");
   const { user } = useSession();
   const q = useApi<CustomerDetail>(`admin/customers/${id}`);
   const canView = canSeeAdminSection(user, "clientes");
@@ -34,7 +36,7 @@ export function AdminCustomerPage({ id }: { id: string }) {
     <AdminNav section="clientes" email={user?.email} />
     <main className="admin-main admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : customer ? <>
-        <Link className="text-link admin-product-back" href={storeRoutes.adminSection("clientes")}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "clientes asignados" : "clientes"}</Link>
+        <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "clientes asignados" : "clientes"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={customer.businessName}>{customer.legalName} · RUT {customer.rut}</PageHeading>
         <div className="admin-record-summary">
           <div><span>Cuenta</span><strong>{label(customer.accountStatus)}</strong></div>

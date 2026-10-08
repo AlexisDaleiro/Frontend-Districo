@@ -10,8 +10,11 @@ import { money } from "@/lib/commerce";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { Product } from "@/lib/types";
+import { useAdminReturnHref } from "./admin-list-navigation";
+import { adminRecordHref } from "@/lib/admin-list-navigation";
 
 export function AdminProductPreviewPage({ slug }: { slug: string }) {
+  const catalog = useAdminReturnHref("catalogo");
   const { user } = useSession();
   const product = useApi<Product>(`products/admin/${slug}`);
   const item = product.data;
@@ -27,7 +30,7 @@ export function AdminProductPreviewPage({ slug }: { slug: string }) {
         <main className="admin-main admin-product-page">
           {!canSeeAdminSection(user, "catalogo") ? <Empty title="No tenés acceso a esta sección" /> :
             product.isPending ? <Loading /> : product.error ? <ErrorBox error={product.error} retry={() => void product.refetch()} /> : item ? <>
-              <Link className="text-link admin-product-back" href={canEditAdminFeature(user, "catalogo") ? storeRoutes.adminProduct(item.slug) : storeRoutes.adminSection("catalogo")}><ArrowLeft size={17} /> {canEditAdminFeature(user, "catalogo") ? "Volver a editar producto" : "Volver al catálogo"}</Link>
+              <Link className="text-link admin-product-back" href={canEditAdminFeature(user, "catalogo") ? adminRecordHref(storeRoutes.adminProduct(item.slug), catalog) : catalog}><ArrowLeft size={17} /> {canEditAdminFeature(user, "catalogo") ? "Volver a editar producto" : "Volver al catálogo"}</Link>
               <PageHeading eyebrow="DISTRICO · Administración" title={item.name}>Vista previa del producto</PageHeading>
               <div className="admin-product-toolbar">
                 <span className="status-pill">{item.active === false ? "Inactivo" : "Activo"}</span>

@@ -33,9 +33,9 @@ const storedBrands = DISTRICO_BRANDS.map(({ name, slug }) => ({
   deletedAt: null,
 }));
 
-test("verified registry covers 19 brands and 156 unique source products", () => {
-  assert.equal(DISTRICO_BRANDS.length, 19);
-  assert.equal(new Set(DISTRICO_BRANDS.map((brand) => brand.slug)).size, 19);
+test("verified registry covers 20 brands and 156 unique source products", () => {
+  assert.equal(DISTRICO_BRANDS.length, 20);
+  assert.equal(new Set(DISTRICO_BRANDS.map((brand) => brand.slug)).size, 20);
   assert.equal(products.length, 156);
   assert.equal(
     new Set(products.map((product) => product.sourceExternalId)).size,
@@ -44,7 +44,7 @@ test("verified registry covers 19 brands and 156 unique source products", () => 
   for (const brand of DISTRICO_BRANDS)
     assert.ok(
       brand.sourceUrls.every((url) =>
-        url.startsWith("https://www.districo.com.uy/marcas/"),
+        url.startsWith("https://www.districo.com.uy/"),
       ),
     );
 });
@@ -52,7 +52,7 @@ test("verified registry covers 19 brands and 156 unique source products", () => 
 test("uses explicit identities, including source typos and products outside brand archives", () => {
   for (const [id, slug] of [
     ["391", "primogato"],
-    ["1517", "procao"],
+    ["1517", "tapet"],
     ["1221", "stack"],
     ["1295", "procao"],
     ["1729", "gran-plus"],
@@ -73,7 +73,7 @@ test("plans only brand changes and never changes other providers", () => {
     brandId: null,
   };
   const plan = planDistricoBrands(legacy, [...products, other]);
-  assert.equal(plan.create.length, 19);
+  assert.equal(plan.create.length, 20);
   assert.equal(plan.update.length, 156);
   assert.deepEqual(plan.retire, LEGACY_DEMO_BRAND_IDS);
   assert.deepEqual(plan.unmapped, []);
@@ -197,7 +197,7 @@ test("brand strip prioritizes the requested brands and keeps all remaining brand
       "stack",
     ],
   );
-  assert.equal(sorted.length, 19);
+  assert.equal(sorted.length, 20);
   assert.deepEqual(input, original);
   assert.deepEqual(orderBrands([]), []);
   assert.deepEqual(

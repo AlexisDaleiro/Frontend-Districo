@@ -54,6 +54,7 @@ async function handle(
   ) && request.headers.get("content-type")?.startsWith("multipart/form-data;");
   const multipartUpload = invoiceUpload || bannerUpload || catalogUpload || applicationUpload;
   const privateDownload = request.method === "GET" && (
+    /^orders\/me\/invoices\/[a-zA-Z0-9_-]+\/pdf$/.test(path) ||
     /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path) ||
     /^admin\/(applications|customers)\/[a-zA-Z0-9_-]+\/documents\/[a-zA-Z0-9_-]+$/.test(path)
   );

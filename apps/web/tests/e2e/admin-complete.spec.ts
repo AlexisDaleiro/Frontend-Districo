@@ -167,7 +167,7 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
     .filter({ hasText: "AA Producto de prueba" })
     .getByRole("link", { name: "Editar producto" })
     .click();
-  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba$/);
+  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba(?:\?|$)/);
   await page.getByRole("button", { name: "Agregar presentación" }).click();
   await page
     .getByRole("textbox", { name: "SKU *", exact: true })
@@ -201,10 +201,10 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
   await expect(row.getByRole("link", { name: "Presentaciones e imágenes" })).toHaveCount(0);
   await row.getByRole("link", { name: "Editar producto" }).click();
   await page.getByRole("link", { name: "Vista previa" }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba\/vista-previa$/);
+  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba\/vista-previa(?:\?|$)/);
   await expect(page.getByText("Stock disponible", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Volver a editar producto" }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba$/);
+  await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba(?:\?|$)/);
   await expect(page.getByRole("heading", { name: "Editar producto" })).toBeVisible();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.goto("/tienda/producto/aa-producto-prueba");

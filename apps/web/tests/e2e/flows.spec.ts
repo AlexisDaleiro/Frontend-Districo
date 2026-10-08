@@ -263,10 +263,7 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
     .getByLabel("Buscar producto para administrar")
     .fill("BIOFRESH para cachorros");
   await page.getByLabel("Buscar producto para administrar").press("Enter");
-  await page
-    .getByRole("link", { name: "Editar producto" })
-    .first()
-    .click();
+  await page.locator('tbody a[href*="/productos/biofresh-para-cachorros-razas-medianas"]').click();
   await page.getByRole("button", { name: "Existencias", exact: true }).click();
   await expect(
     page.getByText("Stock físico: 39 · Reservado: 0 · Disponible: 39"),
@@ -414,6 +411,7 @@ test("contacto registra consulta, filtra puntos demo y permite gestionarla", asy
 test("administración modifica precio y stock y crea recomendación", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await login(page, "Administración");
   await page.goto("/tienda/admin/catalogo");
   await page
@@ -435,10 +433,11 @@ test("administración modifica precio y stock y crea recomendación", async ({
   ).toBeVisible();
   await page.goto("/tienda/admin/recomendaciones");
   await page.getByRole("button", { name: "Crear recomendación" }).click();
-  await page.getByLabel("Nombre de la regla").fill("Recomendación prueba");
-  await page.getByLabel("Se activa al comprar").selectOption({ index: 1 });
-  await page.getByLabel("Producto recomendado").selectOption({ index: 2 });
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  const dialog = page.getByRole("dialog", { name: "Crear recomendación" });
+  await dialog.getByRole("textbox", { name: "Nombre *", exact: true }).fill("Recomendación prueba");
+  await dialog.getByRole("group", { name: "Se activa al comprar *", exact: true }).locator(".promotion-options label").nth(0).getByRole("checkbox").check();
+  await dialog.getByRole("group", { name: "Recomendar *", exact: true }).locator(".promotion-options label").nth(1).getByRole("checkbox").check();
+  await dialog.getByRole("button", { name: "Guardar recomendación" }).click();
   await expect(
     page.getByRole("heading", { name: "Recomendación prueba" }),
   ).toBeVisible();

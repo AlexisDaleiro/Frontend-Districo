@@ -13,6 +13,7 @@ export const storeRoutes = {
   checkout: `${root}/checkout`,
   account: `${root}/cuenta`,
   orders: `${root}/cuenta/pedidos`,
+  invoices: `${root}/cuenta/facturas`,
   order: (id: string) => `${root}/cuenta/pedidos/${encodeURIComponent(id)}`,
   login: `${root}/ingresar`,
   recoverAccess: `${root}/recuperar-acceso`,

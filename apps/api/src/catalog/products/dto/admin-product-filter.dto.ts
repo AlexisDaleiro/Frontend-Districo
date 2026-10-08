@@ -7,4 +7,14 @@ export class AdminProductFilterDto extends ProductFilterDto {
   @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @IsBoolean()
+  withoutPrice?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @IsBoolean()
+  withoutStock?: boolean;
 }

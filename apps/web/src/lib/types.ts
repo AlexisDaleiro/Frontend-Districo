@@ -40,6 +40,7 @@ export type SalespersonSummary = {
   email: string;
   active: boolean;
   emailVerified: boolean;
+  invitationPending?: boolean;
   profile: { id: string; name: string; phone: string; customerCount: number } | null;
 };
 export type SalespersonDetail = Omit<SalespersonSummary, "profile"> & {
@@ -235,6 +236,11 @@ export type Rule = {
   description?: string;
   triggerType?: string;
   triggerId?: string;
+  triggerIds?: string[];
+  targetType?: string;
+  targetIds?: string[];
+  triggerTargets?: { id: string; name: string }[];
+  targetTargets?: { id: string; name: string }[];
   minimumQuantity?: number;
   products?: { productId: string; variantId?: string; position?: number }[];
   conditions?: {

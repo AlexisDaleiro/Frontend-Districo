@@ -17,6 +17,9 @@ import { ApiError } from "./http";
 import { orderBalance } from "./order-billing";
 import { demoAdminTools, type DemoToolsState } from "./demo-admin-tools";
 import { demoProductReturn } from "./demo-product-returns";
+import { demoRecommendationLabels, demoRecommendationPayload, demoRecommendations } from "./demo-recommendations";
+import { recommendationIds } from "./recommendation-scope";
+import { staffListStatus } from "./admin-list-filters";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
@@ -38,6 +41,7 @@ type State = {
   applications: Application[];
   contactInquiries: ContactInquiry[];
   orders: Order[];
+  invoiceFiles?: Record<string, { base64: string; mimeType: string }>;
   rules: Rule[];
   promotions: Rule[];
   expiration: Expiration[];
@@ -307,6 +311,8 @@ export async function demoRequest<T>(
   body?: unknown,
 ): Promise<T> {
   const s = read();
+  const invitationPending = (member: User) => member.active === false && member.emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === member.id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString());
+  const matchesStaffStatus = (member: User) => !query.get("status") || staffListStatus({ ...member, invitationPending: invitationPending(member) }) === query.get("status");
   const [route, search = ""] = path.split("?");
   const query = new URLSearchParams(search);
   const b = body instanceof FormData ? Object.fromEntries(body.entries()) : (body ?? {}) as Record<string, unknown>;
@@ -510,6 +516,12 @@ export async function demoRequest<T>(
     let items = route === "products/admin/list" ? [...s.products] : s.products.filter((p) => p.active !== false);
     const active = query.get("active");
     if (active !== null && route === "products/admin/list") items = items.filter((p) => (p.active !== false) === (active === "true"));
+    if (route === "products/admin/list" && query.get("withoutPrice") === "true") items = items.filter((product) => {
+      const variants = product.variants.filter((variant) => variant.active !== false);
+      return !variants.length || variants.some((variant) => !(Number(variant.price?.amount) > 0));
+    });
+    if (route === "products/admin/list" && query.get("withoutStock") === "true") items = items.filter((product) =>
+      !product.variants.some((variant) => variant.active !== false && (variant.physicalStock == null ? variant.availableStock : variant.physicalStock - (variant.reservedStock ?? 0)) > 0));
     const term = (query.get("search") ?? "").toLowerCase();
     if (term)
       items = items.filter((p) =>
@@ -594,35 +606,7 @@ export async function demoRequest<T>(
   else if (route === "cart/recommendations") {
     const u = needBuyer(),
       cart = userCart(s, u);
-    result = s.rules
-      .filter(
-        (r) =>
-          cart.items
-            .filter((i) =>
-              targetMatch(
-                s.products.find((p) => p.id === i.product.id)!,
-                i.variant.id,
-                r.triggerType ?? "PRODUCT",
-                r.triggerId,
-              ),
-            )
-            .reduce((a, i) => a + i.quantity, 0) >= (r.minimumQuantity ?? 1),
-      )
-      .flatMap((r) =>
-        (r.products ?? [])
-          .map((ref) => s.products.find((p) => p.id === ref.productId))
-          .filter(
-            (p): p is Product =>
-              !!p &&
-              !cart.items.some((i) => i.product.id === p.id) &&
-              (!p.requiresMedicationPermission ||
-                can(u, "CAN_BUY_MEDICATIONS")),
-          )
-          .map((product) => ({
-            rule: r.name,
-            product: publicProduct(product, u),
-          })),
-      );
+    result = demoRecommendations(s.rules, s, cart, can(u, "CAN_BUY_MEDICATIONS")).map((item) => ({ ...item, product: publicProduct(item.product, u) }));
   } else if (route === "cart/items" || route.startsWith("cart/items/")) {
     const u = needBuyer();
     const items = (s.carts[u.id] ??= []);
@@ -725,6 +709,22 @@ export async function demoRequest<T>(
     s.orders.unshift(order);
     s.carts[u.id] = [];
     result = order;
+  } else if (route === "orders/me/invoices" && method === "GET") {
+    const u = needUser();
+    const term = (query.get("search") ?? "").trim().toLowerCase();
+    const invoices = s.orders.filter((order) => order.userId === u.id).flatMap((order) => (order.invoices ?? []).map((invoice) => ({
+      id: invoice.id, invoiceNumber: invoice.invoiceNumber ?? null, createdAt: invoice.createdAt, voidedAt: invoice.voidedAt ?? null,
+      hasFile: !!s.invoiceFiles?.[invoice.id], order: { id: order.id, orderNumber: order.orderNumber },
+    }))).filter((invoice) => !term || [invoice.invoiceNumber, invoice.order.orderNumber].some((value) => value?.toLowerCase().includes(term)))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.min(100, Math.max(1, Number(query.get("limit")) || 20));
+    result = { items: invoices.slice((page - 1) * limit, page * limit), meta: { total: invoices.length, page, limit } };
+  } else if (/^orders\/me\/invoices\/[^/]+\/pdf$/.test(route) && method === "GET") {
+    const u = needUser();
+    const invoiceId = route.split("/")[3];
+    const invoice = s.orders.filter((order) => order.userId === u.id).flatMap((order) => order.invoices ?? []).find((invoice) => invoice.id === invoiceId && !invoice.voidedAt);
+    if (!invoice || !s.invoiceFiles?.[invoiceId]) throw new ApiError("Factura no disponible para descargar.", 404);
+    result = s.invoiceFiles[invoiceId];
   } else if (route === "orders/me" || route.startsWith("orders/me/")) {
     const u = needUser();
     const orders = s.orders.filter((o) => o.userId === u.id);
@@ -827,6 +827,22 @@ export async function demoRequest<T>(
       );
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = route.endsWith("/page") ? { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } } : all;
+    } else if (parts[0] === "recommendations" && parts[1]) {
+      const rule = s.rules.find((item) => item.id === parts[1]);
+      if (!rule) throw new ApiError("Recomendación no encontrada.", 404);
+      if (method === "DELETE") {
+        s.rules = s.rules.filter((item) => item.id !== rule.id);
+        result = { success: true };
+      } else if (method === "PATCH") {
+        if (parts[2] === "active") {
+          if (typeof b.active !== "boolean") throw new ApiError("Estado inválido.", 400);
+          rule.active = b.active;
+        } else {
+          try { Object.assign(rule, demoRecommendationPayload(b, s), { startsAt: b.startsAt || undefined, endsAt: b.endsAt || undefined, minimumCartAmount: b.minimumCartAmount ?? undefined }); }
+          catch (cause) { throw new ApiError(cause instanceof Error ? cause.message : "Selección inválida.", 400); }
+        }
+        result = demoRecommendationLabels(rule, s);
+      } else throw new ApiError("Acción no disponible en la demo.", 400);
     } else if (
       route.startsWith("admin/contact-inquiries/") &&
       method === "PATCH"
@@ -857,11 +873,12 @@ export async function demoRequest<T>(
     else if (route === "admin/salespeople" && method === "GET") {
       const term = (query.get("search") ?? "").trim().toLowerCase();
       const all = s.users.filter((entry) => entry.role === "SALES" && !entry.customerAccount)
+        .filter(matchesStaffStatus)
         .filter((entry) => !term || [entry.email, s.salespeople?.[entry.id]?.name, s.salespeople?.[entry.id]?.phone].some((value) => value?.toLowerCase().includes(term)))
         .sort((a, b) => a.email.localeCompare(b.email))
         .map((entry) => {
           const profile = s.salespeople?.[entry.id];
-          return { id: entry.id, email: entry.email, active: entry.active !== false, emailVerified: entry.emailVerified !== false,
+          return { id: entry.id, email: entry.email, active: entry.active !== false, emailVerified: entry.emailVerified !== false, invitationPending: invitationPending(entry),
             profile: profile ? { ...profile, customerCount: s.users.filter((client) => client.customerAccount?.salespersonId === profile.id).length } : null };
         });
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
@@ -894,10 +911,19 @@ export async function demoRequest<T>(
         result = { customerId: customer.id, salespersonId: null };
       } else throw new ApiError("Acción no disponible.", 404);
     }
-    else if (route === "admin/staff") result = s.users.filter((u) => !u.customerAccount).map(({ id, email, role, customRoleId, active, emailVerified }) => ({
+    else if (route === "admin/staff/page/options") result = (s.customRoles ?? []).map(({ id, name, retiredAt }) => ({ id, name, retiredAt }));
+    else if (route === "admin/staff" || route === "admin/staff/page") {
+      const term = (query.get("search") ?? "").trim().toLowerCase();
+      const all = s.users.filter((u) => !u.customerAccount)
+        .filter((u) => route === "admin/staff" || matchesStaffStatus(u) && (!query.get("role") || u.role === query.get("role")) && (!query.get("customRoleId") || u.customRoleId === query.get("customRoleId")) && (!term || [u.email, s.customRoles?.find((item) => item.id === u.customRoleId)?.name].some((value) => value?.toLowerCase().includes(term))))
+        .sort((a, b) => a.email.localeCompare(b.email) || a.id.localeCompare(b.id))
+        .map((member) => { const { id, email, role, customRoleId, active, emailVerified } = member; return {
       id, email, role, customRoleId, customRole: s.customRoles?.find((item) => item.id === customRoleId) ?? null, active: active !== false, emailVerified: emailVerified !== false,
-      invitationPending: emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString()),
-    }));
+      invitationPending: invitationPending(member),
+    }; });
+      const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.min(100, Math.max(1, Number(query.get("limit")) || 20));
+      result = route === "admin/staff" ? all : { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
+    }
     else if (route === "admin/staff/access" && method === "GET") result = [
       ...staffRoles.map((role) => ({ role, id: null, name: null, access: s.staffRoleAccess?.[role] ?? defaultDemoRoleAccess(role) })),
       ...(s.customRoles ?? []).filter((item) => !item.retiredAt).map((item) => ({ role: "CUSTOM", id: item.id, name: item.name, access: item.access, assignedUsers: s.users.filter((user) => user.customRoleId === item.id).length })),
@@ -1044,10 +1070,26 @@ export async function demoRequest<T>(
       }
       result = a;
       }
+    } else if (route === "admin/customers/page/options") {
+      result = s.users.filter((entry) => !!s.salespeople?.[entry.id] && (user?.role !== "SALES" || entry.id === user.id))
+        .map((entry) => ({ id: s.salespeople![entry.id].id, name: s.salespeople![entry.id].name, user: { email: entry.email } }));
     } else if (route === "admin/customers/page") {
+      const access = user?.role === "CUSTOM" ? s.customRoles?.find((item) => item.id === user.customRoleId)?.access : user && user.role !== "CLIENT" ? s.staffRoleAccess?.[user.role] : undefined;
+      if (query.get("debt") && !canViewAdminFeature(user ? { ...user, staffAccess: access } : user, "facturacion")) throw new ApiError("No tenés acceso a los saldos de clientes.", 403);
       const term = (query.get("search") ?? "").toLowerCase();
       const sellerId = user?.role === "SALES" ? s.salespeople?.[user.id]?.id : undefined;
-      const all = s.users.filter((u) => u.customerAccount && (user?.role !== "SALES" || !!sellerId && u.customerAccount.salespersonId === sellerId)).filter((u) => !term || [u.email, u.customerAccount?.businessName, u.customerAccount?.legalName, u.customerAccount?.rut, u.customerAccount?.phone].some((value) => value?.toLowerCase().includes(term))).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(u.customerAccount) }));
+      const selectedSeller = query.get("salespersonId"), status = query.get("accountStatus"), debt = query.get("debt");
+      const all = s.users.filter((u) => u.customerAccount && (user?.role !== "SALES" || !!sellerId && u.customerAccount.salespersonId === sellerId))
+        .filter((u) => {
+          const account = u.customerAccount!;
+          if (selectedSeller && (selectedSeller === "unassigned" ? !!account.salespersonId : account.salespersonId !== selectedSeller)) return false;
+          if (status && account.accountStatus !== status) return false;
+          if (debt) {
+            const hasDebt = s.orders.some((order) => order.customerAccount?.id === account.id && ["SUBMITTED", "PENDING_REVIEW", "APPROVED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(order.status) && orderBalance(order).due > 0);
+            if (hasDebt !== (debt === "WITH_DEBT")) return false;
+          }
+          return !term || [u.email, account.businessName, account.legalName, account.rut, account.phone].some((value) => value?.toLowerCase().includes(term));
+        }).map((u) => ({ ...u.customerAccount, users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(u.customerAccount) }));
       const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.max(1, Number(query.get("limit")) || 20);
       result = { items: all.slice((page - 1) * limit, page * limit), meta: { total: all.length, page, limit } };
     } else if (route === "admin/customers")
@@ -1161,6 +1203,16 @@ export async function demoRequest<T>(
         if (b.replacesInvoiceId && (!replaced || replaced.voidedAt || String(b.replacementReason ?? "").trim().length < 3)) throw new ApiError("Factura a reemplazar o motivo inválido.", 400);
         if (replaced) { replaced.voidedAt = new Date().toISOString(); replaced.voidReason = String(b.replacementReason).trim(); }
         const invoice = { id: id(), invoiceNumber: number || null, originalName: file instanceof File ? file.name : null, createdAt: new Date().toISOString(), replacesInvoiceId: replaced?.id ?? null, replacementReason: replaced ? String(b.replacementReason).trim() : null };
+        if (file instanceof File) {
+          if (!file.size || file.size > 5_000_000 || !["application/pdf", "image/png", "image/jpeg"].includes(file.type)) throw new ApiError("Adjuntá un PDF, PNG o JPG de hasta 5 MB.", 400);
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(",")[1]);
+            reader.onerror = () => reject(new ApiError("No se pudo leer la factura."));
+            reader.readAsDataURL(file);
+          });
+          (s.invoiceFiles ??= {})[invoice.id] = { base64, mimeType: file.type };
+        }
         order.invoices!.unshift(invoice);
         result = invoice;
       } else throw new ApiError("Acción no disponible en la demo.", 400);
@@ -1328,10 +1380,15 @@ export async function demoRequest<T>(
             ? s.rules
             : s.promotions;
       if (method === "POST") {
-        const value = { id: id(), active: true, ...b };
+        let payload = b;
+        if (route.includes("recommendations")) {
+          try { payload = demoRecommendationPayload(b, s); }
+          catch (cause) { throw new ApiError(cause instanceof Error ? cause.message : "Selección inválida.", 400); }
+        }
+        const value = { id: id(), active: true, ...payload };
         collection.push(value as Rule & Expiration);
         result = value;
-      } else result = collection;
+      } else result = route.includes("recommendations") ? s.rules.map((rule) => demoRecommendationLabels(rule, s)) : collection;
     } else if (parts[0] === "categories" && parts[1] && parts[2] === "products") {
       const category = s.categories.find((item) => item.id === parts[1]);
       const productId = method === "POST" ? String(b.productId ?? "") : parts[3];
@@ -1358,7 +1415,7 @@ export async function demoRequest<T>(
         const inUse = s.products.some((product) => parts[0] === "brands" ? product.brand?.id === parts[1] : product.laboratory?.id === parts[1]);
         if (inUse) throw new ApiError("Tiene productos asociados. Reasignalos antes de eliminarlo.", 409);
         const targetType = parts[0] === "brands" ? "BRAND" : "LABORATORY";
-        const inRules = s.rules.some((rule) => rule.active !== false && rule.triggerType === targetType && rule.triggerId === parts[1]) ||
+        const inRules = s.rules.some((rule) => rule.active !== false && (rule.triggerType === targetType && recommendationIds(rule, "trigger").includes(parts[1]) || rule.targetType === targetType && recommendationIds(rule, "target").includes(parts[1]))) ||
           s.promotions.some((promotion) => promotion.active !== false && [...(promotion.conditions ?? []), ...(promotion.rewards ?? [])].some((target) => target.targetType === targetType && target.targetId === parts[1]));
         if (inRules) throw new ApiError("Está en una promoción o recomendación activa. Quitalo de esas reglas antes de eliminarlo.", 409);
         collection.splice(index, 1);

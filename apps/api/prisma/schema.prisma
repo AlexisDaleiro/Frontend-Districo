@@ -779,6 +779,9 @@ model RecommendationRule {
   endsAt            DateTime?
   triggerType       RecommendationTriggerType
   triggerId         String
+  triggerIds        String[]                  @default([])
+  targetType        RecommendationTriggerType @default(PRODUCT)
+  targetIds         String[]                  @default([])
   minimumQuantity   Int?
   minimumCartAmount Decimal?                  @db.Decimal(12, 2)
   products          RecommendationRuleProduct[]

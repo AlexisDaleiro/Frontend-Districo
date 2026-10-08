@@ -1,0 +1,286 @@
+{
+  "workbook": "Districo_marcas_fuentes_imagenes_y_logos.xlsx",
+  "sheet": "Recursos visuales",
+  "resources": [
+    {
+      "name": "Biofresh",
+      "slug": "biofresh",
+      "category": "Alimentos",
+      "productsUrl": "https://biofreshpet.com.br/es",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-marcas-biofresh.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Fotos actuales en web de marca; validar las variantes que se venden en Uruguay."
+    },
+    {
+      "name": "Mutts",
+      "slug": "mutts",
+      "category": "Alimentos",
+      "productsUrl": "https://www.brf-global.com/brf-pet/es/nuestras-marcas/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/mutts-pq9d91f28mff1r1t4aq26saeh7pz4m6l1x391hejnk.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "BRF tiene ejemplo de envase; logo en la home de Districo es peque\u00f1o."
+    },
+    {
+      "name": "Primoc\u00e3o",
+      "slug": "primocao",
+      "category": "Alimentos",
+      "productsUrl": "https://www.districo.com.uy/marcas/primocao/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-primocao.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "La galer\u00eda de Districo muestra variantes secas, h\u00famedas y snacks."
+    },
+    {
+      "name": "Apolo",
+      "slug": "apolo",
+      "category": "Alimentos",
+      "productsUrl": "https://www.districo.com.uy/productos/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-apolo.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Buscar cada presentaci\u00f3n en la secci\u00f3n productos."
+    },
+    {
+      "name": "Primogato",
+      "slug": "primogato",
+      "category": "Alimentos",
+      "productsUrl": "https://www.districo.com.uy/marcas/primogato/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-primogato.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Districo incluye producto seco, pat\u00e9 y sachet."
+    },
+    {
+      "name": "\u00c1tila / \u00c1tila Mix",
+      "slug": "atila",
+      "category": "Alimentos",
+      "productsUrl": "https://www.districo.com.uy/productos/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-atila.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Verificar que el logo \u00c1tila corresponda a la variante \u00c1tila Mix."
+    },
+    {
+      "name": "Beny",
+      "slug": "beny",
+      "category": "Alimentos",
+      "productsUrl": "https://www.districo.com.uy/alimento-para-mascotas/perros/beny-para-perros-adultos-de-todas-las-razas/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-beny.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Ficha puntual en Districo; pedir resto de presentaciones."
+    },
+    {
+      "name": "Three Dogs",
+      "slug": "three-dogs",
+      "category": "Alimentos",
+      "productsUrl": "https://threepetfood.com.br/pt",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-three-dogs-SPF.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "El logo enlazado corresponde a la l\u00ednea Super Premium; otras l\u00edneas pueden variar."
+    },
+    {
+      "name": "Three Cats",
+      "slug": "three-cats",
+      "category": "Alimentos",
+      "productsUrl": "https://threepetfood.com.br/pt",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-three-cats-SPF.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "El logo enlazado corresponde a la l\u00ednea Super Premium; otras l\u00edneas pueden variar."
+    },
+    {
+      "name": "Guabi Natural",
+      "slug": "guabi-natural",
+      "category": "Alimentos",
+      "productsUrl": "https://guabinatural.com.br/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-marcas-guabinatural.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "P\u00e1gina oficial con fotos de l\u00ednea seca y h\u00fameda."
+    },
+    {
+      "name": "Gran Plus",
+      "slug": "gran-plus",
+      "category": "Alimentos",
+      "productsUrl": "https://www.granplus.com.br/pt",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-granplus.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "Cat\u00e1logo de l\u00edneas Performance, Choice, Menu y Gourmet; filtrar las de UY."
+    },
+    {
+      "name": "Balance",
+      "slug": "balance",
+      "category": "Alimentos",
+      "productsUrl": "https://www.balance.com.br/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/wp-content/themes/brf-pet-2026/assets/images/marca/logo-balance.png",
+      "logoQuality": "PNG oficial BRF",
+      "status": "Disponible",
+      "notes": "El sitio muestra alimentos secos, h\u00famedos y snacks."
+    },
+    {
+      "name": "Faro",
+      "slug": "faro",
+      "category": "H\u00famedos",
+      "productsUrl": "https://www.brf-global.com/brf-pet/es/nuestras-marcas/",
+      "logoUrl": "https://www.brf-global.com/brf-pet/es/nuestras-marcas/",
+      "logoQuality": "Logos en portfolio BRF",
+      "status": "A confirmar",
+      "notes": "BRF vincula a faropet.com.br, pero su web no respondi\u00f3 a la consulta."
+    },
+    {
+      "name": "YowUp!",
+      "slug": "yowup",
+      "category": "Snacks mascotas",
+      "productsUrl": "https://yowup.com/perros/",
+      "logoUrl": "https://yowup.com/wp-content/uploads/2026/03/yowup-logo-white.svg",
+      "logoQuality": "SVG oficial blanco",
+      "status": "Disponible",
+      "notes": "El SVG es blanco para fondos oscuros; hay fotos en perros y gatos."
+    },
+    {
+      "name": "LoPets",
+      "slug": "lopets",
+      "category": "Snacks mascotas",
+      "productsUrl": "https://www.disco.com.uy/product/snack-cremoso-lopets-para-gato-60g-salmon/379756",
+      "logoUrl": null,
+      "logoQuality": "Solicitar al distribuidor",
+      "status": "Pedir originales",
+      "notes": "Fotos de g\u00f3ndola/cat\u00e1logo de terceros. No se encontr\u00f3 kit de marca p\u00fablico verificado."
+    },
+    {
+      "name": "Megazoo",
+      "slug": "megazoo",
+      "category": "Peque\u00f1os mam\u00edferos",
+      "productsUrl": "https://megazoo.com.br/produtos/coelhos-ornamentais/",
+      "logoUrl": "https://megazoo.com.br/",
+      "logoQuality": "Logo en sitio oficial",
+      "status": "Consultar archivo",
+      "notes": "Fichas oficiales de conejos y cobayas; tambi\u00e9n desde megazoo.com.br/produtos/."
+    },
+    {
+      "name": "Eco Cane",
+      "slug": "eco-cane",
+      "category": "Arena sanitaria",
+      "productsUrl": "https://www.districo.com.uy/arenas-sanitarias/eco-cane-cat-litter/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/ecocane-pq9d91f28mff1r1t4aq26saeh7pz4m6l1x391hejnk.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Foto en ficha de producto de Districo, logo muy peque\u00f1o en su home."
+    },
+    {
+      "name": "Putz",
+      "slug": "putz",
+      "category": "Arena sanitaria",
+      "productsUrl": "https://www.kelcopetcare.com.br/para-o-seu-gato/putz/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/putz-pq9d8zjduycuej4jf9wt1srhafz8p7z4dnsa2xhc00.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "El fabricante tiene fichas de Putz 4kg y Putz Smart 4kg."
+    },
+    {
+      "name": "Pipicat",
+      "slug": "pipicat",
+      "category": "Arena sanitaria",
+      "productsUrl": "https://www.kelcopetcare.com.br/para-o-seu-gato/pipicat/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/pipicat-pq9d8zjduycuej4jf9wt1srhafz8p7z4dnsa2xhc00.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Fotos por SKU en sitio Kelco (Classic, Floral, Multi-Cat, Ultra Dry)."
+    },
+    {
+      "name": "4PETS",
+      "slug": "4pets",
+      "category": "Arena sanitaria",
+      "productsUrl": "https://www.districo.com.uy/arenas-sanitarias/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/4pets-pr38ent1d3i8pkz3h0kllk1skcmyo4th8ykz686xog.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "No confundir con apps o marcas hom\u00f3nimas 4Pets."
+    },
+    {
+      "name": "KETS",
+      "slug": "kets",
+      "category": "Arena sanitaria",
+      "productsUrl": "https://www.districo.com.uy/marcas/kets/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/kets-pr38r387q8iq7yx6wdz0kf57brdog25pmh43lxrjeo.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Ficha de producto y logo peque\u00f1o en Districo."
+    },
+    {
+      "name": "Proc\u00e3o",
+      "slug": "procao",
+      "category": "Cuidado mascotas",
+      "productsUrl": "https://www.procao.ind.br/pt",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/procao-pq9d8zjduycuej4jf9wt1srhafz8p7z4dnsa2xhc00.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Tienda fabricante con fotos de shampoos, colonias, educadores, tapetes."
+    },
+    {
+      "name": "Proauto",
+      "slug": "proauto",
+      "category": "Cuidado mascotas",
+      "productsUrl": "https://www.districo.com.uy/cuidado-mascotas/",
+      "logoUrl": null,
+      "logoQuality": "Solicitar al distribuidor",
+      "status": "Pedir originales",
+      "notes": "Districo menciona Proauto, pero no se encontr\u00f3 un cat\u00e1logo oficial de im\u00e1genes espec\u00edfico."
+    },
+    {
+      "name": "Amazonia",
+      "slug": "amazonia",
+      "category": "Cuidado mascotas",
+      "productsUrl": "https://www.amazoniapetcare.com/products/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/amazonia-pq9d8zjduycuej4jf9wt1srhafz8p7z4dnsa2xhc00.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Fotos de shampoos, spray, perfumes, acondicionadores."
+    },
+    {
+      "name": "TAPET",
+      "slug": "tapet",
+      "category": "Higiene mascotas",
+      "productsUrl": "https://www.districo.com.uy/cuidado-mascotas/educadores/alfombra-de-entrenamiento-para-perros-tapet/",
+      "logoUrl": null,
+      "logoQuality": "Solicitar al distribuidor",
+      "status": "Pedir originales",
+      "notes": "Ficha oficial Districo con presentaciones pero sin un logo independiente comprobado."
+    },
+    {
+      "name": "STACK",
+      "slug": "stack",
+      "category": "Snacks humanos",
+      "productsUrl": "https://www.districo.com.uy/marcas/stack/",
+      "logoUrl": "https://www.districo.com.uy/wp-content/uploads/elementor/thumbs/stack-pq9d8zjduycuej4jf9wt1srhafz8p7z4dnsa2xhc00.png",
+      "logoQuality": "PNG peque\u00f1o Districo",
+      "status": "Revisar resoluci\u00f3n",
+      "notes": "Marca propia Districo; cat\u00e1logo de papas, palitos, man\u00ed, etc."
+    },
+    {
+      "name": "NexGard",
+      "slug": "nexgard",
+      "category": "Antiparasitarios",
+      "productsUrl": "https://www.boehringer-ingelheim.com/sa/salud-animal/productos/nexgard-combo-1",
+      "logoUrl": "https://animalhealth.boehringer-ingelheim.com/pets/feline/products/parasiticides",
+      "logoQuality": "Imagen/logo en portal oficial",
+      "status": "Verificar presentaci\u00f3n",
+      "notes": "Los packshots de otros pa\u00edses pueden tener diferencias regulatorias con UY."
+    },
+    {
+      "name": "TOH",
+      "slug": "toh",
+      "category": "Accesorios",
+      "productsUrl": "https://toh.pet/collections",
+      "logoUrl": "https://toh.pet/",
+      "logoQuality": "Logo en web oficial",
+      "status": "Consultar archivo",
+      "notes": "Cat\u00e1logo con fotos de arneses, collares, correas; comprobar modelos vendidos en UY."
+    }
+  ]
+}

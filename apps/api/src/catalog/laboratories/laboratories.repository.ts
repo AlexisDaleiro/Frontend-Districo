@@ -34,7 +34,10 @@ export class LaboratoriesRepository {
     const [conditions, rewards, recommendations] = await Promise.all([
       this.prisma.promotionCondition.count({ where: { targetType: PromotionTargetType.LABORATORY, targetId: id, promotion: { active: true, deletedAt: null } } }),
       this.prisma.promotionReward.count({ where: { targetType: PromotionTargetType.LABORATORY, targetId: id, promotion: { active: true, deletedAt: null } } }),
-      this.prisma.recommendationRule.count({ where: { triggerType: RecommendationTriggerType.LABORATORY, triggerId: id, active: true } }),
+      this.prisma.recommendationRule.count({ where: { active: true, OR: [
+        { triggerType: RecommendationTriggerType.LABORATORY, OR: [{ triggerId: id }, { triggerIds: { has: id } }] },
+        { targetType: RecommendationTriggerType.LABORATORY, targetIds: { has: id } },
+      ] } }),
     ]);
     return conditions + rewards + recommendations > 0;
   }

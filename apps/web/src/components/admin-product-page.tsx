@@ -14,6 +14,8 @@ import { adminProductEditor } from "@/lib/admin-product-editor";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { Entity, Product } from "@/lib/types";
+import { useAdminReturnHref } from "./admin-list-navigation";
+import { adminRecordHref } from "@/lib/admin-list-navigation";
 
 export function AdminProductPage({ slug }: { slug: string }) {
   const router = useRouter();
@@ -30,7 +32,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
   }, [product.data]);
 
-  const catalog = storeRoutes.adminSection("catalogo");
+  const catalog = useAdminReturnHref("catalogo");
   const item = product.data;
 
   return (
@@ -46,7 +48,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
             ) : product.error ? (
               <ErrorBox error={product.error} retry={() => void product.refetch()} />
             ) : item && !canEditAdminFeature(user, "catalogo") ? (
-              <div className="stack"><PageHeading eyebrow="DISTRICO · Administración" title={item.name} /><Link className="button small secondary" href={storeRoutes.adminProductPreview(item.slug)}>Ver producto</Link></div>
+              <div className="stack"><PageHeading eyebrow="DISTRICO · Administración" title={item.name} /><Link className="button small secondary" href={adminRecordHref(storeRoutes.adminProductPreview(item.slug), catalog)}>Ver producto</Link></div>
             ) : item ? (
               <>
                 <Link className="text-link admin-product-back" href={catalog}>
@@ -57,7 +59,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                 </PageHeading>
                 <div className="admin-product-toolbar">
                   <span className="status-pill">{item.active === false ? "Inactivo" : "Activo"}</span>
-                  <Link className="icon-button admin-preview-toggle" href={storeRoutes.adminProductPreview(item.slug)} title="Vista previa" aria-label="Vista previa"><Eye size={19} /></Link>
+                  <Link className="icon-button admin-preview-toggle" href={adminRecordHref(storeRoutes.adminProductPreview(item.slug), catalog)} title="Vista previa" aria-label="Vista previa"><Eye size={19} /></Link>
                 </div>
                 <nav className="admin-product-tabs" aria-label="Secciones del producto">
                   <a href="#imagenes"><Images size={16} /> Imágenes</a>
@@ -75,7 +77,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                         editor={adminProductEditor(item, brands.data, categories.data, laboratories.data)}
                         onDone={(result) => {
                           const updated = result as Product | undefined;
-                          if (updated?.slug && updated.slug !== slug) router.replace(storeRoutes.adminProduct(updated.slug));
+                          if (updated?.slug && updated.slug !== slug) router.replace(adminRecordHref(storeRoutes.adminProduct(updated.slug), catalog));
                         }}
                         onCancel={() => router.push(catalog)}
                       />}

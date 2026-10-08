@@ -6,6 +6,9 @@ import { PromotionsService } from '../../src/promotions/promotions.service';
 import { RecommendationsService } from '../../src/recommendations/recommendations.service';
 import { CreatePromotionDto } from '../../src/promotions/dto/create-promotion.dto';
 import { CreateRecommendationRuleDto } from '../../src/recommendations/dto/create-recommendation-rule.dto';
+import { CategoryHierarchyService } from '../../src/catalog/categories/category-hierarchy.service';
+
+const hierarchy = {} as CategoryHierarchyService;
 
 test('editing a promotion replaces its conditions and rewards atomically', async () => {
   const calls: string[] = [];
@@ -44,7 +47,7 @@ test('recommendation activation is explicit and audited', async () => {
     },
   } as unknown as PrismaService;
   const audit = { log: async (...args: unknown[]) => { events.push(args[0]); } } as unknown as AuditService;
-  const updated = await new RecommendationsService(prisma, audit).setActive('rule-1', false, 'admin-1');
+  const updated = await new RecommendationsService(prisma, audit, hierarchy).setActive('rule-1', false, 'admin-1');
   assert.equal(updated.active, false);
   assert.deepEqual(events, [false, 'RECOMMENDATION_RULE_UPDATED']);
 });
@@ -59,10 +62,11 @@ test('editing a recommendation keeps all selected products', async () => {
   };
   const prisma = {
     recommendationRule: { findUnique: async () => ({ id: 'rule-1', active: true }) },
+    product: { findMany: async ({ where }: { where: { id: { in: string[] } } }) => where.id.in.map((id) => ({ id, name: id })) },
     $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx),
   } as unknown as PrismaService;
   const audit = { log: async () => undefined } as unknown as AuditService;
-  const updated = await new RecommendationsService(prisma, audit).update('rule-1', {
+  const updated = await new RecommendationsService(prisma, audit, hierarchy).update('rule-1', {
     name: 'También llevar', triggerType: 'PRODUCT', triggerId: 'p1',
     products: [{ productId: 'p2' }, { productId: 'p3' }],
   } as CreateRecommendationRuleDto, 'admin-1');

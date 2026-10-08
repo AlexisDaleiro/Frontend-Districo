@@ -2390,6 +2390,36 @@ td .button {
   display: grid;
   gap: 20px;
 }
+.recommendation-scopes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.recommendation-scopes .promotion-scope-modes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+.recommendation-scopes .promotion-scope-modes label {
+  border-bottom: 1px solid var(--line);
+}
+.recommendation-scopes .promotion-options {
+  height: 210px;
+}
+.modal form .recommendation-scopes .actions {
+  position: static;
+  margin: 8px 0 0;
+  padding: 0;
+  background: transparent;
+}
+.recommendation-conditions {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .recommendation-scopes { grid-template-columns: minmax(0, 1fr); }
+}
 .promotion-scope-field {
   border: 0;
   padding: 0;
@@ -3854,6 +3884,21 @@ td .button {
 .account-dashboard-actions .button.secondary:hover { background: rgb(255 255 255 / .12); }
 .account-dashboard-cart { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 8px; color: #d6e5e3; font-size: 12px; font-weight: 750; }
 .account-dashboard-cart:hover { color: white; }
+.customer-invoices-toolbar { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+.customer-invoices-toolbar .field { width: min(100%, 440px); }
+.customer-invoices-toolbar .form-input { min-width: 0; }
+.customer-invoices-search { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: center; }
+.customer-invoices-table td { overflow-wrap: anywhere; }
+.customer-invoices-table .status-pill { white-space: nowrap; }
+.customer-invoices-table .button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .customer-invoices-table table, .customer-invoices-table tbody { display: block; }
+  .customer-invoices-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .customer-invoices-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+  .customer-invoices-table td { padding: 0; border: 0; min-width: 0; }
+  .customer-invoices-table td::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
+  .customer-invoices-table td:last-child { grid-column: 1 / -1; }
+}
 .account-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 22px; }
 .account-overview-card { display: flex; flex-direction: column; min-width: 0; min-height: 270px; padding: 27px; border: 1px solid var(--line); border-radius: 18px; background: white; box-shadow: 0 10px 28px rgb(19 61 72 / .04); }
 .account-overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
@@ -4902,3 +4947,15 @@ td .button {
   .admin-sales-trend { grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: 180px 24px; }
   .admin-banner-thumb { width: 100px; height: 54px; }
 }
+.admin-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  padding: 12px 0 18px;
+}
+.admin-list-filters .field { flex: 1 1 180px; min-width: 0; max-width: 340px; }
+.admin-list-filters .form-input { width: 100%; min-width: 0; }
+.admin-list-filters > .icon-button { flex: 0 0 38px; }
+.admin-filter-check { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
+.admin-filter-check input { width: 16px; height: 16px; flex-shrink: 0; }

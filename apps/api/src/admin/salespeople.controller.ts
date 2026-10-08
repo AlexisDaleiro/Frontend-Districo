@@ -6,7 +6,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { JwtUser } from '../common/types/jwt-user.type';
-import { CustomerListQueryDto } from './dto/admin-list-query.dto';
+import { StaffListQueryDto } from './dto/admin-list-query.dto';
 import { AssignSalespersonDto } from './dto/assign-salesperson.dto';
 import { SaveSalespersonDto } from './dto/save-salesperson.dto';
 import { SalespeopleService } from './salespeople.service';
@@ -20,7 +20,7 @@ export class SalespeopleController {
   constructor(private readonly salespeople: SalespeopleService) {}
 
   @Get()
-  list(@Query() query: CustomerListQueryDto) { return this.salespeople.list(query); }
+  list(@Query() query: StaffListQueryDto) { return this.salespeople.list(query); }
 
   @Get(':userId')
   detail(@Param('userId') userId: string) { return this.salespeople.detail(userId); }

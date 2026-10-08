@@ -46,6 +46,10 @@ import { AdminBanners } from "./admin-banners";
 import { AdminRoles, AdminStaff } from "./admin-staff";
 import { AdminSalespeople } from "./admin-salespeople";
 import { AdminPromotionForm } from "./admin-promotion-form";
+import { AdminRecommendationForm } from "./admin-recommendation-form";
+import { AdminListFilters, ListPagination } from "./admin-list-filters";
+import { adminListPath } from "@/lib/admin-list-filters";
+import { AdminRecordLink, ShareAdminList, useAdminListField, useAdminListScroll } from "./admin-list-navigation";
 import { AdminBrandsLabs, AdminCategories } from "./admin-organization";
 import { orderBalance } from "@/lib/order-billing";
 import { downloadPrivateFile } from "@/lib/http";
@@ -93,8 +97,6 @@ const sections: [string, string, string, LucideIcon, string?][] = [
 const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
   values.map((value) => ({ value, label: label(value) }));
-const entities = (values: Entity[] | undefined) =>
-  values?.map((e) => ({ value: e.id, label: e.name })) ?? [];
 const number = (key: string, title: string, min = 0, step = "1"): Field => ({
   key,
   label: title,
@@ -177,10 +179,10 @@ function Dashboard() {
 function ContactInquiries({ edit }: { edit: OpenEditor }) {
   const { user } = useSession();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useAdminListField("status", "", ["", "NEW", "IN_PROGRESS", "RESOLVED"]);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [page, setPage] = useAdminListField("page", 1);
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
@@ -191,6 +193,7 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
   if (status) params.set("status", status);
   if (debouncedSearch) params.set("search", debouncedSearch);
   const q = useApi<{ items: ContactInquiry[]; meta: { total: number; page: number; limit: number } }>(`admin/contact-inquiries/page?${params}`);
+  useAdminListScroll(!q.isPending && !q.error && debouncedSearch === search.trim());
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
@@ -205,6 +208,7 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
           </span>
         </div>
         <div className="contact-admin-filters">
+          <ShareAdminList />
           <input
             className="form-input"
             value={search}
@@ -274,10 +278,10 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
 function Applications({ edit }: { edit: OpenEditor }) {
   const { user, notify } = useSession();
   const client = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState("PENDING");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [status, setStatus] = useAdminListField("status", "PENDING", ["", "PENDING", "APPROVED", "REJECTED"]);
+  const [page, setPage] = useAdminListField("page", 1);
   const [reviewing, setReviewing] = useState<Application | null>(null);
   const [medicationAccess, setMedicationAccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -317,6 +321,7 @@ function Applications({ edit }: { edit: OpenEditor }) {
     return () => clearTimeout(timer);
   }, [search]);
   const q = useApi<{ items: Application[]; meta: { total: number; page: number; limit: number } }>(`admin/applications/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}${status ? `&status=${status}` : ""}`);
+  useAdminListScroll(!q.isPending && !q.error && debouncedSearch === search.trim());
   if (q.isPending) return <Loading />;
   if (q.error)
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
@@ -325,6 +330,7 @@ function Applications({ edit }: { edit: OpenEditor }) {
     <>
       <div className="admin-toolbar">
         <h2>Solicitudes de acceso</h2>
+        <ShareAdminList />
         <span className="muted small-copy">
           {q.data.meta.total} {status === "PENDING" ? "pendientes" : "solicitudes"}
         </span>
@@ -439,24 +445,28 @@ function Customers() {
   const { user } = useSession();
   const canReassign = canEditAdminFeature(user, "vendedores");
   const selection = useAdminSelection();
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [page, setPage] = useAdminListField("page", 1);
+  const [seller, setSeller] = useAdminListField("salespersonId", "");
+  const [accountStatus, setAccountStatus] = useAdminListField("accountStatus", "", ["", "PENDING", "APPROVED", "REJECTED", "SUSPENDED"]);
+  const [debt, setDebt] = useAdminListField("debt", "", ["", "WITH_DEBT", "WITHOUT_DEBT"]);
+  const canViewDebt = canViewAdminFeature(user, "facturacion");
+  const sellers = useApi<{ id: string; name: string; user: { email: string } }[]>("admin/customers/page/options", user?.role !== "SALES");
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
   }, [search]);
   const q = useApi<{ items: Customer[]; meta: { total: number; page: number; limit: number } }>(
-    `admin/customers/page?page=${page}&limit=20&search=${encodeURIComponent(debouncedSearch)}`,
+    adminListPath("admin/customers/page", { page, limit: 20, search: debouncedSearch, salespersonId: seller, accountStatus, debt: canViewDebt ? debt : "" }),
   );
-  if (q.isPending) return <Loading />;
-  if (q.error)
-    return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  const rows = q.data.items;
+  const rows = q.data?.items ?? [];
+  useAdminListScroll(!q.isPending && !q.error && debouncedSearch === search.trim());
   return (
     <>
       <div className="admin-toolbar">
         <h2>{user?.role === "SALES" ? "Clientes asignados" : "Clientes mayoristas"}</h2>
+        <ShareAdminList />
         <input
           className="form-input"
           aria-label="Buscar clientes"
@@ -465,6 +475,20 @@ function Customers() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
       </div>
+      <AdminListFilters active={!!(search || seller || accountStatus || debt)} onClear={() => { setSearch(""); setDebouncedSearch(""); setSeller(""); setAccountStatus(""); setDebt(""); setPage(1); }}>
+        {user?.role !== "SALES" && <label className="field">Vendedor<select className="form-input" aria-label="Vendedor" value={seller} onChange={(event) => { setSeller(event.target.value); setPage(1); }}>
+          <option value="">Todos los vendedores</option><option value="unassigned">Sin vendedor</option>
+          {sellers.data?.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.user.email}</option>)}
+        </select></label>}
+        <label className="field">Estado de cuenta<select className="form-input" aria-label="Estado de cuenta" value={accountStatus} onChange={(event) => { setAccountStatus(event.target.value); setPage(1); }}>
+          <option value="">Todos los estados</option>{["PENDING", "APPROVED", "REJECTED", "SUSPENDED"].map((value) => <option key={value} value={value}>{label(value)}</option>)}
+        </select></label>
+        {canViewDebt && <label className="field">Deuda<select className="form-input" aria-label="Deuda" value={debt} onChange={(event) => { setDebt(event.target.value); setPage(1); }}>
+          <option value="">Todos los saldos</option><option value="WITH_DEBT">Con deuda pendiente</option><option value="WITHOUT_DEBT">Sin deuda pendiente</option>
+        </select></label>}
+      </AdminListFilters>
+      {sellers.error && <ErrorBox error={sellers.error} retry={() => void sellers.refetch()} />}
+      {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : <>
       {canReassign && <AdminBulkActions kind="customers" selection={selection} />}
       {canViewAdminFeature(user, "vendedores") && <div className="actions admin-history-actions"><BulkHistory feature="vendedores" /></div>}
       {!!rows.length && <div className="table-wrap">
@@ -478,12 +502,13 @@ function Customers() {
             <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
             <td>{label(c.creditStatus)}</td>
             <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
-            <td><Link className="button secondary small" href={storeRoutes.adminCustomer(c.id)}>Ver ficha</Link></td>
+            <td><AdminRecordLink className="button secondary small" href={storeRoutes.adminCustomer(c.id)}>Ver ficha</AdminRecordLink></td>
           </tr>
         ))}</tbody></table>
       </div>}
       {!rows.length && <Empty title="No encontramos clientes" />}
-      <AdminPagination meta={q.data.meta} onPage={setPage} />
+      {q.data && <ListPagination meta={q.data.meta} onPage={setPage} />}
+      </>}
     </>
   );
 }
@@ -566,32 +591,18 @@ export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpd
 function AdminOrders() {
   const { user } = useSession();
   const canViewBilling = canViewAdminFeature(user, "facturacion");
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [customer, setCustomer] = useState("");
-  const [debouncedCustomer, setDebouncedCustomer] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useAdminListField("status", "", ["", ...orderStatuses]);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [customer, setCustomer] = useAdminListField("customer", "");
+  const [debouncedCustomer, setDebouncedCustomer] = useState(customer.trim());
+  const [customerId, setCustomerId] = useAdminListField("customerId", "");
+  const [dateFrom, setDateFrom] = useAdminListField("dateFrom", "");
+  const [dateTo, setDateTo] = useAdminListField("dateTo", "");
+  const [paymentStatus, setPaymentStatus] = useAdminListField("paymentStatus", "", ["", "PENDING", "PARTIAL", "PAID", "CREDITED"]);
+  const [page, setPage] = useAdminListField("page", 1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>();
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
-      setCustomerId(params.get("customerId") ?? "");
-      setSearch(params.get("search") ?? "");
-      setCustomer(params.get("customer") ?? "");
-      setStatus(params.get("status") ?? "");
-      setDateFrom(params.get("dateFrom") ?? "");
-      setDateTo(params.get("dateTo") ?? "");
-      setPaymentStatus(params.get("paymentStatus") ?? "");
-      setPage(Number(params.get("page")) || 1);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCustomer(customer.trim()); }, 250);
     return () => clearTimeout(timer);
@@ -607,7 +618,7 @@ function AdminOrders() {
   const q = useApi<{ items: Order[]; meta: { total: number; page: number; limit: number } }>(
     `admin/orders/page?${params}`,
   );
-  const back = `${storeRoutes.adminSection("pedidos")}?${params}`;
+  useAdminListScroll(!q.isPending && !q.error && debouncedSearch === search.trim() && debouncedCustomer === customer.trim());
   async function exportCsv() {
     setExporting(true);
     setExportError(undefined);
@@ -652,6 +663,7 @@ function AdminOrders() {
     <>
       <div className="admin-toolbar">
         <h2>{user?.role === "SALES" ? "Pedidos asignados" : "Pedidos"}</h2>
+        <ShareAdminList />
         <span className="muted small-copy">
           {q.data.meta.total} {q.data.meta.total === 1 ? "pedido" : "pedidos"}
         </span>
@@ -705,7 +717,7 @@ function AdminOrders() {
               {rows.map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <Link className="text-link" href={`${storeRoutes.adminOrder(o.id)}?back=${encodeURIComponent(back)}`}>{o.orderNumber}</Link>
+                    <AdminRecordLink className="text-link" href={storeRoutes.adminOrder(o.id)}>{o.orderNumber}</AdminRecordLink>
                     <br />
                     {new Date(o.createdAt).toLocaleDateString("es-UY")}
                   </td>
@@ -716,7 +728,7 @@ function AdminOrders() {
                   <td>{money(o.total, o.currency)}</td>
                   {canViewBilling && <td>{money(orderBalance(o).paid, o.currency)}</td>}
                   <td>
-                    <Link className="button small secondary" aria-label={`Gestionar ${o.orderNumber}`} href={`${storeRoutes.adminOrder(o.id)}?back=${encodeURIComponent(back)}`}>Gestionar</Link>
+                    <AdminRecordLink className="button small secondary" aria-label={`Gestionar ${o.orderNumber}`} href={storeRoutes.adminOrder(o.id)}>Gestionar</AdminRecordLink>
                   </td>
                 </tr>
               ))}
@@ -738,22 +750,31 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
   const { user } = useSession();
   const canEdit = canEditAdminFeature(user, "catalogo");
   const selection = useAdminSelection();
-  const [page, setPage] = useState(1),
-    [search, setSearch] = useState(""),
-    [activity, setActivity] = useState("");
+  const [page, setPage] = useAdminListField("page", 1),
+    [search, setSearch] = useAdminListField("search", ""),
+    [activity, setActivity] = useAdminListField("active", "", ["", "true", "false"]);
+  const [searchInput, setSearchInput] = [search, setSearch];
+  const [brand, setBrand] = useAdminListField("brandId", "");
+  const [category, setCategory] = useAdminListField("categoryId", "");
+  const [withoutPrice, setWithoutPrice] = useAdminListField("withoutPrice", false);
+  const [withoutStock, setWithoutStock] = useAdminListField("withoutStock", false);
+  const [productSearch, setProductSearch] = useState(search.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setProductSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
   const q = useApi<ProductList>(
-    `products/admin/list?limit=12&page=${page}&search=${encodeURIComponent(search)}${activity ? `&active=${activity}` : ""}`,
+    adminListPath("products/admin/list", { limit: 12, page, search: productSearch, active: activity, brandId: brand, categoryId: category, withoutPrice, withoutStock }),
   );
   const brands = useApi<Entity[]>("brands"),
     categories = useApi<Entity[]>("categories/catalog"),
     labs = useApi<Entity[]>("laboratories");
-  if (q.isPending) return <Loading />;
-  if (q.error)
-    return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
+  useAdminListScroll(!q.isPending && !q.error && productSearch === search.trim());
   return (
     <>
       <div className="admin-toolbar">
         <h2>Catálogo y existencias</h2>
+        <ShareAdminList />
         {canEdit && <button className="button small" onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data))}>
           <Plus size={16} />
           Crear producto
@@ -773,6 +794,8 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
           name="search"
           aria-label="Buscar producto para administrar"
           placeholder="Nombre o SKU"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
         />
         <button className="button small">Buscar</button>
       </form>
@@ -784,6 +807,17 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
           </button>
         ))}
       </div>
+      <AdminListFilters active={!!(searchInput || search || activity || brand || category || withoutPrice || withoutStock)} onClear={() => { setSearch(""); setSearchInput(""); setActivity(""); setBrand(""); setCategory(""); setWithoutPrice(false); setWithoutStock(false); setPage(1); }}>
+        <label className="field">Marca<select className="form-input" aria-label="Marca" value={brand} onChange={(event) => { setBrand(event.target.value); setPage(1); }}>
+          <option value="">Todas las marcas</option>{brands.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select></label>
+        <label className="field">Categoría<select className="form-input" aria-label="Categoría" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}>
+          <option value="">Todas las categorías</option>{categories.data?.map((item) => <option key={item.id} value={item.id}>{item.parentId ? `${categories.data?.find((parent) => parent.id === item.parentId)?.name ?? "Subcategoría"} / ` : ""}{item.name}</option>)}
+        </select></label>
+        <label className="admin-filter-check"><input type="checkbox" checked={withoutPrice} onChange={(event) => { setWithoutPrice(event.target.checked); setPage(1); }} />Sin precio vigente</label>
+        <label className="admin-filter-check"><input type="checkbox" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
+      </AdminListFilters>
+      {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
       {canEdit && <AdminBulkActions kind="products" selection={selection} />}
       <div className="actions admin-history-actions"><BulkHistory feature="catalogo" /></div>
       <div className="table-wrap">
@@ -824,32 +858,18 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                 <td>{p.variants.length}</td>
                 <td><strong>{availableStock}</strong> uds.</td>
                 <td>
-                  <Link className="button small secondary" href={canEdit ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
+                  <AdminRecordLink className="button small secondary" href={canEdit ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
                     {canEdit ? <Pencil size={15} /> : null}{canEdit ? "Editar producto" : "Ver producto"}
-                  </Link>
+                  </AdminRecordLink>
                 </td>
               </tr>
             })}
           </tbody>
         </table>
       </div>
-      <div className="pagination">
-        <button
-          className="button secondary small"
-          disabled={page === 1}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Anterior
-        </button>
-        <span>Página {page}</span>
-        <button
-          className="button secondary small"
-          disabled={page * 12 >= q.data.meta.total}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Siguiente
-        </button>
-      </div>
+      {!q.data.items.length && <Empty title="No encontramos productos con esos filtros" />}
+      <ListPagination meta={q.data.meta} onPage={setPage} />
+      </>}
     </>
   );
 }
@@ -1008,6 +1028,8 @@ function Marketing({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<unknown>();
   const [promotionRule, setPromotionRule] = useState<Rule | null | undefined>(undefined);
+  const [recommendationRule, setRecommendationRule] = useState<Rule | null | undefined>(undefined);
+  const [recommendationBusy, setRecommendationBusy] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   useEffect(() => {
@@ -1015,15 +1037,14 @@ function Marketing({
     return () => clearTimeout(timer);
   }, [productSearch]);
   const q = useApi<Rule[]>(path);
-  const products = useApi<ProductList>(`products?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`);
-  const brands = useApi<Entity[]>("brands"),
-    categories = useApi<Entity[]>("categories/catalog"),
-    labs = useApi<Entity[]>("laboratories");
+  const products = useApi<ProductList>(`products?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`, !recommendations);
+  const brands = useApi<Entity[]>("brands", !recommendations),
+    categories = useApi<Entity[]>("categories/catalog", !recommendations),
+    labs = useApi<Entity[]>("laboratories", !recommendations);
   const expiration = useApi<Expiration[]>(
     "promotions/expiration",
     !recommendations,
   );
-  const productsOptions = entities(products.data?.items);
   const targets = [
     ...(products.data?.items.map((p) => ({
       value: `PRODUCT:${p.id}`,
@@ -1061,13 +1082,16 @@ function Marketing({
     finally { setBusyId(null); }
   }
   function create(rule?: Rule, advanced = false) {
+    if (recommendations) {
+      setRecommendationRule(rule ?? null);
+      return;
+    }
     if (!recommendations && !advanced && (!rule || scopedPromotion(rule))) {
       setPromotionRule(rule ?? null);
       return;
     }
     const condition = rule?.conditions?.[0];
     const reward = rule?.rewards?.[0];
-    const recommended = rule?.products?.[0];
     const selectedTargets = [
       rule?.triggerType && rule.triggerId ? `${rule.triggerType}:${rule.triggerId}` : "",
       condition?.targetType && condition.targetId ? `${condition.targetType}:${condition.targetId}` : "",
@@ -1075,49 +1099,6 @@ function Marketing({
     ].filter(Boolean);
     const availableTargets = [...targets];
     for (const value of selectedTargets) if (!availableTargets.some((target) => target.value === value)) availableTargets.push({ value, label: `Actual · ${value}` });
-    const availableProducts = [...productsOptions];
-    if (recommended?.productId && !availableProducts.some((product) => product.value === recommended.productId)) {
-      availableProducts.push({ value: recommended.productId, label: `Actual · ${recommended.productId}` });
-    }
-    if (recommendations)
-      edit({
-        title: rule ? "Editar recomendación" : "Crear recomendación",
-        path: rule ? `recommendations/${rule.id}` : path,
-        method: rule ? "PATCH" : "POST",
-        fields: [
-          text("name", "Nombre de la regla"),
-          select(
-            "trigger",
-            "Se activa al comprar",
-            availableTargets.filter((t) => !t.value.startsWith("PRODUCT_VARIANT")),
-          ),
-          number("minimumQuantity", "Cantidad mínima", 1),
-          { ...number("minimumCartAmount", "Importe mínimo del carrito", 0, "any"), required: false },
-          select("productId", "Producto recomendado", availableProducts),
-          number("priority", "Prioridad", 0),
-          date("startsAt", "Comienza", false),
-          date("endsAt", "Finaliza", false),
-        ],
-        initial: rule ? {
-          name: rule.name, trigger: `${rule.triggerType}:${rule.triggerId}`,
-          minimumQuantity: rule.minimumQuantity ?? 1, minimumCartAmount: rule.minimumCartAmount ?? "", productId: recommended?.productId,
-          priority: rule.priority ?? 0, startsAt: day(rule.startsAt), endsAt: day(rule.endsAt),
-        } : { minimumQuantity: 1, priority: 0 },
-        transform: ({ trigger, productId, ...data }) => {
-          const [triggerType, triggerId] = String(trigger).split(":");
-          if (data.endsAt && data.startsAt && String(data.endsAt) < String(data.startsAt)) throw new Error("La fecha final debe ser posterior al inicio.");
-          return {
-            ...data,
-            triggerType,
-            triggerId,
-            products: [
-              { productId, variantId: recommended?.productId === productId ? recommended?.variantId : undefined, position: recommended?.position ?? 0 },
-              ...(rule?.products?.slice(1).map((product) => ({ productId: product.productId, variantId: product.variantId, position: product.position ?? 0 })) ?? []),
-            ],
-          };
-        },
-      });
-    else
       edit({
         title: rule ? "Editar promoción" : "Crear regla cruzada",
         path: rule ? `promotions/${rule.id}` : path,
@@ -1230,14 +1211,13 @@ function Marketing({
         </h2>
         {canEdit && <button
           className="button small"
-          disabled={recommendations && !products.data}
           onClick={() => create()}
         >
           Crear {recommendations ? "recomendación" : "promoción"}
         </button>}
         {!recommendations && canEdit && <button className="button small secondary" disabled={!products.data} onClick={() => create(undefined, true)}>Crear regla cruzada</button>}
       </div>
-      <input className="form-input admin-category-search" type="search" aria-label={recommendations ? "Buscar producto para recomendaciones" : "Buscar producto para reglas cruzadas"} placeholder={recommendations ? "Buscar producto para recomendaciones" : "Buscar producto para reglas cruzadas"} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
+      {!recommendations && <input className="form-input admin-category-search" type="search" aria-label="Buscar producto para reglas cruzadas" placeholder="Buscar producto para reglas cruzadas" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />}
       {actionError && <ErrorBox error={actionError} />}
       {products.error && (
         <ErrorBox
@@ -1254,12 +1234,10 @@ function Marketing({
           {q.data.map((rule) => (
             <div className="card" key={rule.id}>
               <h3>{rule.name}</h3>
-              <p className="small-copy muted">
+              {!recommendations && <p className="small-copy muted">
                 {rule.description ??
-                  (recommendations
-                    ? "Recomendación configurada"
-                    : "Promoción configurada")}
-              </p>
+                  "Promoción configurada"}
+              </p>}
               <p className="small-copy">
                 {rule.startsAt
                   ? `Desde ${new Date(rule.startsAt).toLocaleDateString("es-UY")}`
@@ -1271,6 +1249,10 @@ function Marketing({
               <p className="small-copy">
                 {rule.active === false ? "Inactiva" : "Activa"}
               </p>
+              {recommendations && <>
+                <p className="small-copy">Se activa al comprar: {rule.triggerTargets?.map((item) => item.name).join(", ") ?? rule.triggerIds?.join(", ") ?? rule.triggerId}</p>
+                <p className="small-copy">Recomendar: {rule.targetTargets?.map((item) => item.name).join(", ") ?? rule.targetIds?.join(", ") ?? rule.products?.map((item) => item.productId).join(", ")}</p>
+              </>}
               {!recommendations && scopedPromotion(rule) && <p className="small-copy">
                 Aplicada a {rule.rewards.length} {rule.rewards[0].targetType === "PRODUCT"
                   ? rule.rewards.length === 1 ? "producto" : "productos"
@@ -1279,7 +1261,7 @@ function Marketing({
                     : rule.rewards.length === 1 ? "categoría" : "categorías"}
               </p>}
               {canEdit && <div className="actions">
-                <button className="button small secondary" disabled={!!busyId || ((recommendations || !scopedPromotion(rule)) && !products.data)} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
+                <button className="button small secondary" disabled={!!busyId || (!recommendations && !scopedPromotion(rule) && !products.data)} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
                 <button className="button small secondary" disabled={!!busyId} onClick={() => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}>
                   {rule.active === false ? "Activar" : "Desactivar"}
                 </button>
@@ -1412,6 +1394,9 @@ function Marketing({
       )}
       <Modal open={promotionRule !== undefined} onClose={() => setPromotionRule(undefined)} title={promotionRule ? "Editar promoción" : "Crear promoción"} className="promotion-editor-modal">
         {promotionRule !== undefined && <AdminPromotionForm key={promotionRule?.id ?? "new"} rule={promotionRule ?? undefined} onDone={() => setPromotionRule(undefined)} />}
+      </Modal>
+      <Modal open={recommendationRule !== undefined} onClose={() => { if (!recommendationBusy) setRecommendationRule(undefined); }} title={recommendationRule ? "Editar recomendación" : "Crear recomendación"} className="promotion-editor-modal">
+        {recommendationRule !== undefined && <AdminRecommendationForm key={recommendationRule?.id ?? "new"} rule={recommendationRule ?? undefined} onBusy={setRecommendationBusy} onDone={() => setRecommendationRule(undefined)} />}
       </Modal>
     </>
   );

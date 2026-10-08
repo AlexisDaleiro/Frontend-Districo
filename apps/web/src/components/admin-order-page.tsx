@@ -15,8 +15,10 @@ import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/
 import { storeRoutes } from "@/lib/store-routes";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import type { Order } from "@/lib/types";
+import { useAdminReturnHref } from "./admin-list-navigation";
 
-export function AdminOrderPage({ id, back }: { id: string; back?: string }) {
+export function AdminOrderPage({ id }: { id: string }) {
+  const back = useAdminReturnHref("pedidos");
   const { user } = useSession();
   const client = useQueryClient();
   const q = useApi<Order>(`admin/orders/${id}`);
@@ -28,7 +30,7 @@ export function AdminOrderPage({ id, back }: { id: string; back?: string }) {
     <AdminNav section="pedidos" email={user?.email} />
     <main className="admin-main admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : order ? <>
-        <Link className="text-link admin-product-back" href={back ?? storeRoutes.adminSection("pedidos")}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "pedidos asignados" : "pedidos"}</Link>
+        <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "pedidos asignados" : "pedidos"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={`Pedido ${order.orderNumber}`}>
           {new Date(order.createdAt).toLocaleString("es-UY", { dateStyle: "short", timeStyle: "short" })}
         </PageHeading>

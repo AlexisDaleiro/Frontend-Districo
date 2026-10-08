@@ -613,6 +613,7 @@ function OrdersContent({ id }: { id?: string }) {
               )}
               <div className="actions">
                 <RepeatOrderButton order={order} />
+                <ActionLink href={storeRoutes.invoices} secondary>Mis facturas</ActionLink>
               </div>
             </>
           ) : (

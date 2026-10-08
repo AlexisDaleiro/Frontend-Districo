@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Archive, Copy, CopyPlus, Pencil, Plus, Save, UserCheck, UserX } from "lucide-react";
 import { request, useApi, useSession } from "./providers";
@@ -9,6 +9,9 @@ import { storeRoutes } from "@/lib/store-routes";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
 import type { User } from "@/lib/types";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
+import { AdminListFilters, ListPagination, StaffStatusFilter } from "./admin-list-filters";
+import { adminListPath } from "@/lib/admin-list-filters";
+import { ShareAdminList, useAdminListField, useAdminListScroll } from "./admin-list-navigation";
 
 type StaffMember = { id: string; email: string; role: User["role"]; customRoleId?: string | null; customRole?: { id: string; name: string } | null; active: boolean; emailVerified: boolean; invitationPending: boolean };
 type Invitation = { token: string; email: string; expiresAt: string };
@@ -143,7 +146,18 @@ export function AdminStaff() {
   const { user, notify } = useSession();
   const client = useQueryClient();
   const canEdit = canEditAdminFeature(user, "personal");
-  const q = useApi<StaffMember[]>("admin/staff");
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debounced, setDebounced] = useState(search.trim());
+  const [page, setPage] = useAdminListField("page", 1);
+  const [roleFilter, setRoleFilter] = useAdminListField("role", "");
+  const [status, setStatus] = useAdminListField("status", "", ["", "ACTIVE", "INACTIVE", "PENDING", "UNVERIFIED"]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const q = useApi<{ items: StaffMember[]; meta: { total: number; page: number; limit: number } }>(adminListPath("admin/staff/page", { page, limit: 20, search: debounced, status, ...(roleFilter ? rolePayload(roleFilter) : {}) }));
+  useAdminListScroll(!q.isPending && !q.error && debounced === search.trim());
+  const filterRoles = useApi<{ id: string; name: string; retiredAt?: string | null }[]>("admin/staff/page/options");
   const canViewRoles = canViewAdminFeature(user, "roles");
   const access = useApi<RoleAccess[]>("admin/staff/access", canViewRoles);
   const options = roleOptions(access.data);
@@ -168,16 +182,26 @@ export function AdminStaff() {
       void q.refetch();
     } finally { setBusy(false); }
   }
-  if (q.isPending) return <Loading />;
-  if (q.error) return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
-  if (canViewRoles && access.isPending) return <Loading />;
-  if (canViewRoles && access.error) return <ErrorBox error={access.error} retry={() => void access.refetch()} />;
   return <section>
-    <div className="admin-toolbar"><h2>Equipo</h2>{canEdit && <button className="button small" onClick={() => setOpen(true)}><Plus size={16} /> Invitar persona</button>}</div>
-    {q.data.length ? <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>CORREO</th><th>ACCESO</th><th>ROL</th><th>ACCIONES</th></tr></thead>
-      <tbody>{q.data.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={member.role === "CUSTOM" && member.customRoleId && !options.some((option) => option.value === roleValue(member)) ? [...options, { value: roleValue(member), label: member.customRole?.name ?? "Rol personalizado" }] : options} ownId={user?.id} canEdit={canEdit} onUpdated={() => invalidateAdminMutation(client, `admin/staff/${member.id}/role`)} onReinvite={(item) => {
+    <div className="admin-toolbar"><h2>Equipo</h2><ShareAdminList />{canEdit && <button className="button small" onClick={() => setOpen(true)}><Plus size={16} /> Invitar persona</button>}</div>
+    <AdminListFilters active={!!(search || roleFilter || status)} onClear={() => { setSearch(""); setDebounced(""); setRoleFilter(""); setStatus(""); setPage(1); }}>
+      <label className="field">Buscar personal<input className="form-input" type="search" placeholder="Correo o nombre del rol" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></label>
+      <label className="field">Rol<select className="form-input" aria-label="Filtrar por rol" value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value); setPage(1); }}>
+        <option value="">Todos los roles</option>{builtInRoles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        <option value="CUSTOM">Todos los personalizados</option>
+        {filterRoles.data?.map((item) => <option key={item.id} value={`custom:${item.id}`}>{item.name}{item.retiredAt ? " (retirado)" : ""}</option>)}
+      </select></label>
+      <StaffStatusFilter value={status} onChange={(value) => { setStatus(value); setPage(1); }} />
+    </AdminListFilters>
+    {filterRoles.error && <ErrorBox error={filterRoles.error} retry={() => void filterRoles.refetch()} />}
+    {canViewRoles && access.error && <ErrorBox error={access.error} retry={() => void access.refetch()} />}
+    {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
+    {q.data.items.length ? <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>CORREO</th><th>ACCESO</th><th>ROL</th><th>ACCIONES</th></tr></thead>
+      <tbody>{q.data.items.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={member.role === "CUSTOM" && member.customRoleId && !options.some((option) => option.value === roleValue(member)) ? [...options, { value: roleValue(member), label: member.customRole?.name ?? "Rol personalizado" }] : options} ownId={user?.id} canEdit={canEdit && (!canViewRoles || !access.isPending && !access.error)} onUpdated={() => invalidateAdminMutation(client, `admin/staff/${member.id}/role`)} onReinvite={(item) => {
         setEmail(item.email); setRole(item.role === "CLIENT" ? "SALES" : roleValue(item)); setInvitation(null); setOpen(true);
-      }} />)}</tbody></table></div> : <Empty title="Todavía no hay personal" />}
+      }} />)}</tbody></table></div> : <Empty title="No encontramos personal con esos filtros" />}
+      <ListPagination meta={q.data.meta} onPage={setPage} />
+    </>}
     <Modal open={open} onClose={close} title={invitation ? "Compartir invitación" : "Invitar personal"}>
       {invitation ? <div className="stack">
         <p>Compartí este enlace con <strong>{invitation.email}</strong> por un canal privado. Vence el {new Date(invitation.expiresAt).toLocaleString("es-UY")}; sólo se puede usar una vez.</p>

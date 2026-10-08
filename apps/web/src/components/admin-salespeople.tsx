@@ -13,6 +13,9 @@ import { label } from "@/lib/commerce";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { Customer, SalespersonDetail, SalespersonSummary } from "@/lib/types";
+import { AdminListFilters, ListPagination, StaffStatusFilter } from "./admin-list-filters";
+import { adminListPath, staffListStatus, staffStatusOptions } from "@/lib/admin-list-filters";
+import { AdminRecordLink, ShareAdminList, useAdminListField, useAdminListScroll, useAdminReturnHref } from "./admin-list-navigation";
 
 type Page<T> = { items: T[]; meta: { total: number; page: number; limit: number } };
 
@@ -21,9 +24,10 @@ export function AdminSalespeople() {
   const canEdit = canEditAdminFeature(user, "vendedores");
   const canInvite = canEdit && canEditAdminFeature(user, "personal");
   const client = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [debounced, setDebounced] = useState(search.trim());
+  const [page, setPage] = useAdminListField("page", 1);
+  const [status, setStatus] = useAdminListField("status", "", ["", ...staffStatusOptions.map(([key]) => key)]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -35,7 +39,8 @@ export function AdminSalespeople() {
     const timer = setTimeout(() => setDebounced(search.trim()), 250);
     return () => clearTimeout(timer);
   }, [search]);
-  const q = useApi<Page<SalespersonSummary>>(`admin/salespeople?page=${page}&limit=20&search=${encodeURIComponent(debounced)}`);
+  const q = useApi<Page<SalespersonSummary>>(adminListPath("admin/salespeople", { page, limit: 20, search: debounced, status }));
+  useAdminListScroll(!q.isPending && !q.error && debounced === search.trim());
   const invitationUrl = invitation && typeof window !== "undefined" ? `${window.location.origin}${storeRoutes.staffInvitation}#token=${encodeURIComponent(invitation.token)}` : "";
   function closeInvite() { setInviteOpen(false); setInvitation(null); setInviteError(""); setInviteEmail(""); setInviteName(""); setInvitePhone(""); }
   async function invite(event: React.FormEvent) {
@@ -53,29 +58,29 @@ export function AdminSalespeople() {
       await invalidateAdminMutation(client, "admin/salespeople");
     } finally { setInviteBusy(false); }
   }
-  if (q.isPending) return <Loading />;
-  if (q.error) return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   return <section>
     <div className="admin-toolbar">
       <h2>Vendedores</h2>
-      <span className="muted small-copy">{q.data.meta.total} {q.data.meta.total === 1 ? "vendedor" : "vendedores"}</span>
+      <ShareAdminList />
+      {q.data && <span className="muted small-copy">{q.data.meta.total} {q.data.meta.total === 1 ? "vendedor" : "vendedores"}</span>}
       <input className="form-input" type="search" aria-label="Buscar vendedores" placeholder="Nombre, correo o teléfono" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
       {canInvite && <button className="button small" type="button" onClick={() => setInviteOpen(true)}><Plus size={16} /> Invitar vendedor</button>}
     </div>
+    <AdminListFilters active={!!(search || status)} onClear={() => { setSearch(""); setDebounced(""); setStatus(""); setPage(1); }}>
+      <StaffStatusFilter value={status} onChange={(value) => { setStatus(value); setPage(1); }} />
+    </AdminListFilters>
+    {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
     {q.data.items.length ? <div className="table-wrap"><table className="admin-salespeople-table"><thead><tr><th>VENDEDOR</th><th>CONTACTO</th><th>CLIENTES</th><th>ACCESO</th><th>ACCIÓN</th></tr></thead><tbody>
       {q.data.items.map((seller) => <tr key={seller.id}>
         <td><strong>{seller.profile?.name || "Ficha pendiente"}</strong><br /><span className="muted">{seller.email}</span></td>
         <td>{seller.profile?.phone || "Sin teléfono"}</td>
         <td>{seller.profile?.customerCount ?? 0}</td>
-        <td><span className="status-pill">{seller.active ? "Activo" : seller.emailVerified ? "Desactivado" : "Invitación pendiente"}</span></td>
-        <td><Link className="button small secondary" href={storeRoutes.adminSalesperson(seller.id)}>Ver ficha</Link></td>
+        <td><span className="status-pill">{staffStatusOptions.find(([key]) => key === staffListStatus(seller))?.[1]}</span></td>
+        <td><AdminRecordLink className="button small secondary" href={storeRoutes.adminSalesperson(seller.id)}>Ver ficha</AdminRecordLink></td>
       </tr>)}
     </tbody></table></div> : <Empty title={debounced ? "No hay vendedores con esa búsqueda" : "Todavía no hay vendedores"} />}
-    {q.data.meta.total > q.data.meta.limit && <div className="admin-pagination">
-      <button className="button small secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</button>
-      <span>Página {page} de {Math.ceil(q.data.meta.total / q.data.meta.limit)}</span>
-      <button className="button small secondary" disabled={page * q.data.meta.limit >= q.data.meta.total} onClick={() => setPage(page + 1)}>Siguiente</button>
-    </div>}
+    <ListPagination meta={q.data.meta} onPage={setPage} />
+    </>}
     <Modal open={inviteOpen} onClose={closeInvite} title={invitation ? "Compartir invitación" : "Invitar vendedor"}>
       {invitation ? <div className="stack">
         <p>Compartí este enlace con <strong>{invitation.email}</strong> por un canal privado. Vence el {new Date(invitation.expiresAt).toLocaleString("es-UY")}; sólo se puede usar una vez.</p>
@@ -165,6 +170,7 @@ function CustomerPicker({ seller, onClose, onSaved }: { seller: SalespersonDetai
 }
 
 export function AdminSalespersonPage({ id }: { id: string }) {
+  const back = useAdminReturnHref("vendedores");
   const { user, notify } = useSession();
   const client = useQueryClient();
   const canView = canSeeAdminSection(user, "vendedores");
@@ -192,7 +198,7 @@ export function AdminSalespersonPage({ id }: { id: string }) {
     <AdminNav section="vendedores" email={user?.email} />
     <main className="admin-main admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : seller ? <>
-        <Link className="text-link admin-product-back" href={storeRoutes.adminSection("vendedores")}><ArrowLeft size={17} /> Volver a vendedores</Link>
+        <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a vendedores</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={seller.profile?.name || "Ficha del vendedor"}>{seller.email}</PageHeading>
         <div className="admin-record-summary">
           <div><span>Cuenta</span><strong>{seller.active ? "Activa" : seller.emailVerified ? "Desactivada" : "Invitación pendiente"}</strong></div>

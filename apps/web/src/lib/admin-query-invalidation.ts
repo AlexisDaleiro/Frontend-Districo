@@ -11,13 +11,13 @@ const relatedPaths: Record<string, string[]> = {
   "admin/applications": ["admin/applications", "admin/customers", "admin/dashboard"],
   "admin/customers": ["admin/customers", "admin/orders"],
   "admin/salespeople": ["admin/salespeople", "admin/customers"],
-  "admin/orders": ["admin/orders", "admin/sales", "admin/dashboard", "inventory", "products", "cart"],
+  "admin/orders": ["admin/orders", "admin/customers", "admin/sales", "admin/dashboard", "inventory", "products", "cart"],
   promotions: ["promotions", "admin/promotions", "products", "cart", "admin/dashboard"],
   "admin/promotions": ["promotions", "admin/promotions", "products", "cart", "admin/dashboard"],
   recommendations: ["recommendations", "admin/recommendations", "cart"],
   "admin/recommendations": ["recommendations", "admin/recommendations", "cart"],
   "admin/banners": ["admin/banners", "banners"],
-  "admin/staff": ["admin/staff", "admin/salespeople"],
+  "admin/staff": ["admin/staff", "admin/salespeople", "admin/customers/page/options"],
 };
 
 export function affectedAdminQueries(mutationPath: string, queryPath: string): boolean {

@@ -27,7 +27,7 @@ test("solicitudes antiguas, ficha del cliente y pedidos filtrados", async ({ pag
 
   await page.goto("/tienda/admin/clientes");
   await page.getByRole("row").filter({ hasText: "Pet Shop Demo" }).getByRole("link", { name: "Ver ficha" }).click();
-  await expect(page).toHaveURL(/\/tienda\/admin\/clientes\/account-normal$/, { timeout: 30000 });
+  await expect(page).toHaveURL(/\/tienda\/admin\/clientes\/account-normal(?:\?|$)/, { timeout: 30000 });
   await expect(page.getByRole("heading", { name: "Contacto y direcciones" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Pedidos recientes" })).toBeVisible();
   await page.getByLabel("Límite de crédito").fill("1500");

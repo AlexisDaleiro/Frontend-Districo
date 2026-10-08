@@ -478,6 +478,7 @@ export function Footer() {
             <>
               <Link href={storeRoutes.account}>Mi cuenta</Link>
               <Link href={storeRoutes.orders}>Mis pedidos</Link>
+              <Link href={storeRoutes.invoices}>Mis facturas</Link>
             </>
           ) : (
             <Link href={storeRoutes.requestAccount}>Solicitar acceso mayorista</Link>

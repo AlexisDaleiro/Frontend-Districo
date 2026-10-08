@@ -322,6 +322,9 @@ async function main() {
       priority: 5,
       triggerType: RecommendationTriggerType.BRAND,
       triggerId: granPlus.id,
+      triggerIds: [granPlus.id],
+      targetType: RecommendationTriggerType.PRODUCT,
+      targetIds: [biofreshProduct.id],
       minimumQuantity: 1,
       products: {
         create: [{ productId: biofreshProduct.id, variantId: biofreshVariant.id, position: 1 }],

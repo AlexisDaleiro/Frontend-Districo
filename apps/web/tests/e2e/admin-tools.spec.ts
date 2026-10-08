@@ -120,14 +120,14 @@ test("read-only users see permitted search results but cannot bulk edit or save"
   });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Catálogo y existencias" })).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Seleccionar/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Actualizar precios" })).toHaveCount(0);
   await page.keyboard.press("Control+k");
   const dialog = page.getByRole("dialog", { name: "Buscar en administración" });
   await dialog.getByRole("combobox").fill("DEMO-0001");
   await expect(dialog.getByRole("option")).toHaveCount(1);
   await dialog.getByRole("combobox").press("Enter");
-  await expect(page).toHaveURL(/vista-previa$/);
+  await expect(page).toHaveURL(/vista-previa(?:\?|$)/);
   await expect(page.locator('form[data-admin-save="true"]')).toHaveCount(0);
   await page.keyboard.press("Control+s");
   await expect(page.getByRole("status").filter({ hasText: "Seleccioná un formulario editable" })).toBeVisible();
