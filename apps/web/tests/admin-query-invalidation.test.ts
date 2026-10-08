@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { affectedAdminQueries } from "../src/lib/admin-query-invalidation";
 
 describe("admin query invalidation", () => {
+  it("refreshes stock availability and order receipts after a physical return", () => {
+    expect(affectedAdminQueries("admin/orders/one/returns", "admin/orders/one")).toBe(true);
+    expect(affectedAdminQueries("admin/orders/one/returns", "products/cards?limit=8")).toBe(true);
+    expect(affectedAdminQueries("admin/orders/one/returns", "cart")).toBe(true);
+    expect(affectedAdminQueries("admin/orders/one/returns", "admin/customers/page")).toBe(false);
+  });
+  it("refreshes role assignment counts after invitations and role assignments", () => {
+    expect(affectedAdminQueries("admin/staff/invitations", "admin/staff/access")).toBe(true);
+    expect(affectedAdminQueries("admin/staff/user-1/role", "admin/staff/access")).toBe(true);
+  });
   it("refreshes only category and product queries after editing the tree", () => {
     expect(affectedAdminQueries("categories/one", "categories/admin")).toBe(true);
     expect(affectedAdminQueries("categories/one", "categories/catalog")).toBe(true);

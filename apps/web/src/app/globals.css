@@ -132,6 +132,13 @@ svg {
 .admin-bulk-history summary { cursor: pointer; font-size: 13px; }
 .admin-bulk-history p { margin-block: 12px; overflow-wrap: anywhere; }
 .admin-seller-options { display: grid; gap: 8px; max-height: 200px; overflow-y: auto; }
+.order-return-table input[type="number"] { width: 90px; min-width: 70px; }
+.order-return-table .check-field { min-width: 190px; align-items: flex-start; }
+.order-return-table .check-field small { display: block; color: var(--muted); }
+.order-return-history details { border-bottom: 1px solid var(--line); padding-block: 14px; }
+.order-return-history summary { cursor: pointer; font-size: 13px; }
+.order-return-history p { margin-block: 12px; overflow-wrap: anywhere; }
+.order-return-confirmation { border-block: 1px solid var(--line); padding-block: 16px; }
 @media (max-width: 600px) {
   .admin-bulk-toolbar .actions { width: 100%; }
   .admin-command-trigger { width: auto; }

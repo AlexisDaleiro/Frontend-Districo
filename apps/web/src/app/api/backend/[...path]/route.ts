@@ -104,7 +104,7 @@ async function handle(
         body,
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(catalogUpload || applicationUpload || csvDownload || path.startsWith("admin/bulk/") ? 90000 : 20000),
+        signal: AbortSignal.timeout(catalogUpload || applicationUpload || csvDownload || path.startsWith("admin/bulk/") || /^admin\/orders\/[^/]+\/returns(?:\/preview)?$/.test(path) ? 90000 : 20000),
       },
     );
     if ((privateDownload || csvDownload) && upstream.ok) {

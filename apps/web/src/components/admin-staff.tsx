@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Save, UserCheck, UserX } from "lucide-react";
+import { Archive, Copy, CopyPlus, Pencil, Plus, Save, UserCheck, UserX } from "lucide-react";
 import { request, useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
 import type { User } from "@/lib/types";
+import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 
 type StaffMember = { id: string; email: string; role: User["role"]; customRoleId?: string | null; customRole?: { id: string; name: string } | null; active: boolean; emailVerified: boolean; invitationPending: boolean };
 type Invitation = { token: string; email: string; expiresAt: string };
-type RoleAccess = { role: StaffRole; id: string | null; name: string | null; access: Record<StaffFeature, { canView: boolean; canEdit: boolean }> };
+type RoleAccess = { role: StaffRole; id: string | null; name: string | null; assignedUsers?: number; access: Record<StaffFeature, { canView: boolean; canEdit: boolean }> };
 const builtInRoles: { value: BuiltInStaffRole; label: string }[] = [
   { value: "ADMIN", label: "Administrador" },
   { value: "SALES", label: "Ventas" },
@@ -140,6 +141,7 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
 
 export function AdminStaff() {
   const { user, notify } = useSession();
+  const client = useQueryClient();
   const canEdit = canEditAdminFeature(user, "personal");
   const q = useApi<StaffMember[]>("admin/staff");
   const canViewRoles = canViewAdminFeature(user, "roles");
@@ -159,7 +161,7 @@ export function AdminStaff() {
     try {
       const created = await request<Invitation>("admin/staff/invitations", "POST", { email: email.trim(), ...rolePayload(role) });
       setInvitation(created);
-      await q.refetch();
+      await invalidateAdminMutation(client, "admin/staff/invitations");
       notify("Enlace de invitación generado.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo crear la invitación.");
@@ -173,7 +175,7 @@ export function AdminStaff() {
   return <section>
     <div className="admin-toolbar"><h2>Equipo</h2>{canEdit && <button className="button small" onClick={() => setOpen(true)}><Plus size={16} /> Invitar persona</button>}</div>
     {q.data.length ? <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>CORREO</th><th>ACCESO</th><th>ROL</th><th>ACCIONES</th></tr></thead>
-      <tbody>{q.data.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={member.role === "CUSTOM" && member.customRoleId && !options.some((option) => option.value === roleValue(member)) ? [...options, { value: roleValue(member), label: member.customRole?.name ?? "Rol personalizado" }] : options} ownId={user?.id} canEdit={canEdit} onUpdated={() => q.refetch()} onReinvite={(item) => {
+      <tbody>{q.data.map((member) => <StaffRow key={`${member.id}-${member.role}-${member.customRoleId}-${member.active}-${member.invitationPending}`} member={member} options={member.role === "CUSTOM" && member.customRoleId && !options.some((option) => option.value === roleValue(member)) ? [...options, { value: roleValue(member), label: member.customRole?.name ?? "Rol personalizado" }] : options} ownId={user?.id} canEdit={canEdit} onUpdated={() => invalidateAdminMutation(client, `admin/staff/${member.id}/role`)} onReinvite={(item) => {
         setEmail(item.email); setRole(item.role === "CLIENT" ? "SALES" : roleValue(item)); setInvitation(null); setOpen(true);
       }} />)}</tbody></table></div> : <Empty title="Todavía no hay personal" />}
     <Modal open={open} onClose={close} title={invitation ? "Compartir invitación" : "Invitar personal"}>
@@ -196,26 +198,38 @@ export function AdminStaff() {
 
 export function AdminRoles() {
   const { user, notify } = useSession();
+  const client = useQueryClient();
   const canEdit = canEditAdminFeature(user, "roles");
   const access = useApi<RoleAccess[]>("admin/staff/access");
   const [selectedRole, setSelectedRole] = useState("SALES");
-  const [creating, setCreating] = useState(false);
+  const [action, setAction] = useState<{ kind: "create" | "rename" | "duplicate" | "retire"; id?: string; name?: string } | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const selectedAccess = access.data?.find((item) => roleValue({ role: item.role, customRoleId: item.id }) === selectedRole);
-  async function createRole() {
+  const titles = { create: "Crear rol", rename: "Renombrar rol", duplicate: "Duplicar rol", retire: "Retirar rol" };
+  function begin(kind: "create" | "rename" | "duplicate" | "retire") {
+    setAction({ kind, id: selectedAccess?.id ?? undefined, name: selectedAccess?.name ?? undefined });
+    setName(kind === "create" ? "" : kind === "duplicate" ? `${selectedAccess?.name ?? "Rol"} (copia)`.slice(0, 60) : selectedAccess?.name ?? "");
+    setError("");
+  }
+  function close() { if (!busy) { setAction(null); setError(""); } }
+  async function saveRole() {
+    if (!action || busy) return;
     setBusy(true);
     setError("");
     try {
-      const created = await request<{ id: string; name: string }>("admin/staff/roles", "POST", { name: name.trim() });
+      const path = action.kind === "create" ? "admin/staff/roles" : `admin/staff/roles/${action.id}${action.kind === "duplicate" ? "/duplicate" : ""}`;
+      const saved = await request<{ id: string; name: string }>(path, action.kind === "retire" ? "DELETE" : action.kind === "rename" ? "PATCH" : "POST", action.kind === "retire" ? undefined : { name: name.trim() });
       await access.refetch();
-      setSelectedRole(`custom:${created.id}`);
+      await invalidateAdminMutation(client, "admin/staff/roles");
+      await client.invalidateQueries({ queryKey: ["session"] });
+      setSelectedRole(action.kind === "retire" ? "SALES" : `custom:${saved.id}`);
       setName("");
-      setCreating(false);
-      notify("Rol creado. Configurá sus permisos antes de asignarlo.");
+      setAction(null);
+      notify(action.kind === "create" ? "Rol creado. Configurá sus permisos antes de asignarlo." : action.kind === "duplicate" ? "Rol duplicado con sus permisos." : action.kind === "retire" ? "Rol retirado. Su historial se conserva." : "Nombre del rol actualizado.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo crear el rol.");
+      setError(cause instanceof Error ? cause.message : "No se pudo actualizar el rol.");
     } finally { setBusy(false); }
   }
   return <section>
@@ -223,16 +237,24 @@ export function AdminRoles() {
       <select className="form-input" aria-label="Rol a configurar" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}>
         {roleOptions(access.data).map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
       </select>
-      {canEdit && <button className="button small" type="button" onClick={() => setCreating(true)}><Plus size={16} /> Crear rol</button>}
+      {canEdit && <>
+        {selectedAccess?.role === "CUSTOM" && <>
+          <button className="icon-button" type="button" title="Renombrar rol" aria-label="Renombrar rol" onClick={() => begin("rename")}><Pencil size={17} /></button>
+          <button className="icon-button" type="button" title="Duplicar rol" aria-label="Duplicar rol" onClick={() => begin("duplicate")}><CopyPlus size={17} /></button>
+          <button className="icon-button" type="button" title={selectedAccess.assignedUsers ? "Reasigná sus usuarios antes de retirar el rol" : "Retirar rol"} aria-label="Retirar rol" disabled={!!selectedAccess.assignedUsers} onClick={() => begin("retire")}><Archive size={17} /></button>
+        </>}
+        <button className="button small" type="button" onClick={() => begin("create")}><Plus size={16} /> Crear rol</button>
+      </>}
     </div></div>
+    {selectedAccess?.role === "CUSTOM" && <p className="muted small-copy">{selectedAccess.assignedUsers ?? 0} usuarios asignados{selectedAccess.assignedUsers ? " · Reasignación requerida para retirar este rol" : ""}</p>}
     {access.isPending ? <Loading /> : access.error ? <ErrorBox error={access.error} retry={() => void access.refetch()} /> : selectedAccess ? (
       <RoleAccessEditor key={`${selectedRole}-${JSON.stringify(selectedAccess.access)}`} item={selectedAccess} canEdit={canEdit} onSaved={() => access.refetch()} />
     ) : <Empty title="No hay permisos configurados para este rol" />}
-    <Modal open={creating} onClose={() => { setCreating(false); setError(""); }} title="Crear rol">
-      <form className="stack" onSubmit={(event) => { event.preventDefault(); void createRole(); }}>
-        <label className="field">Nombre del rol<input className="form-input" minLength={2} maxLength={60} required autoFocus value={name} disabled={busy} onChange={(event) => setName(event.target.value)} /></label>
+    <Modal open={!!action} onClose={close} title={action ? titles[action.kind] : "Rol"}>
+      <form data-admin-save={action?.kind !== "retire" ? "true" : undefined} aria-busy={busy} className="stack" onSubmit={(event) => { event.preventDefault(); void saveRole(); }}>
+        {action?.kind === "retire" ? <p>¿Retirar <strong>{action.name}</strong>? No podrá asignarse a nuevas cuentas. El historial y sus permisos originales se conservarán.</p> : <label className="field">Nombre del rol<input className="form-input" minLength={2} maxLength={60} required autoFocus value={name} disabled={busy} onChange={(event) => setName(event.target.value)} /></label>}
         {error && <p className="error" role="alert">{error}</p>}
-        <div className="actions"><button className="button" disabled={busy}>{busy ? "Creando…" : "Crear rol"}</button><button className="button secondary" type="button" onClick={() => setCreating(false)}>Cancelar</button></div>
+        <div className="actions"><button type="submit" className="button" disabled={busy}>{busy ? "Guardando…" : action ? titles[action.kind] : "Guardar"}</button><button className="button secondary" type="button" disabled={busy} onClick={close}>Cancelar</button></div>
       </form>
     </Modal>
   </section>;

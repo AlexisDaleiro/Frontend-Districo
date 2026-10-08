@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -32,6 +32,8 @@ import { RecordRefundDto } from '../orders/dto/record-refund.dto';
 import { ApplicationListQueryDto } from './dto/application-list-query.dto';
 import { UpdateStaffAccessDto } from './dto/update-staff-access.dto';
 import { CreateStaffRoleDto } from './dto/create-staff-role.dto';
+import { ProductReturnsService } from '../orders/product-returns.service';
+import { RecordProductReturnDto } from '../orders/dto/record-product-return.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -44,6 +46,7 @@ export class AdminController {
     private readonly applications: ApplicationsService,
     private readonly orders: OrdersService,
     private readonly billing: OrderBillingService,
+    private readonly productReturns: ProductReturnsService,
     private readonly promotions: PromotionsService,
     private readonly recommendations: RecommendationsService,
   ) {}
@@ -173,6 +176,18 @@ export class AdminController {
     return this.billing.recordPayment(id, dto, user.sub);
   }
 
+  @Post('orders/:id/returns/preview')
+  @Roles(Role.ADMIN, Role.SALES)
+  previewProductReturn(@Param('id') id: string, @Body() dto: RecordProductReturnDto, @CurrentUser() user: JwtUser) {
+    return this.productReturns.record(id, dto, user.sub, true);
+  }
+
+  @Post('orders/:id/returns')
+  @Roles(Role.ADMIN, Role.SALES)
+  recordProductReturn(@Param('id') id: string, @Body() dto: RecordProductReturnDto, @CurrentUser() user: JwtUser) {
+    return this.productReturns.record(id, dto, user.sub);
+  }
+
   @Post('orders/:id/payments/:paymentId/void')
   @Roles(Role.ADMIN, Role.FINANCE)
   voidPayment(@Param('id') id: string, @Param('paymentId') paymentId: string, @Body() dto: VoidOrderRecordDto, @CurrentUser() user: JwtUser) {
@@ -271,6 +286,21 @@ export class AdminController {
   @Post('staff/roles')
   createStaffRole(@Body() dto: CreateStaffRoleDto, @CurrentUser() user: JwtUser) {
     return this.admin.createCustomRole(dto.name, user.sub);
+  }
+
+  @Patch('staff/roles/:id')
+  renameStaffRole(@Param('id') id: string, @Body() dto: CreateStaffRoleDto, @CurrentUser() user: JwtUser) {
+    return this.admin.manageCustomRole(id, 'rename', dto.name, user.sub);
+  }
+
+  @Post('staff/roles/:id/duplicate')
+  duplicateStaffRole(@Param('id') id: string, @Body() dto: CreateStaffRoleDto, @CurrentUser() user: JwtUser) {
+    return this.admin.manageCustomRole(id, 'duplicate', dto.name, user.sub);
+  }
+
+  @Delete('staff/roles/:id')
+  retireStaffRole(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.admin.manageCustomRole(id, 'retire', undefined, user.sub);
   }
 
   @Patch('staff/roles/:id/access')

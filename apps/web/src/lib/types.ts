@@ -170,6 +170,7 @@ export type Order = {
   invoices?: { id: string; invoiceNumber?: string | null; originalName?: string | null; mimeType?: string | null; size?: number | null; createdAt: string; uploadedByEmail?: string | null; voidedAt?: string | null; voidedByEmail?: string | null; voidReason?: string | null; replacesInvoiceId?: string | null; replacementReason?: string | null }[];
   creditNotes?: { id: string; amount: number | string; noteNumber?: string | null; reason: string; originalName?: string | null; createdAt: string; recordedByEmail?: string | null }[];
   refunds?: { id: string; amount: number | string; reason: string; reference?: string | null; createdAt: string; recordedByEmail?: string | null }[];
+  returns?: { id: string; requestId: string; reason: string; createdAt: string; recordedById?: string; recordedByEmail?: string | null; items: { orderItemId: string; quantity: number; restockedQuantity: number }[] }[];
   items: {
     id?: string;
     variantId: string;
