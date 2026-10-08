@@ -4,6 +4,8 @@
   "private": true,
   "description": "Backend demo B2B para el e-commerce mayorista de DISTRICO S.A.",
   "scripts": {
+    "catalog:download-laboratory-logos": "node scripts/download-laboratory-logos.cjs",
+    "catalog:sync-laboratory-logos": "ts-node scripts/sync-laboratory-logos.ts",
     "demo:store-taxonomy": "ts-node scripts/prepare-store-taxonomy.ts",
     "test:store-taxonomy": "ts-node scripts/tests/store-taxonomy.test.ts && ts-node scripts/tests/banner-placement.test.ts",
     "catalog:workbook-assets": "node scripts/download-workbook-assets.cjs",
@@ -27,7 +29,7 @@
     "test:category-nesting": "ts-node scripts/tests/category-nesting.test.ts",
     "test:organizations": "ts-node scripts/tests/catalog-organizations.test.ts",
     "test:category-cleanup": "ts-node scripts/tests/category-cleanup.test.ts",
-    "test:catalog-images": "ts-node scripts/tests/catalog-images.test.ts",
+    "test:catalog-images": "ts-node scripts/tests/catalog-images.test.ts && ts-node scripts/tests/laboratory-logos.test.ts",
     "test:marketing-management": "ts-node scripts/tests/marketing-management.test.ts && ts-node scripts/tests/recommendation-scopes.test.ts && ts-node scripts/tests/promotion-scopes.test.ts",
     "test:database-url": "ts-node scripts/tests/database-url.test.ts",
     "test:business": "ts-node scripts/tests/business-rules.test.ts",

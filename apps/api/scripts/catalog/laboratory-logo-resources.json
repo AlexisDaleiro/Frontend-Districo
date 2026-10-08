@@ -1,0 +1,14 @@
+[
+  { "slug": "basf", "name": "BASF", "pageUrl": "https://www.basf.com/global/en", "sourceUrl": "https://www.basf.com/assets/logo.v1.svg", "background": "#00793a", "presentationReference": "https://brandportal.basf.com/global/en/create/corporate-design/colors" },
+  { "slug": "bimeda", "name": "Bimeda", "pageUrl": "https://magnis.com.uy/", "sourceUrl": "https://magnis.com.uy/wp-content/uploads/2024/04/logo-bimeda-home.jpg" },
+  { "slug": "boehringer-ingelheim", "name": "Boehringer Ingelheim", "pageUrl": "https://commons.wikimedia.org/wiki/File:Boehringer_Ingelheim_Logo_RGB_Dark_Green.svg", "originalPublisherUrl": "https://brand.boehringer-ingelheim.com/d/swYxQ9iA5iPM/logo", "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Boehringer_Ingelheim_Logo_RGB_Dark_Green.svg" },
+  { "slug": "dragpharma", "name": "Dragpharma", "pageUrl": "https://dragpharma.cl/", "sourceUrl": "https://dragpharma.cl/wp-content/uploads/2023/01/logo-drag.png" },
+  { "slug": "kela", "name": "Kela", "pageUrl": "https://www.kela.health/", "sourceUrl": "https://www.kela.health/wp-content/uploads/2018/08/logo.svg" },
+  { "slug": "lapisa", "name": "Lapisa", "pageUrl": "https://magnis.com.uy/", "sourceUrl": "https://magnis.com.uy/wp-content/uploads/2024/04/logolapisasa.png" },
+  { "slug": "magnis", "name": "Magnis", "pageUrl": "https://magnis.com.uy/", "sourceUrl": "https://magnis.com.uy/wp-content/themes/mkcommerce-child/images/magnis-mail.png" },
+  { "slug": "norbrook", "name": "Norbrook", "pageUrl": "https://www.norbrook.com/", "sourceUrl": "https://www.norbrook.com/norbrook/images/svg/norbrook.svg" },
+  { "slug": "nutriblock", "name": "Nutriblock", "pageUrl": "https://www.nutriblock.com.uy/", "sourceUrl": "https://www.nutriblock.com.uy/wp-content/themes/nutriblok_HTML5/images/object494219264.png", "trim": true },
+  { "slug": "virbac", "name": "Virbac", "pageUrl": "https://uy.virbac.com/", "sourceUrl": "https://uy.virbac.com/files/live/sites/virbac-uy/files/predefined-files/logo/Virbac_Santa_Elena_menu_fond_beige_225X112.gif" },
+  { "slug": "y-tex", "name": "Y-Tex", "pageUrl": "https://www.y-tex.com/", "sourceUrl": "https://www.y-tex.com/assets/theme/images/logo.png" },
+  { "slug": "zoetis", "name": "Zoetis", "pageUrl": "https://www.zoetis.com/", "sourceUrl": "https://www.zoetis.com/_assets/img/zoetis_logo.svg" }
+]
