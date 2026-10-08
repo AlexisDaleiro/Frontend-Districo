@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { useSession } from "./providers";
+import { usePublicApi, useSession } from "./providers";
 import { Picture } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
 import { brandLogoSrc } from "@/lib/brand-logos";
 import { brandCatalogHref, featuredBrandNames, siteBrands, type BrandLine } from "@/lib/site-brands";
+import type { StoreBanner } from "@/lib/banners";
 
 export function SiteHome() {
   const router = useRouter();
@@ -37,7 +38,8 @@ export function SiteHome() {
   );
 }
 
-const slides = [
+type HeroSlide = { id?: string; title: string; lead: string; image: string; mobileImage?: string | null; alt: string; position: string; actions: readonly (readonly [string, string])[] };
+const fallbackSlides: HeroSlide[] = [
   {
     title: "Alimento, cuidado y bienestar para las mascotas de Uruguay",
     lead: `Distribuimos ${siteBrands.length} marcas de alimento, arenas sanitarias, higiene, snacks y accesorios a comercios de todo el país.`,
@@ -62,11 +64,16 @@ const slides = [
     position: "50% 45%",
     actions: [["/nosotros", "Conocé la empresa"]],
   },
-] as const;
+];
 
 const SLIDE_DURATION = 7000;
 
 function HomeHero() {
+  const managed = usePublicApi<StoreBanner[]>("banners?placement=INSTITUTIONAL");
+  const slides: HeroSlide[] = managed.data?.length ? managed.data.map((banner) => ({
+    id: banner.id, title: banner.title, lead: banner.subtitle ?? "", image: banner.imageUrl,
+    mobileImage: banner.mobileImageUrl, alt: banner.alt, position: "50% 50%", actions: [[banner.href, banner.actionLabel]],
+  })) : fallbackSlides;
   const heroRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -74,7 +81,8 @@ function HomeHero() {
   const [visible, setVisible] = useState(true);
   const [tabVisible, setTabVisible] = useState(true);
   const [focused, setFocused] = useState(false);
-  const rotating = !paused && !reducedMotion && visible && tabVisible && !focused;
+  const shownIndex = Math.min(active, slides.length - 1);
+  const rotating = slides.length > 1 && !paused && !reducedMotion && visible && tabVisible && !focused;
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -99,7 +107,7 @@ function HomeHero() {
     if (!rotating) return;
     const timer = window.setTimeout(() => setActive((current) => (current + 1) % slides.length), SLIDE_DURATION);
     return () => window.clearTimeout(timer);
-  }, [active, rotating]);
+  }, [active, rotating, slides.length]);
 
   const go = (index: number) => setActive((index + slides.length) % slides.length);
 
@@ -115,25 +123,29 @@ function HomeHero() {
       }}
     >
       {slides.map((slide, index) => {
-        const on = index === active;
+        const on = index === shownIndex;
         const Heading = index === 0 ? "h1" : "h2";
         return (
           <div
-            key={slide.title}
+            key={slide.id ?? slide.title}
             className={`home-slide${on ? " is-on" : ""}`}
             aria-roledescription="diapositiva"
             aria-label={`${index + 1} de ${slides.length}`}
             aria-hidden={!on}
             inert={!on}
           >
-            <Picture
+            {slide.mobileImage ? <picture>
+              <source media="(max-width: 700px)" srcSet={slide.mobileImage} />
+              {/* Uploaded banners have a separately authored mobile composition. */}
+              <img src={slide.image} alt={slide.alt} style={{ objectPosition: slide.position }} loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : undefined} />
+            </picture> : <Picture
               src={slide.image}
               alt={slide.alt}
               sizes="100vw"
               style={{ objectPosition: slide.position }}
               loading={index === 0 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : undefined}
-            />
+            />}
             <div className="home-slide-copy">
               <div className="container">
                 <Heading>{slide.title}</Heading>
@@ -150,16 +162,16 @@ function HomeHero() {
           </div>
         );
       })}
-      <div className="home-hero-controls">
+      {slides.length > 1 && <div className="home-hero-controls">
         <div className="container">
           <div className="home-dots">
             {slides.map((slide, index) => (
               <button
-                key={slide.title}
+                key={slide.id ?? slide.title}
                 type="button"
-                className={index === active ? "is-on" : undefined}
+                className={index === shownIndex ? "is-on" : undefined}
                 aria-label={`Ver destacado ${index + 1}`}
-                aria-current={index === active}
+                aria-current={index === shownIndex}
                 onClick={() => go(index)}
               />
             ))}
@@ -168,15 +180,15 @@ function HomeHero() {
             {paused ? <Play size={18} /> : <Pause size={18} />}
           </button>
           <div className="home-arrows">
-            <button className="home-round" type="button" aria-label="Destacado anterior" onClick={() => go(active - 1)}>
+            <button className="home-round" type="button" aria-label="Destacado anterior" onClick={() => go(shownIndex - 1)}>
               <ChevronLeft size={20} />
             </button>
-            <button className="home-round" type="button" aria-label="Destacado siguiente" onClick={() => go(active + 1)}>
+            <button className="home-round" type="button" aria-label="Destacado siguiente" onClick={() => go(shownIndex + 1)}>
               <ChevronRight size={20} />
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
@@ -10,6 +10,7 @@ import { JwtUser } from '../common/types/jwt-user.type';
 import { MAX_BANNER_BYTES } from './banner-storage.service';
 import { BannerFiles, BannersService } from './banners.service';
 import { SaveBannerDto } from './dto/save-banner.dto';
+import { BannerQueryDto } from './dto/banner-query.dto';
 
 @ApiTags('banners')
 @Controller('banners')
@@ -17,7 +18,7 @@ export class BannersController {
   constructor(private readonly banners: BannersService) {}
 
   @Get()
-  list() { return this.banners.publicList(); }
+  list(@Query() query: BannerQueryDto) { return this.banners.publicList(query.placement); }
 }
 
 @ApiTags('admin-banners')
@@ -29,7 +30,7 @@ export class AdminBannersController {
   constructor(private readonly banners: BannersService) {}
 
   @Get()
-  list() { return this.banners.adminList(); }
+  list(@Query() query: BannerQueryDto) { return this.banners.adminList(query.placement); }
 
   @Post()
   @UseInterceptors(FileFieldsInterceptor([{ name: 'desktop', maxCount: 1 }, { name: 'mobile', maxCount: 1 }], { limits: { fileSize: MAX_BANNER_BYTES, files: 2 } }))

@@ -10,6 +10,7 @@ export function allowedPath(path: string, method: string) {
       `products/${id}`,
       "brands",
       "laboratories",
+      "(brands|laboratories)/admin",
       "categories",
       "categories/catalog",
       "categories/admin",

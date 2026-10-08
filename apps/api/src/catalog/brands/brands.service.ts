@@ -13,6 +13,8 @@ export class BrandsService {
     return orderBrands(await this.brandsRepository.findAll());
   }
 
+  findAdmin() { return this.brandsRepository.findAdmin(); }
+
   create(dto: CreateBrandDto) {
     return this.brandsRepository.create({
       name: dto.name,

@@ -114,6 +114,7 @@ export type Product = {
   active?: boolean;
   source?: string;
   sourceUrl?: string;
+  tags?: string[];
 };
 export type ProductList = {
   items: Product[];

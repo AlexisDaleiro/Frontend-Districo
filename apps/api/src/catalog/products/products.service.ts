@@ -200,6 +200,7 @@ export class ProductsService {
     const canViewPrice = this.canViewPrice(product.requiresMedicationPermission, user);
     return {
       ...publicProduct,
+      categories: product.categories.filter(({ category }) => !category.deletedAt && (user?.role === Role.ADMIN || category.active)),
       medicationRestricted: product.requiresMedicationPermission && !this.canBuyMedication(user),
       variants: sortProductVariants(product.variants).map(({ physicalStock, reservedStock, isDemoData: _isDemoData, deletedAt: _variantDeletedAt, prices, ...variant }) => {
         const currentPrice = prices[0];

@@ -1,4 +1,5 @@
 import { seedProducts, seedUsers, categories } from "./demo-seed";
+import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
   Cart,
@@ -48,7 +49,7 @@ type State = {
   categories: Entity[];
   brands: Entity[];
   laboratories: Entity[];
-  banners?: { id: string; title: string; subtitle?: string; actionLabel: string; href: string; alt: string; imageUrl: string; position: number; active: boolean; startsAt?: string; endsAt?: string }[];
+  banners?: StoreBanner[];
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess; retiredAt?: string }[];
@@ -570,12 +571,13 @@ export async function demoRequest<T>(
       meta: { total: items.length, page, limit },
     };
   } else if (
-    ["categories", "categories/catalog", "categories/admin", "brands", "laboratories", "attributes"].includes(route) &&
+    ["categories", "categories/catalog", "categories/admin", "brands", "laboratories", "brands/admin", "laboratories/admin", "attributes"].includes(route) &&
     method === "GET"
   )
     result = route === "attributes" ? [] : route === "categories/admin" ? (needAdmin(), s.categories) :
       route === "categories" || route === "categories/catalog" ? s.categories.filter((category) => category.active !== false) :
-      s[route as "brands" | "laboratories"];
+      route.endsWith("/admin") ? (needAdmin(), s[route.split("/")[0] as "brands" | "laboratories"]) :
+      s[route as "brands" | "laboratories"].filter((item) => item.active !== false);
   else if (route.startsWith("categories/admin/") && method === "GET") {
     needAdmin();
     const [, , categoryId, list] = route.split("/");
@@ -735,7 +737,9 @@ export async function demoRequest<T>(
     if (!result) throw new ApiError("Pedido no encontrado.", 404);
   } else if (route === "banners" && method === "GET") {
     const now = new Date().toISOString();
-    result = (s.banners ?? []).filter((banner) => banner.active && (!banner.startsAt || banner.startsAt <= now) && (!banner.endsAt || banner.endsAt >= now)).sort((a, b) => a.position - b.position);
+    const placement = query.get("placement") ?? "ECOMMERCE";
+    if (!["ECOMMERCE", "INSTITUTIONAL"].includes(placement)) throw new ApiError("Sitio no valido.", 400);
+    result = (s.banners ?? []).filter((banner) => (banner.placement ?? "ECOMMERCE") === placement && banner.active && (!banner.startsAt || banner.startsAt <= now) && (!banner.endsAt || banner.endsAt >= now)).sort((a, b) => a.position - b.position);
   } else if (route === "admin/search" || route.startsWith("admin/bulk/")) {
     result = await demoAdminTools(s, path, method, b, user);
   } else if (
@@ -791,11 +795,16 @@ export async function demoRequest<T>(
       const currentAmount = amount(current), previousAmount = amount(previous);
       result = { period, timezone: "America/Montevideo", startAt: start.toISOString(), today: { orders: today.length, amount: amount(today) }, current: { orders: current.length, amount: currentAmount, units: current.flatMap((order) => order.items).reduce((sum, item) => sum + item.quantity, 0), collected: current.reduce((sum, order) => sum + (order.payments ?? []).filter((payment) => !payment.voidedAt).reduce((subtotal, payment) => subtotal + Number(payment.amount), 0), 0) }, previous: { orders: previous.length, amount: previousAmount }, changePercent: previousAmount ? Math.round((currentAmount - previousAmount) / previousAmount * 1000) / 10 : null, series: [...series.values()].sort((a, b) => a.bucket.localeCompare(b.bucket)), topProducts: [...top.values()].sort((a, b) => b.units - a.units).slice(0, 8) };
     } else if (route === "admin/banners") {
-      if (method === "GET") result = [...(s.banners ?? [])].sort((a, b) => a.position - b.position);
+      if (method === "GET") {
+        if (query.has("placement") && !["ECOMMERCE", "INSTITUTIONAL"].includes(query.get("placement")!)) throw new ApiError("Sitio de banners no válido.", 400);
+        result = [...(s.banners ?? [])].filter((banner) => !query.has("placement") || (banner.placement ?? "ECOMMERCE") === query.get("placement")).sort((a, b) => a.position - b.position);
+      }
       else if (method === "POST") {
+        const placement = String(b.placement ?? "ECOMMERCE") as BannerPlacement;
+        if (!["ECOMMERCE", "INSTITUTIONAL"].includes(placement) || !validBannerDestination(String(b.href), placement)) throw new ApiError("Destino no valido para este sitio.", 400);
         const desktop = b.desktop;
         if (!(desktop instanceof File)) throw new ApiError("Adjuntá una imagen de escritorio.", 400);
-        const banner = { id: id(), title: String(b.title), subtitle: String(b.subtitle ?? ""), actionLabel: String(b.actionLabel), href: String(b.href), alt: String(b.alt), imageUrl: await demoImage(desktop), position: Number(b.position ?? 0), active: b.active === "true", startsAt: String(b.startsAt ?? ""), endsAt: String(b.endsAt ?? "") };
+        const banner = { id: id(), placement, title: String(b.title), subtitle: String(b.subtitle ?? ""), actionLabel: String(b.actionLabel), href: String(b.href), alt: String(b.alt), imageUrl: await demoImage(desktop), mobileImageUrl: b.mobile instanceof File ? await demoImage(b.mobile) : null, position: Number(b.position ?? 0), active: b.active === "true", startsAt: String(b.startsAt ?? ""), endsAt: String(b.endsAt ?? "") };
         (s.banners ??= []).push(banner);
         result = banner;
       }
@@ -805,8 +814,12 @@ export async function demoRequest<T>(
       if (method === "DELETE") { (s.banners ?? []).splice(index, 1); result = { success: true }; }
       else {
         const banner = s.banners![index];
+        const placement = String(b.placement ?? banner.placement ?? "ECOMMERCE") as BannerPlacement;
+        if (!["ECOMMERCE", "INSTITUTIONAL"].includes(placement) || !validBannerDestination(String(b.href ?? banner.href), placement)) throw new ApiError("Destino no valido para este sitio.", 400);
+        banner.placement = placement;
         Object.assign(banner, { title: String(b.title), subtitle: String(b.subtitle ?? ""), actionLabel: String(b.actionLabel), href: String(b.href), alt: String(b.alt), position: Number(b.position ?? 0), active: b.active === "true", startsAt: String(b.startsAt ?? ""), endsAt: String(b.endsAt ?? "") });
         if (b.desktop instanceof File) banner.imageUrl = await demoImage(b.desktop);
+        if (b.mobile instanceof File) banner.mobileImageUrl = await demoImage(b.mobile);
         result = banner;
       }
     }

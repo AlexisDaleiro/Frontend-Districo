@@ -1015,6 +1015,9 @@ function ProductDetailContent({ product }: { product: Product }) {
               presentación comercial son datos de demostración.
             </p>
           )}
+          {!DEMO && product.tags?.includes("DATOS_COMERCIALES_FICTICIOS") && (
+            <p className="info-note">Precios y stock de demostración. No constituyen una oferta comercial.</p>
+          )}
         </div>
       </div>
       <ProductInfo product={product} variant={variant} />

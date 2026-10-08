@@ -12,7 +12,7 @@ import type { Entity } from "@/lib/types";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { Picture } from "./ui";
 import { usePublicApi } from "./providers";
-import type { StoreBanner } from "./admin-banners";
+import type { StoreBanner } from "@/lib/banners";
 
 type Slide = {
   id: string; name: string; eyebrow: string; title: string; description: string;

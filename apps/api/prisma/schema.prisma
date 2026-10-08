@@ -678,6 +678,7 @@ model OrderRefund {
 }
 
 model StoreBanner {
+  placement       String    @default("ECOMMERCE")
   id              String    @id @default(cuid())
   title           String
   subtitle        String?
@@ -695,6 +696,7 @@ model StoreBanner {
   updatedAt       DateTime  @updatedAt
 
   @@index([active, position])
+  @@index([placement, active, position])
 }
 
 model CustomerAddress {

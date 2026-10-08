@@ -29,6 +29,12 @@ export class BrandsController {
     return this.brandsService.create(dto);
   }
 
+  @Get('admin')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  findAdmin() { return this.brandsService.findAdmin(); }
+
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

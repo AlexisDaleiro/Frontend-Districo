@@ -15,8 +15,9 @@
 .home-hero { position: relative; isolation: isolate; height: clamp(600px, 100svh, 800px); overflow: hidden; background: var(--ink-deep); color: white; }
 .home-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 900ms ease, visibility 0s linear 900ms; }
 .home-slide.is-on { opacity: 1; visibility: visible; transition: opacity 900ms ease; }
-.home-slide > img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.05); transition: transform 8s ease-out; }
-.home-slide.is-on > img { transform: none; }
+.home-slide > picture { display: block; width: 100%; height: 100%; }
+.home-slide > img, .home-slide > picture > img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.05); transition: transform 8s ease-out; }
+.home-slide.is-on > img, .home-slide.is-on > picture > img { transform: none; }
 .home-slide::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgb(13 38 47 / .88) 0%, rgb(13 38 47 / .45) 55%, rgb(13 38 47 / .3) 100%); }
 .home-slide-copy { position: absolute; z-index: 1; inset: auto 0 108px; }
 .home-slide-copy h1, .home-slide-copy h2 { max-width: 660px; font-size: clamp(36px, 5.2vw, 64px); font-weight: 800; line-height: 1.04; letter-spacing: -.035em; text-wrap: balance; }
@@ -264,5 +265,5 @@
   .jobs-values { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-slide, .home-slide.is-on, .home-slide > img, .home-panel, .brands-detail, .home-line-pic, .home-line-trio, .home-collage img, .home-shelf-img img { transition: none; animation: none; transform: none; }
+  .home-slide, .home-slide.is-on, .home-slide > img, .home-slide > picture > img, .home-panel, .brands-detail, .home-line-pic, .home-line-trio, .home-collage img, .home-shelf-img img { transition: none; animation: none; transform: none; }
 }

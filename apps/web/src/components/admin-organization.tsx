@@ -11,6 +11,7 @@ import { AdminCategoryEditor } from "./admin-category-editor";
 import type { Editor, Field } from "./admin-form";
 import type { Entity } from "@/lib/types";
 import { canEditAdminFeature } from "@/lib/staff-access";
+import { filterDirectory } from "@/lib/entity-directory";
 
 type OpenEditor = (editor: Editor) => void;
 type CategoryNode = Entity & { children: CategoryNode[] };
@@ -29,7 +30,12 @@ function LogoUploadButton({ item, busy, onFile }: { item: Entity; busy: boolean;
 }
 
 function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories"; title: string; edit: OpenEditor }) {
-  const q = useApi<Entity[]>(path);
+  const q = useApi<Entity[]>(`${path}/admin`);
+  const [search, setSearch] = useAdminListField(`${path}Search`, "");
+  const [status, setStatus] = useAdminListField(`${path}Status`, "", ["active", "inactive"]);
+  const [logo, setLogo] = useAdminListField(`${path}Logo`, "", ["with", "without"]);
+  const [sort, setSort] = useAdminListField(`${path}Sort`, "asc", ["asc", "desc"]);
+  const items = filterDirectory(q.data ?? [], search, status, logo, sort);
   const client = useQueryClient();
   const { notify, user } = useSession();
   const canEdit = canEditAdminFeature(user, "marcas");
@@ -78,18 +84,31 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
         <Plus size={16} /> Crear
       </button>}
     </div>
+    <div className="admin-directory-filters">
+      <input className="form-input" aria-label={`Buscar ${title.toLowerCase()}`} placeholder={`Buscar ${title.toLowerCase()}`} value={search} onChange={(event) => setSearch(event.target.value)} />
+      <select className="form-input" aria-label={`Estado de ${title.toLowerCase()}`} value={status} onChange={(event) => setStatus(event.target.value)}>
+        <option value="">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option>
+      </select>
+      <select className="form-input" aria-label={`Logo de ${title.toLowerCase()}`} value={logo} onChange={(event) => setLogo(event.target.value)}>
+        <option value="">Todos los logos</option><option value="with">Con logo</option><option value="without">Sin logo</option>
+      </select>
+      <select className="form-input" aria-label={`Orden de ${title.toLowerCase()}`} value={sort} onChange={(event) => setSort(event.target.value)}>
+        <option value="asc">Nombre A-Z</option><option value="desc">Nombre Z-A</option>
+      </select>
+    </div>
+    {!q.isPending && !q.error && <p className="small-copy muted">{items.length} de {q.data?.length ?? 0}</p>}
     {error ? <ErrorBox error={error} /> : null}
-    {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : !q.data.length ?
-      <Empty title={`Todavía no hay ${title.toLowerCase()}`} /> :
-      <div className="admin-directory-list">{q.data.map((item) =>
+    {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : !items.length ?
+      <Empty title={q.data.length ? "No hay resultados para estos filtros" : `Todavía no hay ${title.toLowerCase()}`} /> :
+      <div className="admin-directory-list">{items.map((item) =>
         <div className="admin-directory-row" key={item.id}>
           {item.imageUrl ? <Picture className="admin-directory-logo" src={item.imageUrl} alt={item.name} sizes="42px" /> : <span className="admin-directory-logo admin-directory-logo-empty" aria-hidden="true" />}
-          <span>{item.name}</span>
+          <span>{item.name}{item.active === false && <> <span className="status-pill">Inactivo</span></>}</span>
           {canEdit && <div className="actions">
           <LogoUploadButton item={item} busy={busy === item.id} onFile={(file) => { void upload(item, file); }} />
           {item.imageUrl && <button className="icon-button" disabled={busy === item.id} title={`Quitar logo de ${item.name}`} aria-label={`Quitar logo de ${item.name}`} onClick={() => void removeLogo(item)}><Trash2 size={16} /></button>}
           <button className="icon-button" title={`Editar ${item.name}`} aria-label={`Editar ${item.name}`} onClick={() => edit({
-            title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: nameFields, initial: { ...item },
+            title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: [...nameFields, { key: "active", label: "Activo", type: "checkbox" }], initial: { ...item },
           })}><Pencil size={16} /></button>
           <button className="icon-button" disabled={busy === item.id} title={`Eliminar ${item.name}`} aria-label={`Eliminar ${item.name}`} onClick={() => void remove(item)}><Trash2 size={16} /></button>
           </div>}
@@ -99,6 +118,7 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
 
 export function AdminBrandsLabs({ edit }: { edit: OpenEditor }) {
   return <div className="stack admin-directories">
+    <div className="admin-toolbar"><ShareAdminList /></div>
     <EntityDirectory path="brands" title="Marcas" edit={edit} />
     <EntityDirectory path="laboratories" title="Laboratorios" edit={edit} />
   </div>;

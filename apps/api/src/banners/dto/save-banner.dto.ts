@@ -1,7 +1,12 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { bannerPlacements, BannerPlacement } from './banner-query.dto';
 
 export class SaveBannerDto {
+  @IsOptional()
+  @IsIn(bannerPlacements)
+  placement?: BannerPlacement;
+
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -21,7 +26,7 @@ export class SaveBannerDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\/tienda(?:$|[/?#])/)
+  @Matches(/^\/(?!\/)[^\\\s]*$/)
   @MaxLength(500)
   href?: string;
 

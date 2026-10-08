@@ -13,6 +13,10 @@ export class BrandsRepository {
     });
   }
 
+  findAdmin() {
+    return this.prisma.brand.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } });
+  }
+
   create(data: Prisma.BrandCreateInput) {
     return this.prisma.brand.create({ data });
   }

@@ -29,6 +29,8 @@ test('admin routes map to the section they protect', () => {
   assert.equal(staffFeatureForPath('/api/admin/contact-inquiries/page'), 'consultas');
   assert.equal(staffFeatureForPath('/api/products/admin/list'), 'catalogo');
   assert.equal(staffFeatureForPath('/api/admin/banners'), 'banners');
+  assert.equal(staffFeatureForPath('/api/brands/admin'), 'marcas');
+  assert.equal(staffFeatureForPath('/api/laboratories/admin'), 'marcas');
   assert.equal(staffFeatureForPath('/api/admin/staff/access'), 'roles');
   assert.equal(staffFeatureForPath('/api/admin/staff/roles/123/access'), 'roles');
   assert.equal(staffFeatureForPath('/api/admin/staff/invitations'), 'personal');
@@ -49,8 +51,10 @@ test('guard enforces saved view and edit rights across staff sections', async ()
   }) as unknown as ExecutionContext;
 
   assert.equal(await guard.canActivate(context('/api/products/admin/list', 'GET', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/brands/admin', 'GET', Role.SALES)), false);
   override = { canView: true, canEdit: false };
   assert.equal(await guard.canActivate(context('/api/products/admin/list', 'GET', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/laboratories/admin', 'GET', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/products/123', 'PATCH', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/orders/123/returns/preview', 'POST', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/orders/123/invoices/456', 'GET', Role.SALES)), false);

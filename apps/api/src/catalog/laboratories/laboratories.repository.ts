@@ -14,6 +14,10 @@ export class LaboratoriesRepository {
     return this.prisma.laboratory.create({ data });
   }
 
+  findAdmin() {
+    return this.prisma.laboratory.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } });
+  }
+
   update(id: string, data: Prisma.LaboratoryUpdateInput) {
     return this.prisma.laboratory.update({ where: { id }, data });
   }

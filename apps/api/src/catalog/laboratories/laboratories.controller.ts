@@ -29,6 +29,12 @@ export class LaboratoriesController {
     return this.laboratoriesService.create(dto);
   }
 
+  @Get('admin')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  findAdmin() { return this.laboratoriesService.findAdmin(); }
+
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

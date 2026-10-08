@@ -6,6 +6,7 @@ import { LaboratoriesRepository } from './laboratories.repository';
 
 @Injectable()
 export class LaboratoriesService {
+  findAdmin() { return this.laboratoriesRepository.findAdmin(); }
   constructor(private readonly laboratoriesRepository: LaboratoriesRepository) {}
 
   findAll() {
