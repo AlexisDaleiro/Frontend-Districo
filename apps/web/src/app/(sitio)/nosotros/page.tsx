@@ -80,7 +80,7 @@ export default function Page() {
               </li>
             ))}
           </ul>
-          <a className="button lime" href="mailto:contacto@districo.com.uy?subject=Postulaci%C3%B3n%20%E2%80%94%20DISTRICO">Enviar mi CV</a>
+          <Link className="button lime" href="/trabajo">Ver puestos disponibles</Link>
         </div>
       </section>
 

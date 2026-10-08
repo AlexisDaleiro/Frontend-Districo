@@ -90,8 +90,8 @@ async function probeReveal(page: Page) {
             // Logo de respaldo de las tarjetas de marca: se oculta a propósito
             // cuando carga la foto de la marca.
             !e.closest(".site-brand-art.is-loaded") &&
-            // Productos inactivos de cada línea: ocultos a propósito hasta su turno.
-            !e.closest('.reference-showcase-item[aria-hidden="true"]') &&
+            // Destacados inactivos del hero: ocultos a propósito hasta su turno.
+            !e.closest('.home-slide[aria-hidden="true"]') &&
             !clipped(e),
         )
         .map((e) => e.className.toString().slice(0, 30));

@@ -432,8 +432,6 @@
 .site-brand-filters button { min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 99px; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; transition: background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
 .site-brand-filters button:hover { border-color: var(--ink); }
 .site-brand-filters button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: white; }
-.site-brand-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.site-brand-grid .reference-brand-card { min-height: 220px; aspect-ratio: .62; }
 .site-about-hero { display: grid; gap: 34px; align-items: center; }
 .site-about-history { padding-top: clamp(20px, 2.8vw, 38px); }
 .site-about-history, .site-about-values, .site-about-team, .site-about-infra { padding-bottom: clamp(44px, 5vw, 72px); }
@@ -469,8 +467,6 @@
 .site-about-gallery { display: grid; gap: 12px; margin: 24px 0 0; padding: 0; list-style: none; }
 .site-about-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); }
 @media (min-width: 768px) {
-  .site-brand-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .site-brand-grid .reference-brand-card { aspect-ratio: .9; }
   .site-about-hero { grid-template-columns: 1.1fr .9fr; gap: 40px; }
   .site-about-values dl, .site-about-purpose .container, .site-about-facts { grid-template-columns: 1fr 1fr; }
   .site-about-team ul, .site-about-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }

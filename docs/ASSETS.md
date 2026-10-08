@@ -7,6 +7,7 @@ Recuperación: 25/09/2026. Se seleccionaron 20 productos de catálogos públicos
 - Fuentes: https://www.districo.com.uy, https://raicor.com.uy y https://magnis.com.uy.
 - Sustituto de imágenes faltantes (`/images/placeholder.svg`): elaboración propia, registrado también en `asset-sources.json`.
 - Logo: imagen pública `logo-districo-23.png` del sitio de DISTRICO.
+- `logo-districo-blanco.png`: derivado del logo oficial quitando su fondo petróleo (letras blancas y hoja lima, PNG 201 × 38 con transparencia). Lo usan header y footer del sitio público para que el logo se vea sobre fotos con el header transparente. Falta el logo vectorial oficial.
 - Paleta observada: CSS público https://www.districo.com.uy/wp-content/uploads/elementor/css/post-11.css.
 - Colores base observados: petróleo `#204F5F`, lima `#B1CA00`, gris `#636466`, fondo `#EFEFEF`. Tonos auxiliares de la UI derivados para contraste; no se presentan como colores oficiales adicionales.
 - Portada: fotografía de cuidado veterinario publicada por Raicor, sin alterar su contenido. Los banners comerciales de DISTRICO están guardados para variantes visuales y página de empresa.

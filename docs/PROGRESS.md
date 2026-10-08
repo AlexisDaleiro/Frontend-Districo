@@ -2,6 +2,17 @@
 
 Última actualización: 7 de octubre de 2026. Rama de trabajo: `main`.
 
+## Sitio institucional: nueva portada, directorio de marcas y empleos (7/10/2026)
+
+- Origen: boceto aprobado en un Artifact de diseño (Inicio, Explorá nuestras marcas, Trabajá con nosotros, Identidad) a partir del catálogo maestro de marcas (Excel del 06/10) y referencias de Divino, Central Garden & Pet y Adimax.
+- Portada (`src/components/site-home.tsx`, estilos en `src/app/site-home.css`, que reemplaza a `site-hero-story.css`): hero a sangre con tres fotos reales y el header transparente encima hasta hacer scroll (lógica existente de `PublicHeader`); rota cada 7 s con botón de pausa (WCAG 2.2.2), flechas y puntos; no rota con movimiento reducido, foco dentro o pestaña oculta. Siguen cifras, «Qué distribuimos» (7 líneas que llevan a `/marcas?linea=…`), «Marcas destacadas» (logos que muestran las presentaciones de Biofresh, Primocão, Pipicat, Procão y Stack), banner clickeable «Explorá nuestras marcas», Nosotros resumido y acceso a empleos. Se mantienen «Solicitar cuenta» e «Ingresar».
+- Marcas (`src/lib/site-brands.ts`): 28 marcas del catálogo maestro con línea, especie, relación, descripción y fotos de presentaciones de `public/images`. Se quitó la tarjeta «Laboratorios» (Raicor); farmacia queda con NexGard. 10 marcas sin logo oficial se muestran con su nombre. `/marcas`: búsqueda, filtros por línea (lee `?linea=`) y especie, detalle con presentaciones y enlace a `/productos?search=…`.
+- Empleos (`/trabajo`, `src/components/site-jobs.tsx`, `src/data/job-openings.ts`): portal con búsqueda, sede, filtros por área y jornada, orden y ficha desplegable con «Postularme» por correo. La API no publica búsquedas: en modo real la lista está vacía y se muestra «No hay búsquedas abiertas»; los 6 puestos de ejemplo existen solo en modo demo y la página lo aclara. Nav: «Empleos»; Nosotros y footer enlazan a `/trabajo`.
+- Header y footer usan `logo-districo-blanco.png` (ver `docs/ASSETS.md`); la barra sólida sigue en petróleo.
+- Borrados por quedar sin uso: `site-brand-strip`, `site-home-reference`, `site-line-showcase`, `site-brand-card`, `site-brands` y sus reglas CSS (`site-reference.css`, `.site-brand-grid`).
+- Pruebas: `tsc --noEmit`, ESLint y vitest (83/83) correctos. E2E demo con `E2E_PORT=3107`: `landing` + `motion` 28/28 y `flows` 21/21, tras actualizar aserciones de la portada, marcas y empleos (`landing.spec.ts`, `flows.spec.ts`) y la exención de slides inactivos en `motion.spec.ts`. Capturas 1440/390 sin desbordamiento contra el servidor real del puerto 3000 y el demo.
+- Sin commit ni push. Pendientes: logos oficiales de 10 marcas y logo vectorial; definir de dónde salen las búsquedas laborales reales; revisión humana del diseño.
+
 ## Ingreso sin espacio blanco bajo el footer (7/10/2026)
 
 - Causa reproducida a 1440 × 1080: el documento ocupaba 1080 px, pero el footer terminaba en 1017,45 px. `StoreFrame` ahora envuelve solo las rutas públicas de acceso en `.site-access-frame`, una columna flex con altura mínima `100svh`; el main crece para completar la ventana y el footer no se contrae (`site.css`). También aplica a solicitud de cuenta y recuperación de acceso que comparten ese marco.

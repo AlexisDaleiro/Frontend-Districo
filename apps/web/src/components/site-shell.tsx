@@ -13,6 +13,7 @@ const navLinks = [
   ["/marcas", "Marcas"],
   ["/garantia", "Garantía"],
   ["/nosotros", "Nosotros"],
+  ["/trabajo", "Empleos"],
   ["/contacto", "Contacto"],
 ] as const;
 
@@ -87,7 +88,7 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
         <div className="container site-header-inner">
           <Link href="/" className="site-logo" aria-label="DISTRICO · Inicio">
             <Picture
-              src="/images/logo-districo.png"
+              src="/images/logo-districo-blanco.png"
               alt="DISTRICO"
               width={201}
               height={38}
@@ -150,7 +151,7 @@ export function PublicFooter() {
         <div>
           <Picture
             className="footer-logo"
-            src="/images/logo-districo.png"
+            src="/images/logo-districo-blanco.png"
             alt="DISTRICO"
             width={201}
             height={38}
@@ -167,6 +168,7 @@ export function PublicFooter() {
           <Link href="/nosotros">Nosotros</Link>
           <Link href="/productos">Productos</Link>
           <Link href="/marcas">Marcas</Link>
+          <Link href="/trabajo">Trabajá con nosotros</Link>
         </div>
         <div>
           <h3>Casa Matriz</h3>

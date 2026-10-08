@@ -4,7 +4,7 @@ import "../motion.css";
 import "../site.css";
 import "../site-reference.css";
 import "../site-motion.css";
-import "../site-hero-story.css";
+import "../site-home.css";
 import { MotionSystem } from "@/components/motion-system";
 import { PublicHeader, PublicFooter } from "@/components/site-shell";
 
