@@ -149,7 +149,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
         </div>
       )}
       {!readOnly && !DEMO && canPay && (
-        <form onSubmit={(event) => void recordPayment(event)} className="order-billing-form">
+        <form data-admin-save="true" aria-busy={!!busy} onSubmit={(event) => void recordPayment(event)} className="order-billing-form">
           <h4>Actualizar estado de pago</h4>
           <div className="order-billing-modes" role="group" aria-label="Tipo de pago">
             <button type="button" aria-pressed={mode === "partial"} onClick={() => { setMode("partial"); requestId.current = crypto.randomUUID(); }}>Pago parcial</button>
@@ -187,7 +187,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
         ) : <p className="muted small-copy">Sin facturas registradas.</p>}
       </div>
       {correction && (
-        <form className="order-billing-form" onSubmit={(event) => void voidRecord(event)}>
+        <form data-admin-save="true" aria-busy={!!busy} className="order-billing-form" onSubmit={(event) => void voidRecord(event)}>
           <h4>Anular {correction.kind === "payment" ? "pago" : "factura"}</h4>
           <label className="field">Motivo de la anulación
             <textarea className="form-input" value={reason} required minLength={3} maxLength={500} onChange={(event) => setReason(event.target.value)} />
@@ -199,7 +199,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
         </form>
       )}
       {!readOnly && !DEMO && (
-        <form className="order-billing-form" onSubmit={(event) => void attachInvoice(event)}>
+        <form data-admin-save="true" aria-busy={!!busy} className="order-billing-form" onSubmit={(event) => void attachInvoice(event)}>
           <h4>{replacesInvoiceId ? "Reemplazar factura" : "Registrar factura"}</h4>
           {replacesInvoiceId && <>
             <p className="small-copy muted">La factura anterior quedará en el historial como anulada.</p>

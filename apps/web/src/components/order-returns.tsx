@@ -95,7 +95,7 @@ export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Or
       <span>{refund.reason}{refund.reference ? ` · Ref. ${refund.reference}` : ""} · {new Date(refund.createdAt).toLocaleString("es-UY")}{refund.recordedByEmail ? ` · ${refund.recordedByEmail}` : ""}</span>
       <strong>{money(Number(refund.amount), order.currency)}</strong>
     </li>)}</ul></>}
-    {!readOnly && canCredit && <form className="order-billing-form" onSubmit={(event) => void saveCredit(event)}>
+    {!readOnly && canCredit && <form data-admin-save="true" aria-busy={busy} className="order-billing-form" onSubmit={(event) => void saveCredit(event)}>
       <h4>Registrar nota de crédito</h4>
       <label className="field">Importe ({order.currency})<input className="form-input" type="number" min="0.01" max={balance.creditable} step="0.01" required value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} /></label>
       <label className="field">Motivo de la devolución<textarea className="form-input" minLength={3} maxLength={500} required value={creditReason} onChange={(event) => setCreditReason(event.target.value)} /></label>
@@ -103,7 +103,7 @@ export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Or
       <label className="field">Archivo (PDF, PNG o JPG)<input ref={fileInput} className="form-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
       <button className="button small secondary" disabled={busy} type="submit"><FileUp size={16} /> Registrar crédito</button>
     </form>}
-    {!readOnly && balance.refundable > 0 && <form className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
+    {!readOnly && balance.refundable > 0 && <form data-admin-save="true" aria-busy={busy} className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
       <h4>Registrar dinero reintegrado</h4>
       <label className="field">Importe ({order.currency})<input className="form-input" type="number" min="0.01" max={balance.refundable} step="0.01" required value={refundAmount} onChange={(event) => setRefundAmount(event.target.value)} /></label>
       <label className="field">Motivo<textarea className="form-input" minLength={3} maxLength={500} required value={refundReason} onChange={(event) => setRefundReason(event.target.value)} /></label>

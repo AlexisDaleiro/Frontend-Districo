@@ -41,11 +41,13 @@ test("crea un rol, configura permisos y lo asigna por invitación", async ({ pag
   await page.getByLabel("Correo electrónico").fill("deposito@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("ContraseñaSegura123!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/);
   await page.goto("/tienda/admin/catalogo");
   await expect(page.getByRole("heading", { name: "Catálogo", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crear producto" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Roles" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Pedidos" })).toHaveCount(0);
+  const navigation = page.getByRole("navigation", { name: "Administración", exact: true });
+  await expect(navigation.getByRole("link", { name: "Roles", exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Pedidos", exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

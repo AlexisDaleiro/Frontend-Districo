@@ -108,6 +108,34 @@ textarea:focus-visible {
 svg {
   flex-shrink: 0;
 }
+
+.admin-command-trigger { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 13px; text-align: left; }
+.admin-sidebar[data-collapsed="true"] .admin-command-trigger { justify-content: center; padding: 12px 0; }
+.admin-sidebar[data-collapsed="true"] .admin-command-trigger span { display: none; }
+.modal.admin-command-dialog { width: min(640px, calc(100vw - 24px)); }
+.admin-command-results { display: grid; gap: 4px; margin-top: 12px; max-height: 52svh; overflow-y: auto; }
+.admin-command-result { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 1px solid transparent; border-radius: 4px; background: white; color: var(--ink); text-align: left; }
+.admin-command-result[aria-selected="true"] { border-color: var(--line); background: var(--paper); }
+.admin-command-result strong, .admin-command-result small { display: block; overflow-wrap: anywhere; }
+.admin-command-result small { margin-top: 3px; color: var(--muted); }
+.admin-bulk-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 0; border-block: 1px solid var(--line); margin-block: 16px; font-size: 13px; }
+.admin-selection-cell { width: 44px; text-align: center; }
+.admin-selection-cell input { width: 17px; height: 17px; accent-color: var(--ink); cursor: pointer; }
+.admin-history-actions { margin-block: 12px; justify-content: flex-end; }
+.modal.admin-bulk-dialog { width: min(880px, calc(100vw - 24px)); }
+.admin-bulk-fields { display: grid; gap: 16px; border: 0; padding: 0; min-width: 0; }
+.admin-bulk-names { display: flex; flex-wrap: wrap; gap: 6px 16px; max-height: 120px; overflow-y: auto; font-size: 13px; }
+.admin-bulk-preview { max-height: 42svh; overflow: auto; }
+.admin-bulk-preview td { overflow-wrap: anywhere; min-width: 110px; }
+.admin-bulk-preview th:first-child { width: 55%; }
+.admin-bulk-history { padding-block: 14px; border-bottom: 1px solid var(--line); }
+.admin-bulk-history summary { cursor: pointer; font-size: 13px; }
+.admin-bulk-history p { margin-block: 12px; overflow-wrap: anywhere; }
+.admin-seller-options { display: grid; gap: 8px; max-height: 200px; overflow-y: auto; }
+@media (max-width: 600px) {
+  .admin-bulk-toolbar .actions { width: 100%; }
+  .admin-command-trigger { width: auto; }
+}
 .container {
   width: min(1280px, calc(100% - 80px));
   margin-inline: auto;

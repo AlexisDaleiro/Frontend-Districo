@@ -112,7 +112,7 @@ function ProfileForm({ seller, onSaved, canEdit }: { seller: SalespersonDetail; 
     } catch (cause) { setError(cause); }
     finally { setBusy(false); }
   }
-  return <form className="admin-salesperson-profile" onSubmit={(event) => void save(event)}>
+  return <form data-admin-save={canEdit ? "true" : undefined} aria-busy={busy} className="admin-salesperson-profile" onSubmit={(event) => void save(event)}>
     <label className="field">Nombre del vendedor<input className="form-input" required minLength={2} maxLength={100} value={name} readOnly={!canEdit} onChange={(event) => setName(event.target.value)} /></label>
     <label className="field">Número de contacto<input className="form-input" type="tel" required pattern="(?=(?:[^0-9]*[0-9]){6})[+]?[0-9 ().-]{6,30}" value={phone} readOnly={!canEdit} onChange={(event) => setPhone(event.target.value)} /></label>
     <label className="field">Correo de acceso<input className="form-input" type="email" readOnly value={seller.email} /></label>

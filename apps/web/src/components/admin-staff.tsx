@@ -125,7 +125,7 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
       setError(cause instanceof Error ? cause.message : "No se pudieron guardar los permisos.");
     } finally { setBusy(false); }
   }
-  return <section className="staff-role-access">
+  return <form data-admin-save={!locked ? "true" : undefined} aria-busy={busy} className="staff-role-access" onSubmit={(event) => { event.preventDefault(); if (!locked && dirty && !busy) void save(); }}>
     <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>FUNCIONALIDAD</th><th>VER</th><th>EDITAR</th></tr></thead>
       <tbody>{staffFeatures.map(([feature, title]) => <tr key={feature}>
         <td>{title}</td>
@@ -133,9 +133,9 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
         <td><input type="checkbox" aria-label={`Editar ${title}`} checked={draft[feature].canEdit} disabled={locked || busy || feature === "resumen" || feature === "ventas"} onChange={(event) => toggle(feature, "canEdit", event.target.checked)} /></td>
       </tr>)}</tbody></table></div>
     {error && <p className="error" role="alert">{error}</p>}
-    {!locked && <div className="actions"><button className="button small" type="button" disabled={!dirty || busy} onClick={() => void save()}><Save size={16} />{busy ? "Guardando…" : "Guardar permisos"}</button>
+    {!locked && <div className="actions"><button className="button small" type="submit" disabled={!dirty || busy}><Save size={16} />{busy ? "Guardando…" : "Guardar permisos"}</button>
       <button className="button small secondary" type="button" disabled={!dirty || busy} onClick={() => setDraft(item.access)}>Descartar</button></div>}
-  </section>;
+  </form>;
 }
 
 export function AdminStaff() {

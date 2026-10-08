@@ -120,7 +120,7 @@ export function AdminForm({
     }
   }
   return (
-    <form onSubmit={form.handleSubmit(submit)} noValidate>
+    <form data-admin-save="true" aria-busy={form.formState.isSubmitting} onSubmit={form.handleSubmit(submit)} noValidate>
       {editor.description && (
         <p className="muted small-copy" style={{ marginBottom: 20 }}>
           {editor.description}

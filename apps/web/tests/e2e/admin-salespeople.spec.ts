@@ -5,6 +5,7 @@ test("administra vendedores y asigna un único responsable por cliente", async (
   await page.goto("/tienda/ingresar");
   await page.getByRole("button", { name: "Administración", exact: true }).click();
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/);
   await page.goto("/tienda/admin/vendedores");
 
   for (const [name, email, phone] of [

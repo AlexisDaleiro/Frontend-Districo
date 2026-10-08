@@ -35,7 +35,7 @@ const revealSelector = [
   ".admin-sidebar",
   ".admin-toolbar",
   ".admin-cards > *",
-  ".admin-main tbody > tr",
+  ".admin-main tbody > tr:not([data-bulk-entry])",
   ".stats > *",
   ".panel",
   ".empty",

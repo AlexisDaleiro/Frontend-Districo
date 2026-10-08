@@ -15,6 +15,7 @@ import type {
 import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
 import { orderBalance } from "./order-billing";
+import { demoAdminTools, type DemoToolsState } from "./demo-admin-tools";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
@@ -49,6 +50,7 @@ type State = {
   creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
   salespeople?: Record<string, { id: string; name: string; phone: string }>;
   consumedOrderIds?: string[];
+  bulkHistory?: DemoToolsState["bulkHistory"];
 };
 const KEY = "districo-demo-v1";
 export const blankState = (): State => ({
@@ -731,6 +733,8 @@ export async function demoRequest<T>(
   } else if (route === "banners" && method === "GET") {
     const now = new Date().toISOString();
     result = (s.banners ?? []).filter((banner) => banner.active && (!banner.startsAt || banner.startsAt <= now) && (!banner.endsAt || banner.endsAt >= now)).sort((a, b) => a.position - b.position);
+  } else if (route === "admin/search" || route.startsWith("admin/bulk/")) {
+    result = await demoAdminTools(s, path, method, b, user);
   } else if (
     route.startsWith("admin/") ||
     route.startsWith("inventory/") ||

@@ -100,7 +100,7 @@ export function AdminPromotionForm({ rule, onDone }: { rule?: Rule; onDone: () =
     finally { setBusy(false); }
   }
 
-  return <form className="promotion-form" onSubmit={(event) => void submit(event)}>
+  return <form data-admin-save="true" aria-busy={busy} className="promotion-form" onSubmit={(event) => void submit(event)}>
     <div className="form-grid">
       <label className="field">Nombre *<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
       <label className="field span-2">Descripción<textarea value={description} onChange={(event) => setDescription(event.target.value)} /></label>

@@ -68,7 +68,7 @@ export function AdminCategoryEditor({ category, parentOptions, onClose, onRename
   }
 
   return <div className="admin-category-editor">
-    <form onSubmit={(event) => void save(event)} className="form-grid">
+    <form data-admin-save="true" aria-busy={busy} onSubmit={(event) => void save(event)} className="form-grid">
       <label className="field">Nombre *<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
       <label className="field">Identificador en la URL<input value={slug} onChange={(event) => setSlug(event.target.value)} /></label>
       <label className="field">Categoría superior<select value={parentId} onChange={(event) => setParentId(event.target.value)}>

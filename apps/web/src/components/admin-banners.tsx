@@ -130,7 +130,7 @@ export function AdminBanners() {
       </tr>)}
     </tbody></table></div> : <p className="muted">Todavía no hay banners cargados. La tienda muestra los actuales hasta que publiques el primero.</p>}
     <Modal open={!!editing} onClose={() => setEditing(null)} title={editing === "new" ? "Nuevo banner" : "Editar banner"}>
-      <form className="stack admin-banner-form" onSubmit={(event) => void save(event)}>
+      <form data-admin-save="true" className="stack admin-banner-form" onSubmit={(event) => void save(event)}>
         <label className="field">Título<input className="form-input" required maxLength={120} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
         <label className="field">Texto secundario<input className="form-input" maxLength={240} value={draft.subtitle} onChange={(event) => setDraft({ ...draft, subtitle: event.target.value })} /></label>
         <div className="form-grid">

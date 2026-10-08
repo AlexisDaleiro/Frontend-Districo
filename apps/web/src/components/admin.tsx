@@ -36,6 +36,8 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccessGate } from "./auth";
 import { DEMO, request, useApi, useSession } from "./providers";
+import { AdminCommandMenu } from "./admin-command-menu";
+import { AdminBulkActions, BulkHistory, PageSelection, RowSelection, useAdminSelection } from "./admin-bulk-actions";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { CountUp } from "./count-up";
@@ -435,6 +437,8 @@ export function customerEditor(c: Customer): Editor {
 }
 function Customers() {
   const { user } = useSession();
+  const canReassign = canEditAdminFeature(user, "vendedores");
+  const selection = useAdminSelection();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -461,11 +465,14 @@ function Customers() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
       </div>
+      {canReassign && <AdminBulkActions kind="customers" selection={selection} />}
+      {canViewAdminFeature(user, "vendedores") && <div className="actions admin-history-actions"><BulkHistory feature="vendedores" /></div>}
       {!!rows.length && <div className="table-wrap">
         <table className="admin-customers-table">
-          <thead><tr><th>CLIENTE</th><th>CONTACTO</th><th>CUENTA</th><th>CRÉDITO</th><th>MEDICAMENTOS</th><th>ACCIÓN</th></tr></thead>
+          <thead><tr>{canReassign && <th className="admin-selection-cell"><PageSelection selection={selection} rows={rows.map((c) => ({ id: c.id, name: c.businessName }))} /></th>}<th>CLIENTE</th><th>CONTACTO</th><th>CUENTA</th><th>CRÉDITO</th><th>MEDICAMENTOS</th><th>ACCIÓN</th></tr></thead>
           <tbody>{rows.map((c) => (
           <tr key={c.id}>
+            {canReassign && <td className="admin-selection-cell"><RowSelection selection={selection} id={c.id} name={c.businessName} /></td>}
             <td><strong>{c.businessName}</strong><br /><span className="muted">{c.legalName} · {c.rut}</span></td>
             <td>{c.users?.map((u) => u.email).join(", ") || "Sin correo"}<br /><span className="muted">{c.phone || "Sin teléfono"}</span></td>
             <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
@@ -515,7 +522,7 @@ export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpd
       <h3>Estado del pedido</h3>
       <p className="small-copy muted">Actual: {orderProgressOptionLabel(order.status)}</p>
       {choices.length > 1 && (
-        <div className="order-management-status-fields">
+        <form data-admin-save="true" aria-busy={mutation.isPending} className="order-management-status-fields" onSubmit={(event) => { event.preventDefault(); if (selected !== order.status && !mutation.isPending) mutation.mutate(); }}>
           <label className="field">
             Nuevo estado
             <select
@@ -540,9 +547,8 @@ export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpd
           </label>
           <button
             className="button small secondary"
-            type="button"
+            type="submit"
             disabled={selected === order.status || mutation.isPending}
-            onClick={() => mutation.mutate()}
           >
             <Save size={16} /> Guardar estado
           </button>
@@ -551,7 +557,7 @@ export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpd
               {orderStockEffect(order.status, selected)}
             </p>
           )}
-        </div>
+        </form>
       )}
       {mutation.error && <ErrorBox error={mutation.error} />}
     </section>
@@ -731,6 +737,7 @@ function AdminOrders() {
 function ProductManagement({ edit }: { edit: OpenEditor }) {
   const { user } = useSession();
   const canEdit = canEditAdminFeature(user, "catalogo");
+  const selection = useAdminSelection();
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [activity, setActivity] = useState("");
@@ -777,10 +784,13 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
           </button>
         ))}
       </div>
+      {canEdit && <AdminBulkActions kind="products" selection={selection} />}
+      <div className="actions admin-history-actions"><BulkHistory feature="catalogo" /></div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
+              {canEdit && <th className="admin-selection-cell"><PageSelection selection={selection} rows={q.data.items.map((p) => ({ id: p.id, name: p.name }))} /></th>}
               <th>PRODUCTO</th>
               <th>MARCA</th>
               <th>PRESENTACIONES</th>
@@ -794,6 +804,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                 .filter((variant) => variant.active !== false)
                 .reduce((total, variant) => total + variant.availableStock, 0);
               return <tr key={p.id}>
+                {canEdit && <td className="admin-selection-cell"><RowSelection selection={selection} id={p.id} name={p.name} /></td>}
                 <td>
                   <div className="row">
                     <Picture
@@ -1480,6 +1491,7 @@ export function AdminNav({ section, email }: { section: string; email?: string }
           onClick={toggleCollapsed}
         ><Menu size={20} /></button>
       </div>
+      <AdminCommandMenu />
       <nav className="admin-nav" aria-label="Administración" id="admin-navigation" ref={nav}>
         <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
         {groups.filter((group) => sections.some(([g, path]) => g === group && canSeeAdminSection(user, path))).map((group) => (

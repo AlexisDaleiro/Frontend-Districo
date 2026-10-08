@@ -47,7 +47,7 @@ test("solicitudes antiguas, ficha del cliente y pedidos filtrados", async ({ pag
   await expect(page.getByRole("heading", { name: "Pedido DIS-FILTRO" })).toBeVisible();
   await expect(page.getByText("Monto a pagar")).toBeVisible();
   await page.getByLabel("Nuevo estado").selectOption("PROCESSING");
-  await page.getByRole("button", { name: "Guardar estado" }).click();
+  await page.getByLabel("Nuevo estado").press("Control+s");
   await expect(page.locator(".admin-record-page")).toContainText("Procesando");
   await page.getByRole("link", { name: "Volver a pedidos" }).click();
   await expect(page.getByText("No hay pedidos en este estado")).toBeVisible();
