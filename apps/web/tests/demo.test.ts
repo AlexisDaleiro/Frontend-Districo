@@ -8,6 +8,7 @@ import type {
   Order,
   ProductCardList,
   ProductList,
+  Rule,
   User,
 } from "../src/lib/types";
 import { firstQuantity, quantityError } from "../src/lib/commerce";
@@ -24,6 +25,47 @@ beforeEach(() => {
 const login = (email = "cliente@gmail.com") =>
   api("auth/login", "POST", { email, password: "Demo1234!" });
 describe("Demo B2B: permisos y aislamiento", () => {
+  it.each(["PRODUCT", "BRAND", "CATEGORY"].flatMap((trigger) => ["PRODUCT", "BRAND", "CATEGORY"].map((target) => [trigger, target])))
+  ("activa por %s y descuenta a %s al confirmar el pedido", async (trigger, target) => {
+    await login("admin@districo.com");
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const products = state.products.filter((product: { requiresMedicationPermission: boolean; brand?: unknown; categories: unknown[] }) => !product.requiresMedicationPermission && product.brand && product.categories.length).slice(0, 2);
+    const scopeId = (product: typeof products[number], scope: string) => scope === "PRODUCT" ? product.id : scope === "BRAND" ? product.brand.id : product.categories[0].categoryId;
+    const created = await api<Rule>("promotions", "POST", { name: "Promo cruzada", type: "CROSS_DISCOUNT", startsAt: "2020-01-01T00:00:00Z",
+      conditions: [{ targetType: trigger, targetIds: [scopeId(products[0], trigger), "alternative"], metric: "MIN_QUANTITY", minQuantity: 1 }],
+      rewards: [{ targetType: target, targetId: scopeId(products[1], target), rewardType: "PERCENTAGE", percentage: 10 }],
+    });
+    expect(created.conditions?.[0].targetIds).toHaveLength(2);
+    const client = state.users.find((user: User) => user.email === "cliente@gmail.com");
+    const saved = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    saved.carts[client.id] = products.map((product: typeof products[number], index: number) => ({ id: `cart-${index}`, variantId: product.variants[0].id, quantity: firstQuantity(product.variants[0]) }));
+    localStorage.setItem("districo-demo-v1", JSON.stringify(saved));
+    await login();
+    const order = await api<Order>("checkout", "POST", {});
+    const expectedDiscount = products.filter((product: typeof products[number]) => scopeId(product, target) === scopeId(products[1], target))
+      .reduce((sum: number, product: typeof products[number]) => sum + Number(product.variants[0].price.amount) * firstQuantity(product.variants[0]) * 0.1, 0);
+    expect(order.discountTotal).toBeCloseTo(expectedDiscount);
+    expect(order.total).toBeCloseTo(order.subtotal - expectedDiscount);
+  });
+
+  it("no descuenta si falta el activador y conserva la selección al editar", async () => {
+    await login("admin@districo.com");
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const product = state.products.find((item: { requiresMedicationPermission: boolean }) => !item.requiresMedicationPermission);
+    const rule = await api<Rule>("promotions", "POST", { name: "Condicionada", type: "CROSS_DISCOUNT", startsAt: "2020-01-01T00:00:00Z",
+      conditions: [{ targetType: "PRODUCT", targetIds: ["not-in-cart", "also-not-in-cart"], metric: "MIN_QUANTITY", minQuantity: 1 }],
+      rewards: [{ targetType: "PRODUCT", targetId: product.id, rewardType: "PERCENTAGE", percentage: 10 }],
+    });
+    await api(`promotions/${rule.id}`, "PATCH", { ...rule, name: "Editada" });
+    const listed = await api<Rule[]>("promotions");
+    expect(listed[0].conditions?.[0].targetIds).toEqual(["not-in-cart", "also-not-in-cart"]);
+    const saved = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const client = state.users.find((user: User) => user.email === "cliente@gmail.com");
+    saved.carts[client.id] = [{ id: "cart-1", variantId: product.variants[0].id, quantity: firstQuantity(product.variants[0]) }];
+    localStorage.setItem("districo-demo-v1", JSON.stringify(saved));
+    await login();
+    expect((await api<Order>("checkout", "POST", {})).discountTotal).toBe(0);
+  });
   it("aplica Ver y Editar de Personal, Roles y Vendedores a las rutas de la demo", async () => {
     const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
     state.users.push({ id: "staff-permissions", email: "staff-permissions@example.test", role: "SALES", permissions: [], active: true, emailVerified: true });

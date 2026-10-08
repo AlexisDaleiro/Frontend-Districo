@@ -58,7 +58,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
 import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
-import { scopedPromotion } from "@/lib/promotion-scope";
+import { promotionTriggerIds, scopedPromotion } from "@/lib/promotion-scope";
 import {
   label,
   money,
@@ -1028,6 +1028,7 @@ function Marketing({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<unknown>();
   const [promotionRule, setPromotionRule] = useState<Rule | null | undefined>(undefined);
+  const [promotionBusy, setPromotionBusy] = useState(false);
   const [recommendationRule, setRecommendationRule] = useState<Rule | null | undefined>(undefined);
   const [recommendationBusy, setRecommendationBusy] = useState(false);
   const [productSearch, setProductSearch] = useState("");
@@ -1176,7 +1177,7 @@ function Marketing({
                 ...(metric === "MIN_QUANTITY" ? { minQuantity } : { minAmount }),
               },
               ...(rule?.conditions?.slice(1).map((item) => ({
-                targetType: item.targetType, targetId: item.targetId, metric: item.metric,
+                targetType: item.targetType, targetId: item.targetId, targetIds: item.targetIds?.length ? item.targetIds : undefined, metric: item.metric,
                 minQuantity: item.minQuantity, minAmount: item.minAmount,
               })) ?? []),
             ],
@@ -1253,13 +1254,20 @@ function Marketing({
                 <p className="small-copy">Se activa al comprar: {rule.triggerTargets?.map((item) => item.name).join(", ") ?? rule.triggerIds?.join(", ") ?? rule.triggerId}</p>
                 <p className="small-copy">Recomendar: {rule.targetTargets?.map((item) => item.name).join(", ") ?? rule.targetIds?.join(", ") ?? rule.products?.map((item) => item.productId).join(", ")}</p>
               </>}
-              {!recommendations && scopedPromotion(rule) && <p className="small-copy">
+              {!recommendations && scopedPromotion(rule) && <>
+              <p className="small-copy">{rule.conditions?.length
+                ? `Se activa al comprar: ${rule.triggerTargets?.map((item) => item.name).join(", ") || promotionTriggerIds(rule.conditions[0]).join(", ")}`
+                : "Sin compra condicionante"}</p>
+              {rule.conditions?.[0] && <p className="small-copy muted">{rule.conditions[0].metric === "MIN_AMOUNT"
+                ? `Importe mínimo de la selección: ${money(Number(rule.conditions[0].minAmount ?? 0))}`
+                : `Cantidad mínima: ${rule.conditions[0].minQuantity ?? 1}`}</p>}
+              <p className="small-copy">
                 Aplicada a {rule.rewards.length} {rule.rewards[0].targetType === "PRODUCT"
                   ? rule.rewards.length === 1 ? "producto" : "productos"
                   : rule.rewards[0].targetType === "BRAND"
                     ? rule.rewards.length === 1 ? "marca" : "marcas"
                     : rule.rewards.length === 1 ? "categoría" : "categorías"}
-              </p>}
+              </p></>}
               {canEdit && <div className="actions">
                 <button className="button small secondary" disabled={!!busyId || (!recommendations && !scopedPromotion(rule) && !products.data)} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
                 <button className="button small secondary" disabled={!!busyId} onClick={() => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}>
@@ -1392,8 +1400,8 @@ function Marketing({
           )}
         </section>
       )}
-      <Modal open={promotionRule !== undefined} onClose={() => setPromotionRule(undefined)} title={promotionRule ? "Editar promoción" : "Crear promoción"} className="promotion-editor-modal">
-        {promotionRule !== undefined && <AdminPromotionForm key={promotionRule?.id ?? "new"} rule={promotionRule ?? undefined} onDone={() => setPromotionRule(undefined)} />}
+      <Modal open={promotionRule !== undefined} onClose={() => { if (!promotionBusy) setPromotionRule(undefined); }} title={promotionRule ? "Editar promoción" : "Crear promoción"} className="promotion-editor-modal">
+        {promotionRule !== undefined && <AdminPromotionForm key={promotionRule?.id ?? "new"} rule={promotionRule ?? undefined} onDone={() => setPromotionRule(undefined)} onBusy={setPromotionBusy} />}
       </Modal>
       <Modal open={recommendationRule !== undefined} onClose={() => { if (!recommendationBusy) setRecommendationRule(undefined); }} title={recommendationRule ? "Editar recomendación" : "Crear recomendación"} className="promotion-editor-modal">
         {recommendationRule !== undefined && <AdminRecommendationForm key={recommendationRule?.id ?? "new"} rule={recommendationRule ?? undefined} onBusy={setRecommendationBusy} onDone={() => setRecommendationRule(undefined)} />}

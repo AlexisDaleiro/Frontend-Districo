@@ -73,8 +73,8 @@ test('active marketing rules prevent deletion even without products', async () =
       findUnique: async () => ({ id: 'brand-1', deletedAt: null }),
       updateMany: async () => { called = true; return { count: 1 }; },
     },
-    promotionCondition: { count: async ({ where }: { where: { targetId: string } }) => {
-      assert.equal(where.targetId, 'brand-1');
+    promotionCondition: { count: async ({ where }: { where: { OR: unknown[] } }) => {
+      assert.deepEqual(where.OR, [{ targetId: 'brand-1' }, { targetIds: { has: 'brand-1' } }]);
       return 1;
     } },
     promotionReward: { count: async () => 0 },

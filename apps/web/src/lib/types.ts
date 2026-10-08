@@ -247,6 +247,7 @@ export type Rule = {
   conditions?: {
     targetType: string;
     targetId?: string;
+    targetIds?: string[];
     metric: string;
     minQuantity?: number;
     minAmount?: number;

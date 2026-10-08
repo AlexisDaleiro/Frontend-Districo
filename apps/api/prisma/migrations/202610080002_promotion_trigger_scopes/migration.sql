@@ -1,0 +1,1 @@
+ALTER TABLE "PromotionCondition" ADD COLUMN "targetIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

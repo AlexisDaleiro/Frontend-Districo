@@ -13,6 +13,7 @@ export interface PromotionLine {
 export interface PromotionConditionSnapshot {
   targetType: PromotionTargetType;
   targetId?: string | null;
+  targetIds?: string[];
   metric: PromotionMetric;
   minQuantity?: number | null;
   minAmount?: number | null;
@@ -21,6 +22,7 @@ export interface PromotionConditionSnapshot {
 export interface PromotionRewardSnapshot {
   targetType: PromotionTargetType;
   targetId?: string | null;
+  targetIds?: string[];
   rewardType: PromotionRewardType;
   percentage?: number | null;
   amount?: number | null;
@@ -55,14 +57,21 @@ export function targetMatches(line: PromotionLine, targetType: PromotionTargetTy
 
 export function promotionApplies(lines: PromotionLine[], promotion: PromotionSnapshot) {
   return promotion.conditions.every((condition) => {
-    const matchingLines = lines.filter((line) => targetMatches(line, condition.targetType, condition.targetId));
+    const matchingLines = lines.filter((line) => selectionMatches(line, condition));
     const quantity = matchingLines.reduce((sum, line) => sum + line.quantity, 0);
     const amount = matchingLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
     if (condition.metric === PromotionMetric.MIN_AMOUNT) {
       return amount >= Number(condition.minAmount ?? 0);
     }
-    return quantity >= Number(condition.minQuantity ?? 0);
+    return quantity >= Number(condition.minQuantity ?? (condition.targetIds?.length ? 1 : 0));
   });
+}
+
+function selectionMatches(line: PromotionLine, selection: { targetType: PromotionTargetType; targetId?: string | null; targetIds?: string[] }) {
+  // Selected alternatives form one condition; each cart line is counted only once.
+  return selection.targetIds?.length
+    ? selection.targetIds.some((id) => targetMatches(line, selection.targetType, id))
+    : targetMatches(line, selection.targetType, selection.targetId);
 }
 
 export function calculatePromotionDiscounts(lines: PromotionLine[], promotions: PromotionSnapshot[]) {
@@ -75,7 +84,7 @@ export function calculatePromotionDiscounts(lines: PromotionLine[], promotions: 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
       const line = lines[lineIndex];
       const rewardDiscounts = promotion.rewards
-        .filter((reward) => targetMatches(line, reward.targetType, reward.targetId))
+        .filter((reward) => selectionMatches(line, reward))
         .map((reward) => {
           const gross = line.unitPrice * line.quantity;
           if (reward.rewardType === PromotionRewardType.PERCENTAGE) return gross * (Number(reward.percentage ?? 0) / 100);

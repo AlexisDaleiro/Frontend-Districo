@@ -39,7 +39,7 @@ export class BrandsRepository {
 
   async hasActiveRules(id: string) {
     const [conditions, rewards, recommendations] = await Promise.all([
-      this.prisma.promotionCondition.count({ where: { targetType: PromotionTargetType.BRAND, targetId: id, promotion: { active: true, deletedAt: null } } }),
+      this.prisma.promotionCondition.count({ where: { targetType: PromotionTargetType.BRAND, OR: [{ targetId: id }, { targetIds: { has: id } }], promotion: { active: true, deletedAt: null } } }),
       this.prisma.promotionReward.count({ where: { targetType: PromotionTargetType.BRAND, targetId: id, promotion: { active: true, deletedAt: null } } }),
       this.prisma.recommendationRule.count({ where: { active: true, OR: [
         { triggerType: RecommendationTriggerType.BRAND, OR: [{ triggerId: id }, { triggerIds: { has: id } }] },

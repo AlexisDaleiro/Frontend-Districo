@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scopedPromotion, scopedPromotionPayload } from "../src/lib/promotion-scope";
+import { promotionDay, scopedPromotion, scopedPromotionPayload } from "../src/lib/promotion-scope";
 import type { Rule } from "../src/lib/types";
 
 const input = {
@@ -9,6 +9,11 @@ const input = {
 };
 
 describe("promotion scope", () => {
+  it("preserves the Uruguay end date when editing", () => {
+    const payload = scopedPromotionPayload(input);
+    expect(promotionDay(payload.startsAt)).toBe(input.startsAt);
+    expect(promotionDay(payload.endsAt)).toBe(input.endsAt);
+  });
   it("saves selected products as alternative rewards without requiring every product in the cart", () => {
     const payload = scopedPromotionPayload(input);
     expect(payload.conditions).toEqual([]);
@@ -32,5 +37,27 @@ describe("promotion scope", () => {
     ] };
     expect(scopedPromotion(rule)).toBe(false);
     expect(scopedPromotion({ ...rule, type: "PERCENTAGE", conditions: [] })).toBe(true);
+    expect(scopedPromotion({ ...rule, conditions: [
+      { targetType: "BRAND", targetIds: ["b1", "b2"], metric: "MIN_QUANTITY", minQuantity: 2 },
+    ] })).toBe(true);
+    expect(scopedPromotion({ ...rule, conditions: [
+      { targetType: "PRODUCT", targetId: "p1", metric: "MIN_QUANTITY", minQuantity: 1 },
+      { targetType: "PRODUCT", targetId: "p2", metric: "MIN_QUANTITY", minQuantity: 1 },
+    ] })).toBe(false);
+  });
+
+  it("saves activation alternatives independently from the rewarded scope", () => {
+    const payload = scopedPromotionPayload({ ...input, scope: "CATEGORY", targetIds: ["c1", "c2"],
+      trigger: { scope: "BRAND", ids: ["b1", "b2"], metric: "MIN_QUANTITY", minimum: 3 } });
+    expect(payload.type).toBe("CROSS_DISCOUNT");
+    expect(payload.conditions).toEqual([{ targetType: "BRAND", targetIds: ["b1", "b2"], metric: "MIN_QUANTITY", minQuantity: 3 }]);
+    expect(payload.rewards.map((item) => item.targetId)).toEqual(["c1", "c2"]);
+    expect(scopedPromotionPayload({ ...input, trigger: { scope: "PRODUCT", ids: ["p3"], metric: "MIN_AMOUNT", minimum: 100 } }).conditions[0]).toMatchObject({ minAmount: 100 });
+  });
+
+  it("rejects empty activation, invalid minimum and oversized selections", () => {
+    expect(() => scopedPromotionPayload({ ...input, trigger: { scope: "BRAND", ids: [], metric: "MIN_QUANTITY", minimum: 1 } })).toThrow(/activar/);
+    expect(() => scopedPromotionPayload({ ...input, trigger: { scope: "BRAND", ids: ["b1"], metric: "MIN_QUANTITY", minimum: 1.5 } })).toThrow(/mínimo/);
+    expect(() => scopedPromotionPayload({ ...input, targetIds: Array.from({ length: 101 }, (_, index) => `p${index}`) })).toThrow(/cien/);
   });
 });

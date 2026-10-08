@@ -23,11 +23,13 @@ test('editing a promotion replaces its conditions and rewards atomically', async
     } },
   };
   const prisma = {
+    product: { findMany: async ({ where }: { where: { id: { in: string[] } } }) => where.id.in.map((id) => ({ id, name: id })) },
+    brand: { findMany: async ({ where }: { where: { id: { in: string[] } } }) => where.id.in.map((id) => ({ id, name: id })) },
     promotion: { findFirst: async () => ({ id: 'promo-1' }) },
     $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx),
   } as unknown as PrismaService;
   const audit = { log: async () => { calls.push('audit'); } } as unknown as AuditService;
-  await new PromotionsService(prisma, audit).update('promo-1', {
+  await new PromotionsService(prisma, audit, hierarchy).update('promo-1', {
     name: 'Nueva regla', type: 'PERCENTAGE', startsAt: '2026-10-01T00:00:00.000Z',
     conditions: [
       { targetType: 'PRODUCT', targetId: 'p1', minQuantity: 2 },

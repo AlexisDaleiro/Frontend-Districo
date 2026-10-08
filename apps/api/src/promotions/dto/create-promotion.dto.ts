@@ -1,6 +1,6 @@
 import { PromotionMetric, PromotionRewardType, PromotionTargetType, PromotionType } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 export class PromotionConditionDto {
   @IsEnum(PromotionTargetType)
@@ -9,6 +9,14 @@ export class PromotionConditionDto {
   @IsOptional()
   @IsString()
   targetId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsString({ each: true })
+  targetIds?: string[];
 
   @IsOptional()
   @IsEnum(PromotionMetric)
@@ -42,6 +50,7 @@ export class PromotionRewardDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(100)
   percentage?: number;
 
   @IsOptional()
@@ -78,10 +87,15 @@ export class CreatePromotionDto {
   @IsBoolean()
   combinable?: boolean;
 
+  @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => PromotionConditionDto)
   conditions: PromotionConditionDto[];
 
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => PromotionRewardDto)
   rewards: PromotionRewardDto[];

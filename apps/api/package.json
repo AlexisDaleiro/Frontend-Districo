@@ -28,7 +28,7 @@
     "test:organizations": "ts-node scripts/tests/catalog-organizations.test.ts",
     "test:category-cleanup": "ts-node scripts/tests/category-cleanup.test.ts",
     "test:catalog-images": "ts-node scripts/tests/catalog-images.test.ts",
-    "test:marketing-management": "ts-node scripts/tests/marketing-management.test.ts && ts-node scripts/tests/recommendation-scopes.test.ts",
+    "test:marketing-management": "ts-node scripts/tests/marketing-management.test.ts && ts-node scripts/tests/recommendation-scopes.test.ts && ts-node scripts/tests/promotion-scopes.test.ts",
     "test:database-url": "ts-node scripts/tests/database-url.test.ts",
     "test:business": "ts-node scripts/tests/business-rules.test.ts",
     "test:catalog": "ts-node scripts/tests/catalog-import.test.ts",

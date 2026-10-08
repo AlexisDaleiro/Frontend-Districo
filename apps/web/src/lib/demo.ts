@@ -20,6 +20,7 @@ import { demoAdminTools, type DemoToolsState } from "./demo-admin-tools";
 import { demoProductReturn } from "./demo-product-returns";
 import { demoRecommendationLabels, demoRecommendationPayload, demoRecommendations } from "./demo-recommendations";
 import { recommendationIds } from "./recommendation-scope";
+import { promotionTriggerIds } from "./promotion-scope";
 import { staffListStatus } from "./admin-list-filters";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
@@ -236,6 +237,11 @@ function targetMatch(
 function discounts(s: State, cart: Cart) {
   const now = new Date().toISOString();
   const totals = cart.items.map(() => 0);
+  const matches = (item: Cart["items"][number], type: string, ids: string[]) => {
+    const product = s.products.find((p) => p.id === item.product.id)!;
+    const expanded = type === "CATEGORY" ? [...new Set(ids.flatMap((id) => [...descendants(s.categories, id)]))] : ids;
+    return !expanded.length || expanded.some((id) => targetMatch(product, item.variant.id, type, id));
+  };
   for (const promo of s.promotions.filter(
     (p) =>
       p.active !== false &&
@@ -243,14 +249,7 @@ function discounts(s: State, cart: Cart) {
       (!p.endsAt || p.endsAt >= now),
   )) {
     const eligible = promo.conditions?.every((c) => {
-      const rows = cart.items.filter((i) =>
-        targetMatch(
-          s.products.find((p) => p.id === i.product.id)!,
-          i.variant.id,
-          c.targetType,
-          c.targetId,
-        ),
-      );
+      const rows = cart.items.filter((i) => matches(i, c.targetType, promotionTriggerIds(c)));
       return c.metric === "MIN_AMOUNT"
         ? rows.reduce((n, i) => n + i.subtotal, 0) >= (c.minAmount ?? 0)
         : rows.reduce((n, i) => n + i.quantity, 0) >= (c.minQuantity ?? 1);
@@ -259,19 +258,14 @@ function discounts(s: State, cart: Cart) {
     cart.items.forEach((item, index) => {
       for (const reward of promo.rewards ?? []) {
         if (
-          targetMatch(
-            s.products.find((p) => p.id === item.product.id)!,
-            item.variant.id,
-            reward.targetType,
-            reward.targetId,
-          )
+          matches(item, reward.targetType, reward.targetId ? [reward.targetId] : [])
         ) {
           const amount =
             reward.rewardType === "PERCENTAGE"
               ? (item.subtotal * (reward.percentage ?? 0)) / 100
               : reward.rewardType === "PROMOTIONAL_PRICE"
                 ? item.subtotal - (reward.amount ?? 0) * item.quantity
-                : (reward.amount ?? 0) * item.quantity;
+                : (reward.amount ?? 0);
           totals[index] = Math.max(
             totals[index],
             Math.min(item.subtotal, Math.max(0, amount)),
@@ -1401,7 +1395,14 @@ export async function demoRequest<T>(
         const value = { id: id(), active: true, ...payload };
         collection.push(value as Rule & Expiration);
         result = value;
-      } else result = route.includes("recommendations") ? s.rules.map((rule) => demoRecommendationLabels(rule, s)) : collection;
+      } else result = route.includes("recommendations") ? s.rules.map((rule) => demoRecommendationLabels(rule, s)) : route === "promotions" || route === "admin/promotions" ? s.promotions.map((rule) => {
+        const label = (type: string, id: string) => type === "PRODUCT" ? s.products.find((item) => item.id === id)?.name :
+          (type === "BRAND" ? s.brands : type === "CATEGORY" ? s.categories : s.laboratories).find((item) => item.id === id)?.name;
+        return { ...rule,
+          triggerTargets: rule.conditions?.flatMap((item) => promotionTriggerIds(item).map((id) => ({ id, name: label(item.targetType, id) ?? id }))),
+          targetTargets: rule.rewards?.flatMap((item) => item.targetId ? [{ id: item.targetId, name: label(item.targetType, item.targetId) ?? item.targetId }] : []),
+        };
+      }) : collection;
     } else if (parts[0] === "categories" && parts[1] && parts[2] === "products") {
       const category = s.categories.find((item) => item.id === parts[1]);
       const productId = method === "POST" ? String(b.productId ?? "") : parts[3];
@@ -1429,7 +1430,7 @@ export async function demoRequest<T>(
         if (inUse) throw new ApiError("Tiene productos asociados. Reasignalos antes de eliminarlo.", 409);
         const targetType = parts[0] === "brands" ? "BRAND" : "LABORATORY";
         const inRules = s.rules.some((rule) => rule.active !== false && (rule.triggerType === targetType && recommendationIds(rule, "trigger").includes(parts[1]) || rule.targetType === targetType && recommendationIds(rule, "target").includes(parts[1]))) ||
-          s.promotions.some((promotion) => promotion.active !== false && [...(promotion.conditions ?? []), ...(promotion.rewards ?? [])].some((target) => target.targetType === targetType && target.targetId === parts[1]));
+          s.promotions.some((promotion) => promotion.active !== false && [...(promotion.conditions ?? []), ...(promotion.rewards ?? [])].some((target) => target.targetType === targetType && (target.targetId === parts[1] || ("targetIds" in target && target.targetIds?.includes(parts[1])))));
         if (inRules) throw new ApiError("Está en una promoción o recomendación activa. Quitalo de esas reglas antes de eliminarlo.", 409);
         collection.splice(index, 1);
         result = { deleted: true };

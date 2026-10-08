@@ -22,6 +22,7 @@ import { can, hiddenPriceText, money } from "@/lib/commerce";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
 import { isStaff } from "@/lib/staff-access";
+import { CatalogNavigation } from "./catalog-navigation";
 const links = [
   [storeRoutes.products, "Catálogo"],
   [storeRoutes.brands, "Marcas y laboratorios"],
@@ -196,7 +197,7 @@ export function Header() {
     if (seenCount !== undefined && cartCount !== undefined)
       setBumps((value) => value + 1);
   }
-  const nav = (
+  const nav = (mobile = false) => (
     <>
       {links.map(([href, text]) => {
         const current =
@@ -205,6 +206,15 @@ export function Header() {
           (href === storeRoutes.products &&
             (pathname.startsWith(storeRoutes.category("")) ||
               pathname.startsWith(storeRoutes.product(""))));
+        if (href === storeRoutes.products)
+          return (
+            <CatalogNavigation
+              key={href}
+              current={current}
+              mobile={mobile}
+              onNavigate={() => setOpen(false)}
+            />
+          );
         return (
           <Link
             key={href}
@@ -349,7 +359,7 @@ export function Header() {
         </div>
         <div className="navline">
           <nav aria-label="Navegación principal" className="container">
-            {nav}
+            {nav()}
             {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
             {(!user || isStaff(user)) && (
               <Link
@@ -368,7 +378,7 @@ export function Header() {
         title="Explorá DISTRICO"
       >
         <nav className="mobile-nav">
-          {nav}
+          {nav(true)}
           {isStaff(user) ? (
             <Link href={storeRoutes.admin} onClick={() => setOpen(false)}>
               Administración
