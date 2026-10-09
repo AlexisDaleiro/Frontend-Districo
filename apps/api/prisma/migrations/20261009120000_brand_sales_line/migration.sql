@@ -1,0 +1,3 @@
+CREATE TYPE "SalesLine" AS ENUM ('SPECIALIZED', 'COMMERCIAL', 'BOTH');
+
+ALTER TABLE "Brand" ADD COLUMN "salesLine" "SalesLine";

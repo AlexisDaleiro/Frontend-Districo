@@ -74,7 +74,7 @@ export class ProductsRepository {
           name: true,
           featured: true,
           requiresMedicationPermission: true,
-          brand: { select: { id: true, name: true } },
+          brand: { select: { id: true, name: true, salesLine: true } },
           laboratory: { select: { id: true, name: true } },
           media: {
             where: { type: 'IMAGE' },

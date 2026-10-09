@@ -103,6 +103,7 @@ test('card listing selects only the fields used by product cards', async () => {
   assert.equal('description' in listArgs.select!, false);
   assert.equal('attributes' in listArgs.select!, false);
   assert.equal('categories' in listArgs.select!, false);
+  assert.deepEqual(listArgs.select!.brand, { select: { id: true, name: true, salesLine: true } });
 });
 
 test('card prices keep the same account and medication restrictions as detail', async () => {

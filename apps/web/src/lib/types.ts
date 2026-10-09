@@ -1,11 +1,13 @@
 export type Permission =
   "CAN_VIEW_PRICES" | "CAN_PLACE_ORDERS" | "CAN_BUY_MEDICATIONS";
+export type SalesLine = "SPECIALIZED" | "COMMERCIAL" | "BOTH";
 export type Entity = {
   id: string;
   name: string;
   active?: boolean;
   slug?: string;
   imageUrl?: string | null;
+  salesLine?: SalesLine | null;
   parentId?: string | null;
   aliasIds?: string[];
 };

@@ -12,6 +12,7 @@ import type { Editor, Field } from "./admin-form";
 import type { Entity } from "@/lib/types";
 import { canEditAdminFeature } from "@/lib/staff-access";
 import { filterDirectory } from "@/lib/entity-directory";
+import { salesLineLabel, salesLineOptions } from "@/lib/sales-line";
 
 type OpenEditor = (editor: Editor) => void;
 type CategoryNode = Entity & { children: CategoryNode[] };
@@ -35,7 +36,11 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
   const [status, setStatus] = useAdminListField(`${path}Status`, "", ["active", "inactive"]);
   const [logo, setLogo] = useAdminListField(`${path}Logo`, "", ["with", "without"]);
   const [sort, setSort] = useAdminListField(`${path}Sort`, "asc", ["asc", "desc"]);
-  const items = filterDirectory(q.data ?? [], search, status, logo, sort);
+  const [salesLine, setSalesLine] = useAdminListField(`${path}Line`, "", [...salesLineOptions.map((option) => option.value), "unclassified"]);
+  const items = filterDirectory(q.data ?? [], search, status, logo, sort, path === "brands" ? salesLine : "");
+  const fields: Field[] = path === "brands" ? [...nameFields, {
+    key: "salesLine", label: "Línea de venta", type: "select", required: true, options: salesLineOptions,
+  }] : nameFields;
   const client = useQueryClient();
   const { notify, user } = useSession();
   const canEdit = canEditAdminFeature(user, "marcas");
@@ -80,11 +85,11 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
   return <section className="admin-directory">
     <div className="admin-toolbar">
       <h2>{title}</h2>
-      {canEdit && <button className="button small" onClick={() => edit({ title: `Crear ${title.toLowerCase()}`, path, fields: nameFields })}>
+      {canEdit && <button className="button small" onClick={() => edit({ title: `Crear ${title.toLowerCase()}`, path, fields })}>
         <Plus size={16} /> Crear
       </button>}
     </div>
-    <div className="admin-directory-filters">
+    <div className={`admin-directory-filters${path === "brands" ? " admin-directory-filters-brands" : ""}`}>
       <input className="form-input" aria-label={`Buscar ${title.toLowerCase()}`} placeholder={`Buscar ${title.toLowerCase()}`} value={search} onChange={(event) => setSearch(event.target.value)} />
       <select className="form-input" aria-label={`Estado de ${title.toLowerCase()}`} value={status} onChange={(event) => setStatus(event.target.value)}>
         <option value="">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option>
@@ -95,6 +100,9 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
       <select className="form-input" aria-label={`Orden de ${title.toLowerCase()}`} value={sort} onChange={(event) => setSort(event.target.value)}>
         <option value="asc">Nombre A-Z</option><option value="desc">Nombre Z-A</option>
       </select>
+      {path === "brands" && <select className="form-input" aria-label="Línea de marcas" value={salesLine} onChange={(event) => setSalesLine(event.target.value)}>
+        <option value="">Todas las líneas</option>{salesLineOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}<option value="unclassified">Sin clasificar</option>
+      </select>}
     </div>
     {!q.isPending && !q.error && <p className="small-copy muted">{items.length} de {q.data?.length ?? 0}</p>}
     {error ? <ErrorBox error={error} /> : null}
@@ -103,12 +111,12 @@ function EntityDirectory({ path, title, edit }: { path: "brands" | "laboratories
       <div className="admin-directory-list">{items.map((item) =>
         <div className="admin-directory-row" key={item.id}>
           {item.imageUrl ? <Picture className="admin-directory-logo" src={item.imageUrl} alt={item.name} sizes="42px" /> : <span className="admin-directory-logo admin-directory-logo-empty" aria-hidden="true" />}
-          <span>{item.name}{item.active === false && <> <span className="status-pill">Inactivo</span></>}</span>
+          <span>{item.name}{path === "brands" && <> <span className="status-pill">{salesLineLabel(item.salesLine) ?? "Sin clasificar"}</span></>}{item.active === false && <> <span className="status-pill">Inactivo</span></>}</span>
           {canEdit && <div className="actions">
           <LogoUploadButton item={item} busy={busy === item.id} onFile={(file) => { void upload(item, file); }} />
           {item.imageUrl && <button className="icon-button" disabled={busy === item.id} title={`Quitar logo de ${item.name}`} aria-label={`Quitar logo de ${item.name}`} onClick={() => void removeLogo(item)}><Trash2 size={16} /></button>}
           <button className="icon-button" title={`Editar ${item.name}`} aria-label={`Editar ${item.name}`} onClick={() => edit({
-            title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: [...nameFields, { key: "active", label: "Activo", type: "checkbox" }], initial: { ...item },
+            title: `Editar ${item.name}`, path: `${path}/${item.id}`, method: "PATCH", fields: [...fields, { key: "active", label: "Activo", type: "checkbox" }], initial: { ...item, active: item.active !== false },
           })}><Pencil size={16} /></button>
           <button className="icon-button" disabled={busy === item.id} title={`Eliminar ${item.name}`} aria-label={`Eliminar ${item.name}`} onClick={() => void remove(item)}><Trash2 size={16} /></button>
           </div>}

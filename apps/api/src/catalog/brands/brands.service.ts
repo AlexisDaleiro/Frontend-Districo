@@ -20,6 +20,7 @@ export class BrandsService {
       name: dto.name,
       slug: dto.slug ?? slugify(dto.name),
       active: dto.active ?? true,
+      salesLine: dto.salesLine,
     });
   }
 

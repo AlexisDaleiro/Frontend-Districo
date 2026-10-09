@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { brandLogoSrc } from "@/lib/brand-logos";
 import type { Entity } from "@/lib/types";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
+import { salesLineLabel } from "@/lib/sales-line";
 
 const searchText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-UY");
 const logoSrc = (item: Entity) => item.imageUrl || brandLogoSrc(item.slug) || brandLogoSrc(searchText(item.name).replace(/[^a-z0-9]+/g, "-"));
@@ -51,6 +52,7 @@ export default function Page() {
                         )}
                       </div>
                       <h3>{item.name}</h3>
+                      {key === "brandId" && salesLineLabel(item.salesLine) && <span className="status-pill">{salesLineLabel(item.salesLine)}</span>}
                     </Link>
                   ))}
                 </div>

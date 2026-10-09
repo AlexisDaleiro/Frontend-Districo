@@ -53,6 +53,12 @@ enum ProductType {
   OTHER
 }
 
+enum SalesLine {
+  SPECIALIZED
+  COMMERCIAL
+  BOTH
+}
+
 enum AttributeType {
   TEXT
   NUMBER
@@ -279,6 +285,7 @@ model Brand {
   name      String
   slug      String    @unique
   imageUrl  String?
+  salesLine SalesLine?
   active    Boolean   @default(true)
   products  Product[]
   createdAt DateTime  @default(now())

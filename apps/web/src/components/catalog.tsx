@@ -23,6 +23,7 @@ import { TechnicalAccordions } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
+import { salesLineLabel } from "@/lib/sales-line";
 import {
   ActionLink,
   Empty,
@@ -710,6 +711,7 @@ function ProductInfo({
       ),
     ],
     ["Laboratorio", product.laboratory?.name],
+    ["Línea de venta", salesLineLabel(product.brand?.salesLine)],
     [
       "Categorías",
       categories.length > 0 &&

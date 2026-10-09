@@ -1,6 +1,8 @@
 import catalog from "@/data/catalog.json";
 import sheets from "../../public/data/fichas-tecnicas.json";
-import type { Customer, Entity, Product, ProductSheet, User } from "./types";
+import type { Customer, Entity, Product, ProductSheet, SalesLine, User } from "./types";
+const initialBrandLines: Record<string, SalesLine> = { Biofresh: "SPECIALIZED", Stack: "COMMERCIAL", "4PETS": "SPECIALIZED", Kets: "SPECIALIZED", "Procão": "SPECIALIZED" };
+export const initialBrandSalesLine = (name: string) => initialBrandLines[name] ?? null;
 const initialSheets = sheets as Record<string, ProductSheet>;
 export const initialProductSheet = (url?: string) => structuredClone(initialSheets[url?.toLowerCase().replace(/\/+$/, "") ?? ""] ?? { technical: [], benefits: [] });
 export const categories: Entity[] = [
@@ -60,6 +62,7 @@ export function seedProducts(): Product[] {
             id: brandName.toLowerCase(),
             name: brandName,
             slug: brandName.toLowerCase(),
+            salesLine: initialBrandSalesLine(brandName),
           }
         : null,
       laboratory: null,

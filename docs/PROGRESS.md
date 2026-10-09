@@ -1,6 +1,16 @@
 # Registro de avance
 
-Última actualización: 8 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
+
+## Líneas de venta heredadas de la marca (9/10/2026)
+
+- Nueva clasificación editable en Marcas: Línea especializada, Línea comercial y Ambos (aclaración del usuario). Persistencia en `Brand.salesLine`, validación enum y migración aditiva `20261009120000_brand_sales_line`. Cada producto hereda la marca actual por relación, sin duplicar un campo editable; incluidas tarjetas, detalles y favoritos. No se alteran permisos, precios, laboratorios ni las siete familias institucionales del compañero.
+- Listado admin con filtro de línea conservado en la URL; etiquetas en marcas de la tienda, ficha comercial/pública y edición del producto (solo lectura). Se conserva el estado activo al editar entidades demo que antes lo tenían implícito, evitando una desactivación accidental. Se rehidratan marcas de productos demo sin eliminar relaciones antiguas de ejemplo ni sobrescribir elecciones existentes.
+- Investigación de las 28 marcas y referencias en `docs/BRAND-SALES-LINES.md` y `apps/api/scripts/catalog/brand-sales-lines.ts`: 18 especializadas, 4 comerciales, 6 Ambos. **7 asignaciones orientativas pendientes de confirmación comercial de DISTRICO**: Atila, Balance, Faro, Kets, Eco Cane, Proauto y TAPET. Ambos sólo se utiliza con evidencia en los dos canales locales; no como etiqueta para desconocidos.
+- Migración y 28 asignaciones aplicadas al Supabase configurado; script `classify-brand-sales-lines.ts` con simulación previa, proyecto esperado, guardas null-only y auditoría transaccional de fuentes/motivo/fecha. Repetir el plan devuelve 0 pendientes y 28 conservadas. API local compilada y reiniciada en 3001; no se editaron productos ni se crearon marcas duplicadas.
+- Verificación: 177 pruebas frontend; 41 pruebas API enfocadas (líneas, consultas de productos/filtros, organizaciones y registros/importadores de marcas); types, lint y compilaciones API/producción web correctos. Playwright: 2 flujos nuevos correctos (crear/editar sin desactivar, heredabilidad, filtro compartible, laboratorios sin campo y sólo lectura), más 4 regresiones del atajo de edición correctas. Capturas revisadas a 320, 390 y escritorio sin desbordamiento. Repaso API real de 580 productos: 184 con marca y línea coherente, además de 12 tarjetas y un detalle.
+- Publicación a `main` solicitada el 9/10: se consultó `origin/main` y coincide con la base local `916bee8`; no hay commits remotos pendientes. La reforma institucional `81a981a` ya está incorporada y sus familias en `site-brands.ts` se conservan. Verificación previa repetida: 177 pruebas frontend, toda la batería API, lint/typecheck y 6 recorridos Playwright correctos. No se incluyen credenciales ni archivos generados.
+- Pendiente: confirmar las 7 asignaciones orientativas con DISTRICO; las etiquetas se pueden corregir en Marcas y se reflejan en todos sus productos. Para otro entorno aplicar migración/API antes del frontend, según `docs/BRAND-SALES-LINES.md`.
 
 ## Atajo de edición desde el producto en la tienda (8/10/2026)
 

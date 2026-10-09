@@ -4,6 +4,12 @@ Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b3382
 
 **Verificación del 26/09/2026:** `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración a monorepo (`Dockerfile`, `README.md`, `.dockerignore` y lockfile propio eliminados). `src/` y `prisma/` son idénticos a la referencia, y `origin/backend` sigue en `eacea83`. Cada ruta que admite `src/lib/proxy-policy.ts` existe en los controladores. Los contratos consumidos no cambiaron.
 
+## Linea de venta de marcas (9/10/2026)
+
+- `Brand.salesLine`: `SPECIALIZED | COMMERCIAL | BOTH | null`; `POST brands` y `PATCH brands/:id` aceptan el campo con los permisos existentes de Marcas. Sigue siendo opcional para importadores anteriores; valores fuera del enum son rechazados. `null` significa sin clasificar, no Ambos.
+- `GET brands`, `brands/admin` y las relaciones `product.brand` de listas, tarjetas, favoritos y detalles incluyen la linea. No existe una linea editable independiente en Producto: hereda la marca actual, sin duplicar datos. Laboratorios y permisos comerciales no cambian.
+- Migracion, referencias, asignaciones orientativas y carga inicial segura en `docs/BRAND-SALES-LINES.md`.
+
 ## Modos de ejecución
 
 Variables en `apps/web/.env.example`. El modo se fija al compilar y no cambia ante fallas.

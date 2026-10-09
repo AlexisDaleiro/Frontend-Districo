@@ -16,6 +16,7 @@ import { ErrorBox, Picture } from "./ui";
 import { benefitIcons } from "@/lib/benefit-icons";
 import { catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
+import { salesLineLabel } from "@/lib/sales-line";
 import type {
   Entity,
   Product,
@@ -382,6 +383,9 @@ export function PublicProductDetail({ slug }: { slug: string }) {
             )}
             {item.shortDescription && (
               <p className="site-sheet-lead">{item.shortDescription}</p>
+            )}
+            {salesLineLabel(item.brand?.salesLine) && (
+              <p className="site-sheet-brand">Línea de venta: {salesLineLabel(item.brand?.salesLine)}</p>
             )}
             {presentations.length > 0 && (
               <div>

@@ -1,5 +1,6 @@
-import { seedProducts, seedUsers, categories, initialProductSheet } from "./demo-seed";
+import { seedProducts, seedUsers, categories, initialProductSheet, initialBrandSalesLine } from "./demo-seed";
 import { normalizeProductSheet } from "./product-sheet";
+import { isSalesLine } from "./sales-line";
 import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
@@ -124,8 +125,11 @@ function read() {
     data.creditChanges ??= {};
     data.salespeople ??= {};
     data.consumedOrderIds ??= [];
+    for (const brand of data.brands) if (brand.salesLine === undefined) brand.salesLine = initialBrandSalesLine(brand.name);
     for (const order of data.orders) order.items.forEach((item, index) => { item.id ??= `${order.id}-item-${index}`; });
     for (const product of data.products) {
+      // Brand relations are rehydrated after JSON storage, not copied as stale snapshots.
+      if (product.brand) product.brand = data.brands.find((brand) => brand.id === product.brand?.id) ?? product.brand;
       if (product.technicalSheetRevision === undefined) {
         product.technicalSheet ??= initialProductSheet(product.sourceUrl);
         product.technicalSheetRevision = 0;
@@ -1477,6 +1481,7 @@ export async function demoRequest<T>(
         result = { removed: true };
       } else throw new ApiError("Acción no disponible en la demo.", 400);
     } else if (["brands", "categories", "laboratories"].includes(parts[0])) {
+      if (parts[0] === "brands" && b.salesLine != null && !isSalesLine(b.salesLine)) throw new ApiError("Línea de venta inválida.", 400);
       const collection =
         s[parts[0] as "brands" | "categories" | "laboratories"];
       if (method === "POST") {

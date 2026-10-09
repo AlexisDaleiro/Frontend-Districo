@@ -17,6 +17,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import type { Entity, Product } from "@/lib/types";
 import { useAdminReturnHref } from "./admin-list-navigation";
 import { adminRecordHref } from "@/lib/admin-list-navigation";
+import { salesLineLabel } from "@/lib/sales-line";
 
 export function AdminProductPage({ slug }: { slug: string }) {
   const router = useRouter();
@@ -61,6 +62,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                 </PageHeading>
                 <div className="admin-product-toolbar">
                   <span className="status-pill">{item.active === false ? "Inactivo" : "Activo"}</span>
+                  {item.brand && <span className="status-pill" title={`Heredada de ${item.brand.name}`}>{salesLineLabel(item.brand.salesLine) ?? "Línea sin clasificar"}</span>}
                   <Link className="icon-button admin-preview-toggle" href={adminRecordHref(storeRoutes.adminProductPreview(item.slug), catalog)} title="Vista previa" aria-label="Vista previa"><Eye size={19} /></Link>
                 </div>
                 <nav className="admin-product-tabs" aria-label="Secciones del producto">

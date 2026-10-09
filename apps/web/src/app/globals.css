@@ -2783,6 +2783,7 @@ td .button {
 .admin-directory-row > span:nth-child(2) {
   overflow-wrap: break-word;
 }
+.admin-directory-row .status-pill { max-width: 100%; white-space: normal; }
 @media (max-width: 520px) {
   .admin-directory-row {
     grid-template-columns: 42px minmax(0, 1fr);
@@ -3977,11 +3978,13 @@ td .button {
   gap: 10px;
   margin-bottom: 12px;
 }
+.admin-directory-filters-brands { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.brand-gallery-card .status-pill { max-width: 100%; white-space: normal; text-align: center; }
 @media (max-width: 900px) {
-  .admin-directory-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-directory-filters, .admin-directory-filters-brands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
-  .admin-directory-filters { grid-template-columns: minmax(0, 1fr); }
+  .admin-directory-filters, .admin-directory-filters-brands { grid-template-columns: minmax(0, 1fr); }
 }
 .account-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 22px; }
 .account-overview-card { display: flex; flex-direction: column; min-width: 0; min-height: 270px; padding: 27px; border: 1px solid var(--line); border-radius: 18px; background: white; box-shadow: 0 10px 28px rgb(19 61 72 / .04); }
