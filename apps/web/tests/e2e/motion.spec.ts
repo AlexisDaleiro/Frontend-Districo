@@ -141,7 +141,7 @@ test("el banner conserva su posición y anima cada cambio de slide", async ({
   });
   await clientLogin(page);
   await page.goto("/tienda", { waitUntil: "domcontentloaded" });
-  await expect(page.locator(".needs-intro")).toBeVisible();
+  await expect(page.locator(".species-shortcuts")).toBeVisible();
 
   const carousel = page.locator(".home-carousel");
   const copy = carousel.locator(".hero-copy");
@@ -279,7 +279,7 @@ test("las páginas nuevas animan su entrada y respetan movimiento reducido", asy
     "none",
   );
   expect(
-    await page.locator(".needs-intro").evaluate((element) =>
+    await page.locator(".species-shortcuts").evaluate((element) =>
       element.getAnimations().some((animation) => animation.playState === "running"),
     ),
   ).toBe(false);

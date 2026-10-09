@@ -20,6 +20,7 @@ import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
 import { FavoriteButton } from "./favorite-button";
 import { TechnicalAccordions } from "./product-sheet";
+import { TypeIcon, productTypeLinks } from "./store-art";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
@@ -52,7 +53,9 @@ import {
   quantityError,
 } from "@/lib/commerce";
 export function ProductCard({ product }: { product: ProductCardData }) {
-  const variant = product.variants.find((v) => v.active !== false);
+  const active = product.variants.filter((v) => v.active !== false);
+  const variant = active[0];
+  const presentations = active.length;
   const price = variant?.price;
   const { user } = useSession();
   const client = useQueryClient();
@@ -97,23 +100,31 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       <Link href={storeRoutes.product(product.slug)}>
         <h3>{product.name}</h3>
       </Link>
-      <div className="product-bottom">
-        {price ? (
-          <strong>{money(price.amount, price.currency)}</strong>
-        ) : (
-          <span className="row" style={{ gap: 5 }}>
-            <LockKeyhole size={12} />
-            {variant ? hiddenPriceText(user, product) : "Sin presentaciones"}
-          </span>
-        )}
-        <Link
-          href={storeRoutes.product(product.slug)}
-          className="icon-button"
-          aria-label={`Ver presentaciones de ${product.name}`}
-        >
-          <ArrowUpRight size={16} />
-        </Link>
+      <div className="product-price">
+        <span className="product-price-head">
+          {presentations
+            ? `${presentations} ${presentations === 1 ? "presentación" : "presentaciones"}`
+            : "Sin presentaciones"}
+        </span>
+        <div className="product-price-row">
+          <span>Precio mayorista</span>
+          {price ? (
+            <strong>{money(price.amount, price.currency)}</strong>
+          ) : (
+            <span className="product-price-locked">
+              <LockKeyhole size={12} aria-hidden />
+              {variant ? hiddenPriceText(user, product) : "No disponible"}
+            </span>
+          )}
+        </div>
       </div>
+      <Link
+        href={storeRoutes.product(product.slug)}
+        className="button small product-cta"
+        aria-label={`Ver presentaciones de ${product.name}`}
+      >
+        Ver presentaciones
+      </Link>
     </article>
   );
 }
@@ -256,6 +267,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
   const filters = new URLSearchParams(params);
   if (categoryId) filters.set("categoryId", categoryId);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersHidden, setFiltersHidden] = useState(false);
   const client = useQueryClient();
   const { user, loading } = useSession();
   const products = useApi<ProductCardList>(catalogCardsPath(filters)),
@@ -286,8 +298,20 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
   );
   const filterContent = (
     <>
-      <div className="filter-section">
-        <h3>Categorías</h3>
+      <label className="filter-switch">
+        Solo destacados
+        <input
+          type="checkbox"
+          role="switch"
+          checked={filters.get("featured") === "true"}
+          onChange={(e) => set("featured", e.target.checked ? "true" : "")}
+        />
+      </label>
+      <details className="filter-section" open>
+        <summary>
+          <h3>Categorías</h3>
+          <ChevronDown size={16} aria-hidden />
+        </summary>
         {!!categories.data?.length && (
           <CategoryPicker
             categories={categories.data}
@@ -305,13 +329,16 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
             }}
           />
         )}
-      </div>
+      </details>
       {[
         ["brandId", "Marcas", brands.data],
         ["laboratoryId", "Laboratorios", labs.data],
       ].map(([key, title, items]) => (
-        <div className="filter-section" key={String(key)}>
-          <h3>{String(title)}</h3>
+        <details className="filter-section" key={String(key)} open>
+          <summary>
+            <h3>{String(title)}</h3>
+            <ChevronDown size={16} aria-hidden />
+          </summary>
           <select
             className="form-input"
             aria-label={String(title)}
@@ -325,11 +352,14 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
               </option>
             ))}
           </select>
-        </div>
+        </details>
       ))}
       {attributes.data?.map((a) => (
-        <div className="filter-section" key={a.id}>
-          <h3>{a.name}</h3>
+        <details className="filter-section" key={a.id}>
+          <summary>
+            <h3>{a.name}</h3>
+            <ChevronDown size={16} aria-hidden />
+          </summary>
           {a.values.map((v) => (
             <label className="filter-option" key={v.id}>
               <input
@@ -349,7 +379,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
               {v.value}
             </label>
           ))}
-        </div>
+        </details>
       ))}
       <button
         className="text-link"
@@ -360,20 +390,103 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
       </button>
     </>
   );
+  const categoryName = categoryId
+    ? categories.data?.find((c) => c.id === categoryId)?.name
+    : undefined;
+  const productType = filters.get("productType") ?? "";
+  const promoBrand = brands.data?.find(
+    (b) => normalize(b.name).trim() === "biofresh",
+  );
   return (
-    <div className="container section">
+    <div className="container section catalog-page">
       <div className="breadcrumbs">
         <Link href={storeRoutes.home}>Inicio</Link>
         <ChevronRight size={12} />
-        <span>Catálogo</span>
+        {categoryName ? (
+          <>
+            <Link href={storeRoutes.products}>Catálogo</Link>
+            <ChevronRight size={12} />
+            <span>{categoryName}</span>
+          </>
+        ) : (
+          <span>Catálogo</span>
+        )}
       </div>
-      <PageHeading title="Nuestro catálogo" />
-      <div className="catalog-layout">
+      <div className="catalog-head">
+        <PageHeading title={categoryName ?? "Nuestro catálogo"}>
+          Alimento, higiene, accesorios y farmacia de las marcas que
+          distribuimos.
+        </PageHeading>
+        <Link
+          className="catalog-promo"
+          href={
+            promoBrand
+              ? withSearch(
+                  storeRoutes.products,
+                  new URLSearchParams({ brandId: promoBrand.id }),
+                )
+              : storeRoutes.brands
+          }
+        >
+          <div className="catalog-promo-copy">
+            <Picture
+              src="/images/brands/biofresh.png"
+              alt="Biofresh"
+              sizes="100px"
+            />
+            <h2>Una fórmula para cada etapa y tamaño</h2>
+            <p>Cachorros, adultos y senior, de razas mini a gigantes.</p>
+            <span className="button small">Ver línea Biofresh</span>
+          </div>
+          <div className="catalog-promo-packs" aria-hidden="true">
+            <Picture src="/images/product-0-3.png" alt="" sizes="120px" />
+            <Picture src="/images/hero-biofresh-castrados.png" alt="" sizes="140px" />
+            <Picture src="/images/product-0-2.png" alt="" sizes="120px" />
+          </div>
+        </Link>
+      </div>
+      <nav className="catalog-types" aria-label="Tipos de producto">
+        {productTypeLinks.map((t) => (
+          <button
+            type="button"
+            className="catalog-type"
+            key={t.type}
+            aria-pressed={productType === t.type}
+            onClick={() =>
+              set("productType", productType === t.type ? "" : t.type)
+            }
+          >
+            <TypeIcon type={t.type} />
+            {t.name}
+          </button>
+        ))}
+      </nav>
+      <div
+        className={`catalog-layout${filtersHidden ? " is-filters-hidden" : ""}`}
+      >
         <aside className="filters" aria-label="Filtros del catálogo">
-          {filterContent}
+          <button
+            type="button"
+            className="filters-toggle"
+            onClick={() => setFiltersHidden(true)}
+          >
+            <X size={18} aria-hidden />
+            Ocultar filtros
+          </button>
+          <div className="filters-panel">{filterContent}</div>
         </aside>
-        <div>
+        <div className="catalog-results">
           <div className="catalog-toolbar">
+            {filtersHidden && (
+              <button
+                type="button"
+                className="button secondary small filters-show"
+                onClick={() => setFiltersHidden(false)}
+              >
+                <SlidersHorizontal size={16} />
+                Mostrar filtros
+              </button>
+            )}
             <span>
               {products.data
                 ? `${products.data.meta.total} productos`

@@ -22,8 +22,7 @@
   translate: 0 var(--reveal-distance);
 }
 
-.need[data-motion-state="pending"],
-.brand-word[data-motion-state="pending"],
+.category-tile[data-motion-state="pending"],
 .stats > [data-motion-state="pending"] {
   translate: none;
   scale: 0.82;

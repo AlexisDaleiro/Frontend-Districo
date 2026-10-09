@@ -351,7 +351,7 @@ test("permisos: la identidad cambia sin recargar al ingresar y al salir", async 
   await login(page);
   const account = page.locator(".account-link");
   await expect(account).toContainText("Mi cuenta");
-  await expect(page.locator(".product-bottom strong").first()).toBeVisible();
+  await expect(page.locator(".product-price-row strong").first()).toBeVisible();
   await account.click();
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await page.goto("/tienda/productos");

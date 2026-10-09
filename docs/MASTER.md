@@ -8,7 +8,7 @@ La administración ampliada permite trabajar con productos, variantes, medios po
 
 ## Diseño acordado
 
-Inicio limpio, centrado en necesidades con círculos desplazables en móvil. Categorías/especies se mantienen en navegación y filtros. Sección breve de productos destacados. Referencias: navegación por necesidades de Amy Myers y organización del catálogo de Increíbles.
+Inicio (rediseño aprobado el 9/10/2026, referencia Petbarn): carrusel principal; accesos por especie Perros/Cachorros y Gatos/Gatitos con siluetas petróleo sobre lima y tipos de producto; mosaicos de Destacados, las otras categorías raíz y Todas las marcas; banners de Biofresh, Gran Plus y Three Dogs; carrusel de productos destacados. Catálogo: cabecera con promoción, tipos de producto, filtros plegables que se pueden ocultar y tarjetas de ancho y alto fijos con solo «Precio mayorista». Boceto en el Artifact https://claude.ai/artifact/1qBqHshgKdwSZXbt8qrjZY.
 
 Paleta observada en el CSS público de DISTRICO: `#204F5F`, `#B1CA00`, `#636466`, `#EFEFEF`. No es una certificación de manual de marca. Tomada de `wp-content/uploads/elementor/css/post-11.css` (paleta global) y `post-53.css` (header petróleo `#204F5F`, subrayado lima). Tokens en `:root` de `src/app/globals.css`: `--ink`, `--ink-deep`, `--lime`, `--lime-text` (lima legible sobre blanco), `--lime-soft`, `--text`/`--muted`, `--line`, `--paper`, `--on-ink*`. Header, topbar y footer van sobre petróleo; el logo (`logo-districo.png`, mismo archivo que el sitio real) trae fondo petróleo propio. Los colores de estado (error, aviso) quedan fuera de la paleta. Manrope alojada localmente mediante paquete npm. Documentación de imágenes en `docs/ASSETS.md`.
 
