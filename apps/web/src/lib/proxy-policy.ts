@@ -88,6 +88,7 @@ export function allowedPath(path: string, method: string) {
     ],
     PATCH: [
       `products/${id}`,
+      `products/${id}/technical-sheet`,
       `products/(variants|media)/${id}`,
       `cart/items/${id}`,
       `pricing/variants/${id}`,

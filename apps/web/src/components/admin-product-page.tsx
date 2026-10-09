@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Eye, Pencil, Layers3, Images } from "lucide-react";
+import { ArrowLeft, Eye, Pencil, Layers3, Images, FileText } from "lucide-react";
 import { AccessGate } from "./auth";
 import { AdminNav, VariantManagement } from "./admin";
 import { AdminProductImages } from "./admin-product-images";
+import { AdminTechnicalSheet } from "./admin-technical-sheet";
 import { AdminForm, type Editor } from "./admin-form";
 import { useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal, PageHeading } from "./ui";
@@ -25,12 +26,13 @@ export function AdminProductPage({ slug }: { slug: string }) {
   const brands = useApi<Entity[]>("brands");
   const categories = useApi<Entity[]>("categories/catalog");
   const laboratories = useApi<Entity[]>("laboratories");
+  const productId = product.data?.id;
 
   useEffect(() => {
-    if (!product.data || !window.location.hash) return;
+    if (!productId || !window.location.hash) return;
     const id = window.location.hash.slice(1);
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
-  }, [product.data]);
+  }, [productId]);
 
   const catalog = useAdminReturnHref("catalogo");
   const item = product.data;
@@ -64,6 +66,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                 <nav className="admin-product-tabs" aria-label="Secciones del producto">
                   <a href="#imagenes"><Images size={16} /> Imágenes</a>
                   <a href="#edicion"><Pencil size={16} /> Editar producto</a>
+                  <a href="#ficha-tecnica"><FileText size={16} /> Ficha técnica</a>
                   <a href="#presentaciones"><Layers3 size={16} /> Presentaciones</a>
                 </nav>
                 <AdminProductImages product={item} edit={setEditor} />
@@ -82,6 +85,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                         onCancel={() => router.push(catalog)}
                       />}
                 </section>
+                <AdminTechnicalSheet key={item.id} product={item} />
                 <section id="presentaciones" className="admin-product-section">
                   <div className="admin-toolbar"><h2>Presentaciones</h2></div>
                   <VariantManagement product={item} edit={setEditor} />

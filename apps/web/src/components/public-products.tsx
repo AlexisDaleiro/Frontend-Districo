@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { usePublicApi } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
-import { TechnicalAccordions, useProductSheet } from "./product-sheet";
+import { TechnicalAccordions } from "./product-sheet";
 import { ErrorBox, Picture } from "./ui";
 import { benefitIcons } from "@/lib/benefit-icons";
 import { catalogCardsPath } from "@/lib/catalog-query";
@@ -276,7 +276,7 @@ export function PublicCatalog() {
 export function PublicProductDetail({ slug }: { slug: string }) {
   const product = usePublicApi<Product>(`products/${encodeURIComponent(slug)}`);
   const [imageId, setImageId] = useState<string>();
-  const sheet = useProductSheet(product.data?.sourceUrl);
+  const sheet = product.data?.technicalSheet ?? {};
   if (product.isPending)
     return (
       <div className="container site-detail-loading">

@@ -1,6 +1,16 @@
 # Registro de avance
 
-Última actualización: 7 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 8 de octubre de 2026. Rama de trabajo: `main`.
+
+## Fichas técnicas desde el dashboard (8/10/2026)
+
+- Ficha técnica en la página de edición del producto: editor visual de composición, recomendaciones y tablas; agregar, ordenar, renombrar y quitar secciones, características con íconos, vista previa, Ctrl+S y aviso de cambios sin guardar. Imágenes permanecen arriba.
+- Persistencia `Product.technicalSheet` + revisión independiente, ruta protegida `PATCH products/:id/technical-sheet`, HTML sanitizado, validación y auditoría transaccional. Conflictos 409 conservan el borrador y requieren recargar con confirmación. No se modifican precios, stock ni categorías.
+- Tienda e institucional leen la ficha desde la API. Archivo/generador anterior se conservan solo como respaldo para la importación inicial. En Supabase se aplicó la migración `20261009000000_product_technical_sheets` y se importaron 119 fichas por URL; repetir encontró 0 pendientes, sin sobrescribir ediciones.
+- Detectado y corregido un conflicto entre las animaciones generales de filas y el DOM de tablas del editor: `motion-system.tsx` omite contenido editable. El editor conserva los bloques originales no modificados.
+- Archivos principales: `apps/api/src/catalog/products/{technical-sheet.ts,products.*}`, DTO, migración, script `import-technical-sheets.ts`; `apps/web/src/components/{admin-technical-sheet,technical-rich-editor,product-sheet,admin-product-page,catalog,public-products,motion-system}.tsx`; tipos, demo y política del proxy. Contrato en `docs/API.md`; despliegue en `docs/TECHNICAL-SHEETS.md`.
+- Verificación: 171 pruebas frontend; 6 pruebas API de fichas, 18 de consultas/filtros; compilaciones API y producción web, types y lint. Playwright: 2 demo con capturas, 1 regresión de animaciones admin y 1 real Supabase (contenido original restaurado), todos correctos. Capturas desktop/mobile revisadas sin desbordamientos.
+- Publicación a `main` solicitada el 8/10: se consultó `origin/main` y coincide con la base local `d21f6fd`; la reforma institucional `81a981a` ya está incorporada. No hay commits remotos pendientes ni se requiere sobrescribir cambios del compañero. Se repitieron las 171 pruebas frontend, toda la batería API, lint y typecheck, sin errores. Se revisaron el diff y las dependencias: el respaldo original no cambia y no se incluyen credenciales ni archivos generados. Instrucciones de despliegue en `docs/TECHNICAL-SHEETS.md`.
 
 ## Sitio institucional: nueva portada, directorio de marcas y empleos (7/10/2026)
 

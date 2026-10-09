@@ -18,7 +18,7 @@ import {
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
 import { FavoriteButton } from "./favorite-button";
-import { TechnicalAccordions, useProductSheet } from "./product-sheet";
+import { TechnicalAccordions } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import {
@@ -696,7 +696,7 @@ function ProductInfo({
 }) {
   const [activeSection, setActiveSection] = useState<"specs" | "extra">("specs");
   const categories = product.categories.filter((c) => c.category);
-  const technical = useProductSheet(product.sourceUrl).technical ?? [];
+  const technical = product.technicalSheet?.technical ?? [];
   // Solo filas con dato: la ficha no inventa valores.
   const rows: [string, ReactNode][] = [
     [

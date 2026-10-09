@@ -1,8 +1,8 @@
 // Genera public/data/fichas-tecnicas.json (información técnica y características
 // principales) desde el contenido de Importadora.
-// La API de DISTRICO no guarda ficha técnica; Importadora la raspó de
-// districo.com.uy y la normaliza con src/lib/tabla-tecnica.ts. Se indexa por
-// sourceUrl, el mismo campo que trae cada producto de la API.
+// Respaldo para la importación inicial al backend (catalog:import-technical-sheets).
+// Las fichas visibles se guardan y editan en la API; regenerar este archivo no
+// reemplaza cambios del dashboard. El respaldo se indexa por sourceUrl.
 // Uso (Node 24, desde la raíz): node apps/web/scripts/fichas-tecnicas.mts ../Importadora
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";

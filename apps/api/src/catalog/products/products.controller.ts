@@ -19,6 +19,7 @@ import { UpdateProductMediaDto } from './dto/update-product-media.dto';
 import { ProductsService } from './products.service';
 import { CatalogImagesService } from '../images/catalog-images.service';
 import { MAX_BANNER_BYTES } from '../../banners/banner-storage.service';
+import { UpdateTechnicalSheetDto } from './dto/update-technical-sheet.dto';
 
 @ApiTags('products')
 @Controller('products')
@@ -116,6 +117,14 @@ export class ProductsController {
   @Roles(Role.ADMIN, Role.CATALOG)
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
+  }
+
+  @Patch(':id/technical-sheet')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CATALOG)
+  updateTechnicalSheet(@Param('id') id: string, @Body() dto: UpdateTechnicalSheetDto, @CurrentUser() user: JwtUser) {
+    return this.productsService.updateTechnicalSheet(id, dto, user);
   }
 
   @Get(':slug')

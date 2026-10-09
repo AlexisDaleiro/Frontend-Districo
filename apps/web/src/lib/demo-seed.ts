@@ -1,5 +1,8 @@
 import catalog from "@/data/catalog.json";
-import type { Customer, Entity, Product, User } from "./types";
+import sheets from "../../public/data/fichas-tecnicas.json";
+import type { Customer, Entity, Product, ProductSheet, User } from "./types";
+const initialSheets = sheets as Record<string, ProductSheet>;
+export const initialProductSheet = (url?: string) => structuredClone(initialSheets[url?.toLowerCase().replace(/\/+$/, "") ?? ""] ?? { technical: [], benefits: [] });
 export const categories: Entity[] = [
   { id: "alimentacion", name: "Alimentación", slug: "alimentacion" },
   { id: "arenas", name: "Arenas sanitarias", slug: "arenas" },
@@ -41,6 +44,8 @@ export function seedProducts(): Product[] {
         .replace(/-$/, ""),
       source: record.source,
       sourceUrl: record.sourceUrl,
+      technicalSheet: initialProductSheet(record.sourceUrl),
+      technicalSheetRevision: 0,
       shortDescription: record.name,
       description: `Producto del catálogo de ${record.source}. Consultá la información original del proveedor para conocer su presentación y características.`,
       productType: ["alimentacion", "snacks"].includes(record.category)

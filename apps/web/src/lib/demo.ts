@@ -1,4 +1,5 @@
-import { seedProducts, seedUsers, categories } from "./demo-seed";
+import { seedProducts, seedUsers, categories, initialProductSheet } from "./demo-seed";
+import { normalizeProductSheet } from "./product-sheet";
 import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
@@ -10,6 +11,7 @@ import type {
   Expiration,
   Order,
   Product,
+  ProductSheet,
   Rule,
   User,
 } from "./types";
@@ -123,6 +125,12 @@ function read() {
     data.salespeople ??= {};
     data.consumedOrderIds ??= [];
     for (const order of data.orders) order.items.forEach((item, index) => { item.id ??= `${order.id}-item-${index}`; });
+    for (const product of data.products) {
+      if (product.technicalSheetRevision === undefined) {
+        product.technicalSheet ??= initialProductSheet(product.sourceUrl);
+        product.technicalSheetRevision = 0;
+      }
+    }
     return data;
   } catch {
     throw new ApiError(
@@ -1379,6 +1387,16 @@ export async function demoRequest<T>(
       const m = { id: id(), ...b } as Product["media"][number];
       p.media.push(m);
       result = m;
+    } else if (parts[0] === "products" && parts[2] === "technical-sheet" && method === "PATCH") {
+      const p = s.products.find((product) => product.id === parts[1]);
+      if (!p) throw new ApiError("Producto no encontrado.", 404);
+      if (!Number.isInteger(b.revision) || Number(b.revision) < 0) throw new ApiError("Revisá la versión de la ficha.", 400);
+      if (!Array.isArray(b.technical) || !Array.isArray(b.benefits)) throw new ApiError("Revisá las secciones y características de la ficha.", 400);
+      if (Number(b.revision) !== (p.technicalSheetRevision ?? 0)) throw new ApiError("Otro administrador modificó la ficha. Recargá la versión actual antes de guardar.", 409);
+      const sheet = normalizeProductSheet({ technical: b.technical as ProductSheet["technical"], benefits: b.benefits as ProductSheet["benefits"] });
+      p.technicalSheet = sheet;
+      p.technicalSheetRevision = Number(b.revision) + 1;
+      result = { technicalSheet: sheet, technicalSheetRevision: p.technicalSheetRevision };
     } else if (parts[0] === "products" && method === "PATCH") {
       const p = s.products.find((p) => p.id === parts[1])!;
       Object.assign(p, b);

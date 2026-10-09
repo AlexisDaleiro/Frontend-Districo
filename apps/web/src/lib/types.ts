@@ -99,6 +99,8 @@ export type Product = {
   name: string;
   shortDescription?: string;
   description?: string;
+  technicalSheet?: ProductSheet | null;
+  technicalSheetRevision?: number;
   productType: string;
   brand?: Entity | null;
   laboratory?: Entity | null;
@@ -116,6 +118,11 @@ export type Product = {
   source?: string;
   sourceUrl?: string;
   tags?: string[];
+};
+export type TechnicalBlock = { label: string; html?: string; text?: string };
+export type ProductSheet = {
+  technical?: TechnicalBlock[];
+  benefits?: { icon: string; label: string }[];
 };
 export type ProductList = {
   items: Product[];

@@ -50,6 +50,7 @@ El navegador llama al proxy de Next.js `/api/backend/...`. La URL aguas arriba p
 | Clientes              | PATCH `admin/customers/:id`: `accountStatus`, `creditStatus`, `creditLimit`, `internalCreditNote`, `medicationPermission`                   |
 | Pedidos               | PATCH `admin/orders/:id/status` `{status,reviewReason}`; la API acepta cualquier transición, la UI ofrece solo `orderTransitions` (06b)       |
 | Productos             | POST `products`, PATCH `products/:id`; relaciones por `brandId`, `laboratoryId`, `categoryIds`                                              |
+| Fichas técnicas       | GET `products/:slug` y `products/admin/:slug` incluyen `technicalSheet={technical:[{label,text?\|html?}],benefits:[{icon,label}]}` y `technicalSheetRevision`. PATCH `products/:id/technical-sheet` `{revision,technical,benefits}` requiere editar catálogo; 409 ante una versión desactualizada. HTML sanitizado, guardado y auditoría en una transacción. |
 | Variantes             | POST `products/:id/variants`, PATCH `products/variants/:id`                                                                                 |
 | Medios                | POST `products/:id/media`, PATCH/DELETE `products/media/:id`; URL existente, sin subida de archivos                                         |
 | Stock                 | GET/PATCH `inventory/variants/:id/stock`; PATCH `{physicalStock}`, conservando reservas                                                     |

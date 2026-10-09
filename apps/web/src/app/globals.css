@@ -5085,6 +5085,44 @@ td .button {
 .admin-sales-filters { border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 .admin-sales-filters .field { flex-basis: 150px; }
 .admin-sales-breakdown { margin-top: 24px; }
+.technical-sheet-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.admin-technical-sheet form, .technical-sheet-preview { min-width: 0; }
+.technical-sheet-block { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.technical-block-heading { display: flex; align-items: end; gap: 12px; margin-bottom: 12px; }
+.technical-block-heading > .field { flex: 1; min-width: 0; }
+.technical-block-heading input { width: 100%; }
+.technical-rich-editor { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; min-width: 0; }
+.technical-rich-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #f3f6f6; border-bottom: 1px solid var(--line); }
+.technical-rich-toolbar .icon-button { width: 34px; height: 34px; flex: 0 0 34px; }
+.technical-rich-toolbar .is-active { color: #10686c; border-color: #70aeb1; background: #def2ee; }
+.technical-rich-content { padding: 14px; min-height: 140px; max-height: 600px; overflow: auto; font-size: 14px; line-height: 1.65; outline: none; }
+.technical-rich-content:focus { box-shadow: inset 0 0 0 2px #2b9095; }
+.technical-rich-content > :first-child { margin-top: 0; }
+.technical-rich-content p { margin: 0 0 8px; }
+.technical-rich-content h3 { font-size: 16px; margin: 12px 0 8px; }
+.technical-rich-content table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 12px 0; }
+.technical-rich-content td, .technical-rich-content th { border: 1px solid #bcced0; min-width: 70px; padding: 8px; vertical-align: top; position: relative; overflow-wrap: anywhere; }
+.technical-rich-content th { background: #eef4f3; text-align: left; }
+.technical-rich-content .selectedCell { background: #d9f0ed; }
+.technical-rich-content .tableWrapper { overflow: auto; }
+.technical-rich-loading { min-height: 186px; background: #f3f6f6; }
+.technical-sheet-add { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; padding: 20px 0; }
+.technical-sheet-add .field { min-width: 0; flex: 0 1 280px; }
+.technical-sheet-add select { width: 100%; }
+.technical-benefits { padding: 18px 0; border-top: 1px solid var(--line); }
+.technical-benefits h3 { font-size: 16px; }
+.technical-benefit-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr) 38px; align-items: end; gap: 12px; margin: 14px 0; }
+.technical-benefit-row input, .technical-benefit-row select { width: 100%; min-width: 0; }
+.technical-sheet-actions { flex-wrap: wrap; margin-top: 20px; }
+.technical-sheet-preview { padding-bottom: 20px; }
+@media (max-width: 600px) {
+  .technical-block-heading { flex-wrap: wrap; }
+  .technical-block-heading > .field { flex-basis: 100%; }
+  .technical-benefit-row { grid-template-columns: minmax(0, 1fr) 38px; }
+  .technical-benefit-row .field:first-child { grid-column: 1 / -1; }
+  .technical-benefits .admin-toolbar { flex-wrap: wrap; gap: 12px; }
+  .technical-sheet-actions .button { width: 100%; justify-content: center; }
+}
 .admin-sales-table { width: 100%; min-width: 440px; }
 .admin-sales-table td:not(:first-child), .admin-sales-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .admin-sales-table td:first-child { overflow-wrap: anywhere; }

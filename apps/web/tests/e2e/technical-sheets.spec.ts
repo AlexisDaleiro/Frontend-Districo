@@ -1,0 +1,96 @@
+import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import type { ProductSheet } from "../../src/lib/types";
+const originals = JSON.parse(readFileSync(new URL("../../public/data/fichas-tecnicas.json", import.meta.url), "utf8")) as Record<string, ProductSheet>;
+
+test("editar texto y tabla conserva la ficha y actualiza tienda e institucional", async ({ page }, info) => {
+  test.setTimeout(120000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const staticRequests: string[] = [];
+  page.on("request", (request) => { if (request.url().includes("/data/fichas-tecnicas.json")) staticRequests.push(request.url()); });
+  await page.goto("/tienda/ingresar");
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 15000 });
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/);
+  const original = Object.entries(originals).find(([, sheet]) => (sheet as ProductSheet).technical?.some((block) => block.label === "Composición básica") && (sheet as ProductSheet).technical?.some((block) => block.label === "Tabla nutricional"))!;
+  const product = await page.evaluate(([sourceUrl, sheet]) => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const item = state.products[0];
+    item.sourceUrl = sourceUrl;
+    item.technicalSheet = sheet;
+    item.technicalSheetRevision = 0;
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    return { slug: item.slug, originalTable: item.technicalSheet.technical.find((block: { label: string }) => block.label === "Tabla nutricional").html };
+  }, original);
+  await page.goto(`/tienda/admin/productos/${product.slug}#ficha-tecnica`, { waitUntil: "domcontentloaded" });
+  const form = page.locator(".admin-technical-sheet form");
+  const composition = form.getByRole("textbox", { name: "Contenido de Composición básica", exact: true });
+  await expect(composition).toBeVisible({ timeout: 30000 });
+  await expect(form.getByRole("textbox", { name: "Contenido de Tabla nutricional", exact: true }).locator("table")).toBeVisible();
+  await composition.fill("Composición editada desde el dashboard de prueba.");
+  await page.keyboard.press("Control+s");
+  await expect(page.getByRole("status").filter({ hasText: "Ficha técnica guardada." })).toBeVisible();
+  const afterText = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!).products[0].technicalSheet);
+  expect(afterText.technical.find((block: { label: string }) => block.label === "Tabla nutricional").html).toBe(product.originalTable);
+  const nutrition = form.getByRole("textbox", { name: "Contenido de Tabla nutricional", exact: true });
+  await nutrition.locator("td").first().click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Shift+End");
+  await page.keyboard.insertText("99 %");
+  await expect(nutrition.locator("td").first()).toHaveText("99 %");
+  await form.getByRole("button", { name: "Guardar ficha técnica", exact: true }).click();
+  await expect(form.getByRole("button", { name: "Guardar ficha técnica", exact: true })).toBeDisabled();
+  await expect(page.getByRole("status").filter({ hasText: "Ficha técnica guardada." })).toBeHidden({ timeout: 10000 });
+  await composition.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("ficha-desktop.png"), fullPage: false });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await composition.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath("ficha-mobile.png"), fullPage: false });
+  await page.reload();
+  await expect(composition).toContainText("Composición editada");
+  await expect(nutrition).toContainText("99 %");
+  await page.goto(`/tienda/producto/${product.slug}`);
+  await page.getByRole("button", { name: "Información técnica", exact: true }).click();
+  await page.locator(".tech-acc").filter({ hasText: "Composición básica" }).locator("summary").click();
+  await expect(page.locator(".tech-acc-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
+  await page.goto(`/productos/${product.slug}`);
+  await page.locator(".tech-acc").filter({ hasText: "Composición básica" }).locator("summary").click();
+  await expect(page.locator(".tech-acc-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
+  expect(staticRequests).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("borradores vacíos no rompen la vista previa; sólo catálogo editable puede guardar", async ({ page }) => {
+  await page.goto("/tienda/ingresar");
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 15000 });
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda$/);
+  const slug = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!).products[0].slug);
+  await page.goto(`/tienda/admin/productos/${slug}#ficha-tecnica`);
+  const form = page.locator(".admin-technical-sheet form");
+  await form.getByRole("button", { name: "Agregar sección", exact: true }).click();
+  await page.getByRole("button", { name: "Vista previa de la ficha", exact: true }).click();
+  await expect(form.locator(".tech-acc")).toHaveCount(1);
+  await form.getByRole("button", { name: "Guardar ficha técnica", exact: true }).click();
+  await expect(form).toContainText("está vacía");
+  await page.getByRole("button", { name: "Editar ficha", exact: true }).click();
+  await form.getByRole("button", { name: "Eliminar sección 1", exact: true }).click();
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    state.users.push({ id: "readonly-catalog", email: "catalog@example.test", role: "CATALOG", active: true, permissions: [] });
+    state.staffRoleAccess.CATALOG = { catalogo: { canView: true, canEdit: false } };
+    state.session = "readonly-catalog";
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+  });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Ficha técnica", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Ver producto", exact: true })).toBeVisible();
+});

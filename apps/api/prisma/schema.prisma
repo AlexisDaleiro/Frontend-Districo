@@ -321,6 +321,8 @@ model Product {
   slug                         String                  @unique
   shortDescription             String?
   description                  String?
+  technicalSheet               Json?
+  technicalSheetRevision       Int                     @default(0)
   productType                  ProductType             @default(OTHER)
   brandId                      String?
   brand                        Brand?                  @relation(fields: [brandId], references: [id])

@@ -14,6 +14,8 @@ import { ProductsRepository } from './products.repository';
 import { sortProductVariants } from './variant-order';
 import { CatalogImagesService } from '../images/catalog-images.service';
 import { SearchListQueryDto } from '../../admin/dto/admin-list-query.dto';
+import { UpdateTechnicalSheetDto } from './dto/update-technical-sheet.dto';
+import { normalizeTechnicalSheet } from './technical-sheet';
 
 type CatalogProduct = NonNullable<Awaited<ReturnType<ProductsRepository['findBySlug']>>>;
 
@@ -123,6 +125,10 @@ export class ProductsService {
       categories: dto.categoryIds ? { deleteMany: {}, create: dto.categoryIds.map((categoryId) => ({ categoryId })) } : undefined,
       attributes: dto.attributeValueIds ? { deleteMany: {}, create: dto.attributeValueIds.map((attributeValueId) => ({ attributeValueId })) } : undefined,
     });
+  }
+
+  updateTechnicalSheet(id: string, dto: UpdateTechnicalSheetDto, user: JwtUser) {
+    return this.productsRepository.updateTechnicalSheet(id, dto.revision, normalizeTechnicalSheet(dto), user.sub);
   }
 
   async createVariant(productId: string, dto: CreateVariantDto) {

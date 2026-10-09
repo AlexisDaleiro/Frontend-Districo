@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CategoryHierarchyService } from '../categories/category-hierarchy.service';
 import { SearchListQueryDto } from '../../admin/dto/admin-list-query.dto';
+import type { ProductSheet } from './technical-sheet';
 
 const productInclude = () =>
   ({
@@ -173,6 +174,23 @@ export class ProductsRepository {
 
   update(id: string, data: Prisma.ProductUpdateInput) {
     return this.prisma.product.update({ where: { id }, data, include: productInclude() });
+  }
+
+  updateTechnicalSheet(id: string, revision: number, sheet: ProductSheet, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const previous = await tx.product.findFirst({ where: { id, deletedAt: null }, select: { technicalSheet: true, technicalSheetRevision: true } });
+      if (!previous) throw new NotFoundException('Producto no encontrado.');
+      const saved = await tx.product.updateMany({
+        where: { id, deletedAt: null, technicalSheetRevision: revision },
+        data: { technicalSheet: sheet as unknown as Prisma.InputJsonObject, technicalSheetRevision: { increment: 1 } },
+      });
+      if (saved.count !== 1) throw new ConflictException('Otro administrador modifico la ficha. Recarga la version actual antes de guardar.');
+      await tx.auditLog.create({ data: {
+        action: 'PRODUCT_TECHNICAL_SHEET_UPDATED', entityType: 'Product', entityId: id, userId: actorId,
+        metadata: { previous: previous.technicalSheet, current: sheet, revision: revision + 1 } as unknown as Prisma.InputJsonObject,
+      } });
+      return { technicalSheet: sheet, technicalSheetRevision: revision + 1 };
+    });
   }
 
   createVariant(productId: string, data: Prisma.ProductVariantCreateWithoutProductInput) {

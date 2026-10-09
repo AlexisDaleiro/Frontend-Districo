@@ -109,6 +109,7 @@ export function MotionSystem() {
     let observer: IntersectionObserver | null = null;
 
     const reveal = (element: Element, animate = true) => {
+      if (element.closest("[contenteditable]")) return;
       observer?.unobserve(element);
       element.setAttribute("data-motion-state", "in");
       if (!animate || reduced.matches || !(element instanceof HTMLElement))
@@ -202,6 +203,8 @@ export function MotionSystem() {
     };
 
     const register = (element: Element) => {
+      // Rich-text editors own their DOM; animating their rows triggers mutation loops.
+      if (element.closest("[contenteditable]")) return;
       if (seen.has(element)) return;
       seen.add(element);
       const parent = element.parentElement;
