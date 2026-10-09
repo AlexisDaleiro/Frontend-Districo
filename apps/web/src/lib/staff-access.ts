@@ -30,7 +30,8 @@ const defaultSections: Record<BuiltInStaffRole, string[]> = {
   FINANCE: ["", "clientes", "pedidos"],
 };
 
-export const isStaff = (user: User | null | undefined) => !!user && user.role !== "CLIENT";
+export const isStaff = (user: User | null | undefined) =>
+  !!user && user.active !== false && [...staffRoles, "CUSTOM"].includes(user.role);
 
 export function canViewAdminFeature(user: User | null | undefined, feature: StaffFeature) {
   if (!user || !isStaff(user)) return false;
@@ -47,6 +48,10 @@ export function canSeeAdminSection(user: User | null | undefined, section: strin
   const feature = sectionFeature[section];
   if (!feature) return false;
   return canViewAdminFeature(user, feature);
+}
+
+export function canAccessAdmin(user: User | null | undefined) {
+  return Object.keys(sectionFeature).some((section) => canSeeAdminSection(user, section));
 }
 
 export function canEditAdminFeature(user: User | null | undefined, feature: StaffFeature) {

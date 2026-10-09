@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { canEditAdminFeature, canSeeAdminSection, staffFeatures } from "../src/lib/staff-access";
+import { canAccessAdmin, canEditAdminFeature, canSeeAdminSection, isStaff, staffFeatures } from "../src/lib/staff-access";
 import type { User } from "../src/lib/types";
 
 const sales: User = { id: "sales", email: "sales@example.test", role: "SALES", permissions: [] };
 
 describe("configurable staff access", () => {
+  it("denies dashboard access to clients, unknown roles and disabled staff", () => {
+    for (const user of [null, undefined, { ...sales, role: "CLIENT" as const }, { ...sales, role: "UNKNOWN" } as unknown as User, { ...sales, active: false }]) {
+      expect(isStaff(user)).toBe(false);
+      expect(canAccessAdmin(user)).toBe(false);
+      expect(canSeeAdminSection(user, "pedidos")).toBe(false);
+    }
+  });
+
+  it("requires view access to an admin section", () => {
+    expect(canAccessAdmin(sales)).toBe(true);
+    expect(canAccessAdmin({ ...sales, role: "ADMIN" })).toBe(true);
+    expect(canAccessAdmin({ ...sales, role: "CUSTOM" })).toBe(false);
+    const denied = Object.fromEntries(staffFeatures.map(([feature]) => [feature, { canView: false, canEdit: true }]));
+    expect(canAccessAdmin({ ...sales, staffAccess: denied })).toBe(false);
+    expect(canAccessAdmin({ ...sales, role: "CUSTOM", staffAccess: { catalogo: { canView: true, canEdit: false } } })).toBe(true);
+  });
+
   it("keeps existing role visibility until configured", () => {
     expect(canSeeAdminSection(sales, "pedidos")).toBe(true);
     expect(canSeeAdminSection(sales, "catalogo")).toBe(false);

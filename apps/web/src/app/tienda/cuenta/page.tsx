@@ -10,6 +10,7 @@ import { useApi, useSession } from "@/components/providers";
 import { ActionLink, ErrorBox, PageHeading } from "@/components/ui";
 import { can, label, money, reviewRequired } from "@/lib/commerce";
 import { storeRoutes } from "@/lib/store-routes";
+import { canAccessAdmin } from "@/lib/staff-access";
 import type { Customer, Order } from "@/lib/types";
 
 function AccountOverview({ customer }: { customer: Customer }) {
@@ -119,7 +120,7 @@ export default function Page() {
           <>
             <PageHeading eyebrow="Cuenta mayorista" title={customer?.businessName ?? "Mi cuenta"}>{user?.email}</PageHeading>
             {customer && <AccountDetails customer={customer} email={user.email} />}
-            {user && user.role !== "CLIENT" && <ActionLink href={storeRoutes.admin}>Administración</ActionLink>}
+            {canAccessAdmin(user) && <ActionLink href={storeRoutes.admin}>Administración</ActionLink>}
           </>
         )}
         <div className="account-session-actions">

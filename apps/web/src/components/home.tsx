@@ -34,11 +34,9 @@ export function Home() {
   const categories = usePublicApi<Entity[]>("categories/catalog"),
     featured = useApi<ProductCardList>("products/cards?featured=true&limit=4"),
     brands = usePublicApi<Entity[]>("brands");
-  // Solo se muestran necesidades que coinciden con una categoría existente.
+  // Use the same active root categories and ordering as catalog navigation.
   const mapped = mappedNeeds(categories.data);
-  const lines = mapped.filter((n) =>
-    ["Alimentación", "Veterinaria", "Snacks"].includes(n.name),
-  );
+  const lines = mapped.filter((n) => n.line);
   return (
     <>
       <div className="container home-container">

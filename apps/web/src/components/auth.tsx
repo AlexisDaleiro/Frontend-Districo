@@ -9,7 +9,7 @@ import { CheckCircle } from "lucide-react";
 import { DEMO, request, useSession } from "./providers";
 import { ActionLink, Empty, ErrorBox, Loading, PageHeading } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
-import { isStaff } from "@/lib/staff-access";
+import { canAccessAdmin } from "@/lib/staff-access";
 const loginSchema = z.object({
   email: z.email("Ingresá un correo válido."),
   password: z.string().min(8, "Usá al menos 8 caracteres."),
@@ -34,7 +34,7 @@ export function Login() {
     return (
       <div className="container section">
         <PageHeading title="Ya estás dentro" />
-        <ActionLink href={isStaff(user) ? storeRoutes.admin : storeRoutes.account}>
+        <ActionLink href={canAccessAdmin(user) ? storeRoutes.admin : storeRoutes.account}>
           Ir a mi cuenta
         </ActionLink>
       </div>
@@ -173,7 +173,7 @@ export function Apply() {
     return (
       <div className="container section">
         <PageHeading title="Ya tenés una cuenta" />
-        <ActionLink href={isStaff(user) ? storeRoutes.admin : storeRoutes.account}>
+        <ActionLink href={canAccessAdmin(user) ? storeRoutes.admin : storeRoutes.account}>
           Ir a mi cuenta
         </ActionLink>
       </div>
@@ -300,7 +300,7 @@ export function AccessGate({
         <ActionLink href={storeRoutes.login}>Ingresar</ActionLink>
       </Empty>
     );
-  if (admin && !isStaff(user))
+  if (admin && !canAccessAdmin(user))
     return (
       <Empty title="Acceso exclusivo de administración">
         <ActionLink href={storeRoutes.account}>Mi cuenta</ActionLink>

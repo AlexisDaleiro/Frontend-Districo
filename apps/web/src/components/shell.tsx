@@ -21,7 +21,7 @@ import type { Cart, ProductCardList } from "@/lib/types";
 import { can, hiddenPriceText, money } from "@/lib/commerce";
 import { WhatsAppFab } from "./whatsapp-fab";
 import { storeRoutes } from "@/lib/store-routes";
-import { isStaff } from "@/lib/staff-access";
+import { canAccessAdmin, isStaff } from "@/lib/staff-access";
 import { CatalogNavigation } from "./catalog-navigation";
 const links = [
   [storeRoutes.products, "Catálogo"],
@@ -297,7 +297,7 @@ export function Header() {
             <Link
               href={
                 user
-                  ? isStaff(user)
+                  ? canAccessAdmin(user)
                     ? storeRoutes.admin
                     : storeRoutes.account
                   : storeRoutes.login
@@ -305,7 +305,7 @@ export function Header() {
               className="account-link"
               aria-label={
                 user
-                  ? isStaff(user)
+                  ? canAccessAdmin(user)
                     ? "Administración"
                     : "Mi cuenta"
                   : "Ingresar al portal mayorista"
@@ -314,7 +314,7 @@ export function Header() {
               <UserRound size={22} />
               <span>
                 {user
-                  ? isStaff(user)
+                  ? canAccessAdmin(user)
                     ? "Administración"
                     : "Mi cuenta"
                   : "Ingresar"}
@@ -361,7 +361,7 @@ export function Header() {
           <nav aria-label="Navegación principal" className="container">
             {nav()}
             {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
-            {(!user || isStaff(user)) && (
+            {(!user || canAccessAdmin(user)) && (
               <Link
                 className="be-client"
                 href={user ? storeRoutes.admin : storeRoutes.requestAccount}
@@ -379,7 +379,7 @@ export function Header() {
       >
         <nav className="mobile-nav">
           {nav(true)}
-          {isStaff(user) ? (
+          {canAccessAdmin(user) ? (
             <Link href={storeRoutes.admin} onClick={() => setOpen(false)}>
               Administración
             </Link>

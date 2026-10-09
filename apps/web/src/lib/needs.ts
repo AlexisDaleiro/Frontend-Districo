@@ -1,10 +1,55 @@
 import type { Entity } from "@/lib/types";
+import { catalogCategoryKind, catalogNavigation } from "./catalog-navigation";
+
+type Need = {
+  name: string;
+  match: readonly string[];
+  image: string;
+  line?: boolean;
+};
 
 export const needs = [
+  {
+    name: "Perros",
+    match: ["perros", "perro"],
+    image: "/images/product-0-0.jpg",
+    line: true,
+  },
+  {
+    name: "Gatos",
+    match: ["gatos", "gato"],
+    image: "/images/hero-biofresh-castrados.png",
+  },
+  {
+    name: "Ganadería",
+    match: ["ganaderia"],
+    image: "/images/raicor-ganaderia-1.png",
+  },
+  {
+    name: "Pequeños animales",
+    match: ["pequenos animales"],
+    image: "/images/workbook-catalog/product-megazoo-conejos-adultos-0-c14d3def9512.webp",
+  },
+  {
+    name: "Farmacia",
+    match: ["farmacia", "medicamentos"],
+    image: "/images/raicor-animales-de-compania-0.png",
+    line: true,
+  },
+  {
+    name: "Consumo humano",
+    match: ["consumo humano"],
+    image: "/images/product-3-0.png",
+    line: true,
+  },
+] as const;
+
+const legacyNeeds: Need[] = [
   {
     name: "Alimentación",
     match: ["alimentacion", "alimentos", "alimento para mascotas"],
     image: "/images/product-0-0.jpg",
+    line: true,
   },
   {
     name: "Higiene y cuidado",
@@ -25,6 +70,7 @@ export const needs = [
     name: "Veterinaria",
     match: ["veterinaria", "animales de compania"],
     image: "/images/raicor-animales-de-compania-0.png",
+    line: true,
   },
   {
     name: "Ganadería",
@@ -40,34 +86,29 @@ export const needs = [
     name: "Snacks",
     match: ["snacks", "snacks para personas", "snacks para consumo humano"],
     image: "/images/product-3-0.png",
+    line: true,
   },
   {
     name: "Control de plagas",
     match: ["control de plagas", "raticidas"],
     image: "/images/magnis-raticidas-0.png",
   },
-] as const;
-
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+];
+const categoryVisuals: readonly Need[] = [...needs, ...legacyNeeds];
 
 export function mappedNeeds(categories: Entity[] = []) {
-  return needs
-    .flatMap((need) => {
-      const category = categories.find((item) =>
-        need.match.some(
-          (term) =>
-            term === normalize(item.name) ||
-            term === normalize(item.slug ?? "").replaceAll("-", " "),
-        ),
-      );
-      return category ? [{ ...need, id: category.id }] : [];
-    })
-    .filter(
-      (need, index, all) =>
-        all.findIndex((item) => item.id === need.id) === index,
+  return catalogNavigation(categories).map((category) => {
+    const visual = categoryVisuals.find((need) =>
+      need.match.some((term) =>
+        term === catalogCategoryKind(category.name) ||
+        term === catalogCategoryKind(category.slug ?? "").replaceAll("-", " "),
+      ),
     );
+    return {
+      id: category.id,
+      name: category.name,
+      image: category.imageUrl || visual?.image || "/images/placeholder.svg",
+      line: visual?.line ?? false,
+    };
+  });
 }

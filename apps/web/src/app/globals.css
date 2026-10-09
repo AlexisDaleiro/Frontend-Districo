@@ -4421,13 +4421,14 @@ td .button {
     display: none;
   }
   .need-list {
-    gap: 15px;
-    justify-content: start;
-    margin-right: -16px;
-    padding-right: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    overflow-x: visible;
   }
   .need {
-    flex-basis: 76px;
+    min-width: 0;
+    min-height: 112px;
     font-size: 10px;
     line-height: 1.35;
   }
