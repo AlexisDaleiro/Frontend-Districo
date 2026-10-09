@@ -246,6 +246,7 @@ model CustomerAccount {
   city                 String?
   department           String?
   creditStatus         CreditStatus @default(GOOD_STANDING)
+  creditStatusAutomatic Boolean     @default(false)
   creditLimit          Decimal?     @db.Decimal(12, 2)
   internalCreditNote   String?
   accountStatus        AccountStatus @default(PENDING)
@@ -541,6 +542,12 @@ model Order {
   discountTotal        Decimal            @db.Decimal(12, 2)
   total                Decimal            @db.Decimal(12, 2)
   paidTotal            Decimal            @default(0) @db.Decimal(12, 2)
+  paymentMethod        String?
+  paymentTermMonths    Int?
+  installmentCount     Int?
+  paymentSchedule      Json?
+  paymentDueAt         DateTime?
+  deliveredAt          DateTime?
   currency             String             @default("UYU")
   deliveryAddressId    String?
   deliveryLabel        String?
@@ -561,6 +568,7 @@ model Order {
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([customerAccountId, paymentDueAt])
 }
 
 model OrderItem {

@@ -143,7 +143,7 @@ export function seedUsers(): User[] {
       "clientepago@gmail.com",
       "Comercio Demo",
       false,
-      "PAYMENT_PENDING",
+      "PAYMENT_DELAY",
     ),
   ];
 }

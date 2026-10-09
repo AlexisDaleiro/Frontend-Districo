@@ -19,6 +19,8 @@ import {
 import { ApiError } from "@/lib/http";
 import { storeRoutes } from "@/lib/store-routes";
 import { repeatOrderItems, type RepeatOrderResult } from "@/lib/repeat-order";
+import { paymentDate, paymentSchedulePreview } from "@/lib/payment-terms";
+import { OrderPaymentPlan } from "./order-payment-plan";
 function CartLine({
   item,
   busy,
@@ -164,6 +166,8 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   const [accept, setAccept] = useState(false),
     [uncertain, setUncertain] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "INSTALLMENTS">("CASH");
+  const [paymentTermMonths, setPaymentTermMonths] = useState(3);
   const [pendingLines, setPendingLines] = useState<string[]>([]);
   const onPendingChange = useCallback((id: string, pending: boolean) => {
     setPendingLines((current) => {
@@ -185,7 +189,8 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   );
   const checkout = useMutation({
     mutationFn: () =>
-      request<Order>("checkout", "POST", { acceptManualReview: accept, deliveryAddressId: addressId }),
+      request<Order>("checkout", "POST", { acceptManualReview: accept, deliveryAddressId: addressId,
+        paymentMethod, ...(paymentMethod === "INSTALLMENTS" ? { paymentTermMonths } : {}) }),
     onSuccess: (order) => {
       router.replace(`${storeRoutes.order(order.id)}?confirmado=1`);
       void client.invalidateQueries();
@@ -307,6 +312,22 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
             <Link className="text-link" href={storeRoutes.account}>Gestionar direcciones</Link>
           </div>
         )}
+        {checkoutMode && <fieldset className="checkout-payment">
+          <legend>Forma de pago</legend>
+          <div className="payment-method-options">
+            <label><input type="radio" name="paymentMethod" value="CASH" checked={paymentMethod === "CASH"} onChange={() => setPaymentMethod("CASH")} disabled={checkout.isPending} /> Al contado</label>
+            <label><input type="radio" name="paymentMethod" value="INSTALLMENTS" checked={paymentMethod === "INSTALLMENTS"} onChange={() => setPaymentMethod("INSTALLMENTS")} disabled={checkout.isPending} /> En cuotas</label>
+          </div>
+          {paymentMethod === "CASH" ? <p className="small-copy">El saldo vence al entregar el pedido.</p> : <>
+            <label className="field">Cuotas y plazo<select aria-label="Cuotas y plazo" value={paymentTermMonths} onChange={(event) => setPaymentTermMonths(Number(event.target.value))} disabled={checkout.isPending}>
+              <option value={1}>1 cuota · 1 mes</option><option value={3}>3 cuotas · 3 meses</option><option value={6}>6 cuotas · 6 meses</option>
+            </select></label>
+            <ul className="payment-preview">{paymentSchedulePreview(q.data?.total ?? 0, paymentTermMonths).map((item) => <li key={item.number}>
+              <span>Cuota {item.number} · {paymentDate(item.dueAt)}</span><strong>{money(item.amountCents / 100)}</strong>
+            </li>)}</ul>
+            <p className="small-copy muted">Estimación antes de descuentos, desde la confirmación. Sin recargo.</p>
+          </>}
+        </fieldset>}
         {checkoutMode && manual && (
           <label className="check-field" style={{ marginTop: 20 }}>
             <input
@@ -605,6 +626,7 @@ function OrdersContent({ id }: { id?: string }) {
                 Pago y entrega se coordinan con DISTRICO.
               </p>
               <OrderItems order={order} />
+              <OrderPaymentPlan order={order} />
               {order.deliveryAddress && (
                 <p className="small-copy order-delivery-address">
                   <strong>Entrega:</strong> {order.deliveryLabel ? `${order.deliveryLabel} · ` : ""}

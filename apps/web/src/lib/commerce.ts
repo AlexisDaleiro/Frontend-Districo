@@ -45,7 +45,7 @@ export const firstQuantity = (variant: Variant) =>
 export const purchasable = (variant: Variant) =>
   firstQuantity(variant) <= variant.availableStock;
 export const reviewRequired = (status?: string) =>
-  ["PAYMENT_DELAY", "PAYMENT_PENDING", "RESTRICTED"].includes(status ?? "");
+  ["PAYMENT_DELAY", "RESTRICTED"].includes(status ?? "");
 export const labels: Record<string, string> = {
   DRAFT: "Borrador",
   SUBMITTED: "Enviado",

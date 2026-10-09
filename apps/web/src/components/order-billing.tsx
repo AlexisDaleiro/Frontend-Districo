@@ -7,6 +7,7 @@ import { downloadPrivateFile } from "@/lib/http";
 import { orderBalance } from "@/lib/order-billing";
 import type { Order } from "@/lib/types";
 import { OrderReturns } from "./order-returns";
+import { OrderPaymentPlan } from "./order-payment-plan";
 
 export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Order; onUpdated: () => Promise<void>; readOnly?: boolean }) {
   const { notify } = useSession();
@@ -130,6 +131,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
   return (
     <section className="order-billing">
       <h3>Facturación y pagos</h3>
+      <OrderPaymentPlan order={order} />
       <div className="order-billing-summary">
         <div><span>Estado de pago</span><strong className={`status-pill${balance.status === "Parcial" ? " pending" : ""}`}>{balance.status}</strong></div>
         <div><span>Monto pagado</span><strong>{money(balance.paid, order.currency)}</strong></div>

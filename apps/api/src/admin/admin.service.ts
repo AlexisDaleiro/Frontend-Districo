@@ -321,12 +321,12 @@ export class AdminService {
       this.prisma.order.count({ where: { customerAccountId: id } }),
       billing ? this.prisma.order.findMany({ where: { customerAccountId: id, status: { in: openStatuses } },
         select: { total: true, creditedTotal: true, paidTotal: true, refundedTotal: true } }) : Promise.resolve([]),
-      billing ? this.prisma.auditLog.findMany({ where: { entityType: 'CustomerAccount', entityId: id, action: { in: ['CUSTOMER_CREDIT_UPDATED', 'CUSTOMER_UPDATED'] } },
+      billing ? this.prisma.auditLog.findMany({ where: { entityType: 'CustomerAccount', entityId: id, action: { in: ['CUSTOMER_CREDIT_UPDATED', 'CUSTOMER_UPDATED', 'CUSTOMER_PAYMENT_STATUS_AUTOMATIC'] } },
         orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, action: true, createdAt: true, metadata: true, user: { select: { email: true } } } }) : Promise.resolve([]),
     ]);
     const debt = openOrders.reduce((sum, order) => sum.plus(Prisma.Decimal.max(0, order.total.minus(order.creditedTotal).minus(order.paidTotal).plus(order.refundedTotal))), new Prisma.Decimal(0));
     const creditChanges = audit.filter((entry) => {
-      if (entry.action === 'CUSTOMER_CREDIT_UPDATED') return true;
+      if (['CUSTOMER_CREDIT_UPDATED', 'CUSTOMER_PAYMENT_STATUS_AUTOMATIC'].includes(entry.action)) return true;
       const metadata = entry.metadata;
       return metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata) &&
         ['creditLimit', 'creditStatus', 'internalCreditNote'].some((key) => key in metadata);
@@ -393,6 +393,7 @@ export class AdminService {
         phone: dto.phone === undefined ? undefined : dto.phone.trim() || null,
         medicationPermission: dto.medicationPermission,
         creditStatus: dto.creditStatus,
+        creditStatusAutomatic: dto.creditStatus !== undefined && dto.creditStatus !== customer.creditStatus ? false : undefined,
         creditLimit: dto.creditLimit,
         internalCreditNote: dto.internalCreditNote,
       },

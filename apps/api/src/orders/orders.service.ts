@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { OrderListQueryDto } from '../admin/dto/admin-list-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromotionsService } from '../promotions/promotions.service';
+import { createPaymentSchedule, normalizePaymentTerms, PaymentTermsInput } from '../common/business/payment-terms';
 
 const adminOrderInclude = {
   items: true,
@@ -56,8 +57,13 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async checkout(user: JwtUser, acceptManualReview = false, deliveryAddressId?: string) {
+  async checkout(user: JwtUser, acceptManualReview = false, deliveryAddressId?: string, paymentInput: PaymentTermsInput = {}) {
     this.assertCanCheckout(user);
+    const terms = normalizePaymentTerms(paymentInput);
+    // Persist time-based changes even if checkout is rejected or later rolls back.
+    if (user.role === Role.CLIENT && user.customerAccountId) {
+      await this.prisma.$queryRaw`SELECT public.refresh_customer_payment_status(${user.customerAccountId})::text`;
+    }
     const cart = await this.prisma.cart.findUnique({
       where: { userId: user.sub },
       include: cartForCheckoutInclude,
@@ -107,9 +113,11 @@ export class OrdersService {
       if (user.role === Role.CLIENT && user.customerAccountId) {
         // Checkout requests for the same customer must evaluate exposure serially.
         await tx.$queryRaw`SELECT "id" FROM "CustomerAccount" WHERE "id" = ${user.customerAccountId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT public.refresh_customer_payment_status(${user.customerAccountId})::text`;
         const currentAccount = await tx.customerAccount.findUniqueOrThrow({ where: { id: user.customerAccountId }, select: { accountStatus: true, creditLimit: true, creditStatus: true } });
         if (currentAccount.accountStatus !== AccountStatus.APPROVED) throw new ForbiddenException('La cuenta no esta habilitada para comprar.');
         if (requiresManualReview(currentAccount.creditStatus)) {
+          if (!acceptManualReview) throw new BadRequestException('Este pedido quedará sujeto a revisión manual. Debe aceptar la condición.');
           manualReview = true;
           reviewReason = String(currentAccount.creditStatus);
         }
@@ -125,6 +133,8 @@ export class OrdersService {
           }
         }
       }
+      const confirmedAt = new Date();
+      const schedule = terms.paymentMethod === 'INSTALLMENTS' ? createPaymentSchedule(Number(total), terms.installmentCount, confirmedAt) : [];
       const createdOrder = await tx.order.create({
         data: {
           orderNumber: `DIS-${Date.now()}`,
@@ -137,6 +147,10 @@ export class OrdersService {
           subtotal,
           discountTotal,
           total,
+          ...terms,
+          createdAt: confirmedAt,
+          paymentSchedule: schedule,
+          paymentDueAt: schedule.length ? new Date(schedule[schedule.length - 1].dueAt) : null,
           currency: 'UYU',
           deliveryAddressId: selectedAddress?.id,
           deliveryLabel: selectedAddress?.label ?? (deliveryAddress ? 'Principal' : null),
@@ -198,6 +212,9 @@ export class OrdersService {
       status: order?.status,
       requiresManualReview: manualReview,
       reviewReason: order?.reviewReason,
+      paymentMethod: order?.paymentMethod,
+      paymentTermMonths: order?.paymentTermMonths,
+      paymentSchedule: order?.paymentSchedule,
       discounts: discounts.map((discount) => ({
         lineIndex: discount.lineIndex,
         promotionId: discount.promotionId,

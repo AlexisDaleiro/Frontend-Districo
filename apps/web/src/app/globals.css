@@ -4956,6 +4956,16 @@ td .button {
   gap: 10px;
 }
 .checkout-address h3 { font-size: 15px; }
+.checkout-payment { border: 0; border-top: 1px solid var(--line, #e4e8e7); margin: 18px 0; padding: 16px 0 0; min-width: 0; }
+.checkout-payment legend { font-weight: 700; font-size: 15px; padding: 0; }
+.payment-method-options { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; }
+.payment-method-options label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.payment-preview { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+.payment-preview li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 13px; }
+.payment-preview strong { white-space: nowrap; }
+.order-payment-plan { padding: 20px 0; min-width: 0; }
+.order-payment-plan h3 { font-size: 17px; margin-bottom: 8px; }
+.order-payment-plan .table-wrap { margin: 14px 0 10px; }
 .checkout-address .text-link { justify-self: start; }
 .order-delivery-address { margin-top: 18px; }
 .admin-status-filter { display: flex; gap: 7px; margin-bottom: 18px; }

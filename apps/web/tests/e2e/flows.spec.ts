@@ -49,7 +49,7 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Pedido recibido" }),
   ).toBeVisible();
-  await expect(page.locator("table")).toContainText("BIOFRESH");
+  await expect(page.locator(".orders-list .table-wrap").first()).toContainText("BIOFRESH");
   await page.goto("/tienda/cuenta/pedidos");
   await expect(page.locator(".orders-list .card")).toHaveCount(1);
   await page.getByRole("link", { name: "Ver detalle" }).click();
@@ -171,7 +171,7 @@ test("pedido con revisión requiere aceptación", async ({ page }) => {
   ).toBeDisabled();
   await page.getByLabel("Acepto que este pedido").check();
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
-  await expect(page.locator(".status-pill")).toContainText("En revisión");
+  await expect(page.locator(".order-head .status-pill")).toContainText("En revisión");
 });
 
 test("administración puede volver a revisar un pedido rechazado", async ({ page }) => {
@@ -213,7 +213,7 @@ test("administración gestiona un pedido en revisión y ajusta reservas", async 
   await page.getByRole("button", { name: "Continuar al checkout" }).click();
   await page.getByLabel("Acepto que este pedido").check();
   await page.getByRole("button", { name: "Enviar pedido a DISTRICO" }).click();
-  await expect(page.locator(".status-pill")).toContainText("En revisión");
+  await expect(page.locator(".order-head .status-pill")).toContainText("En revisión");
   await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "Administración");

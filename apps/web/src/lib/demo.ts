@@ -16,6 +16,7 @@ import type {
 import { can, orderStatuses, quantityError, reviewRequired } from "./commerce";
 import { ApiError } from "./http";
 import { orderBalance } from "./order-billing";
+import { customerPaymentStatus, paymentSchedulePreview } from "./payment-terms";
 import { demoAdminTools, type DemoToolsState } from "./demo-admin-tools";
 import { demoProductReturn } from "./demo-product-returns";
 import { demoRecommendationLabels, demoRecommendationPayload, demoRecommendations } from "./demo-recommendations";
@@ -310,6 +311,7 @@ export async function demoRequest<T>(
   body?: unknown,
 ): Promise<T> {
   const s = read();
+  if (refreshDemoPaymentStatuses(s)) write(s);
   const invitationPending = (member: User) => member.active === false && member.emailVerified === false && !!s.staffInvitations?.some((item) => item.userId === member.id && !item.revoked && !item.accepted && item.expiresAt > new Date().toISOString());
   const matchesStaffStatus = (member: User) => !query.get("status") || staffListStatus({ ...member, invitationPending: invitationPending(member) }) === query.get("status");
   const [route, search = ""] = path.split("?");
@@ -669,10 +671,16 @@ export async function demoRequest<T>(
     }
     result = userCart(s, u);
   } else if (route === "checkout" && method === "POST") {
+    const paymentMethod = b.paymentMethod ?? "CASH";
+    const months = b.paymentTermMonths;
+    if (!["CASH", "INSTALLMENTS"].includes(String(paymentMethod)) ||
+        paymentMethod === "INSTALLMENTS" && (typeof months !== "number" || ![1, 3, 6].includes(months)) ||
+        paymentMethod === "CASH" && months !== undefined && months !== null) throw new ApiError("Elegí contado o cuotas con un plazo de 1, 3 o 6 meses.", 400);
     const u = needBuyer(),
       cart = userCart(s, u);
     if (!cart.items.length) throw new ApiError("El carrito está vacío.", 400);
-    const review = reviewRequired(u.customerAccount?.creditStatus);
+    let review = reviewRequired(u.customerAccount?.creditStatus);
+    let reviewReason = review ? u.customerAccount?.creditStatus : undefined;
     if (review && !b.acceptManualReview)
       throw new ApiError("Aceptá la revisión manual del pedido.", 400);
     const addresses = u.customerAccount?.addresses ?? [];
@@ -693,6 +701,16 @@ export async function demoRequest<T>(
     }
     const reductions = discounts(s, cart);
     const discountTotal = reductions.reduce((a, b) => a + b, 0);
+    if (u.customerAccount?.creditLimit != null) {
+      const exposure = s.orders.filter((order) => (order.customerAccount?.id === u.customerAccount!.id || order.userId === u.id) && !["DRAFT", "REJECTED", "CANCELLED"].includes(order.status))
+        .reduce((sum, order) => sum + Math.round(orderBalance(order).due * 100), 0);
+      if (exposure + Math.round((cart.total - discountTotal) * 100) > Math.round(Number(u.customerAccount.creditLimit) * 100)) {
+        review = true;
+        reviewReason = "CREDIT_LIMIT_EXCEEDED";
+      }
+    }
+    const confirmedAt = new Date();
+    const schedule = paymentMethod === "INSTALLMENTS" ? paymentSchedulePreview(cart.total - discountTotal, Number(months), confirmedAt) : [];
     const order: Order = {
       id: id(),
       orderNumber: `DEMO-${Date.now()}`,
@@ -706,8 +724,13 @@ export async function demoRequest<T>(
       status: review ? "PENDING_REVIEW" : "SUBMITTED",
       requiresManualReview: review,
       acceptedManualReview: !!b.acceptManualReview,
-      reviewReason: review ? u.customerAccount?.creditStatus : undefined,
-      createdAt: new Date().toISOString(),
+      reviewReason,
+      createdAt: confirmedAt.toISOString(),
+      paymentMethod: paymentMethod as "CASH" | "INSTALLMENTS",
+      paymentTermMonths: paymentMethod === "INSTALLMENTS" ? Number(months) : null,
+      installmentCount: paymentMethod === "INSTALLMENTS" ? Number(months) : 1,
+      paymentSchedule: schedule,
+      paymentDueAt: schedule.at(-1)?.dueAt ?? null,
       currency: "UYU",
       subtotal: cart.total,
       discountTotal,
@@ -1132,6 +1155,7 @@ export async function demoRequest<T>(
       } else {
       const previousCredit = { creditLimit: u.customerAccount?.creditLimit ?? null, creditStatus: u.customerAccount?.creditStatus, internalCreditNote: u.customerAccount?.internalCreditNote };
       Object.assign(u.customerAccount!, b);
+      if (b.creditStatus !== undefined && b.creditStatus !== previousCredit.creditStatus) u.customerAccount!.creditStatusAutomatic = false;
       if (b.medicationPermission !== undefined) {
         u.permissions = u.permissions.filter(
           (p) => p !== "CAN_BUY_MEDICATIONS",
@@ -1475,6 +1499,35 @@ export async function demoRequest<T>(
       throw new ApiError("Esta operación no está disponible en la demo.", 404);
   } else
     throw new ApiError("Esta operación no está disponible en la demo.", 404);
-  if (method !== "GET") write(s);
+  const paymentStatusesChanged = refreshDemoPaymentStatuses(s);
+  if (method !== "GET" || paymentStatusesChanged) write(s);
   return structuredClone(result) as T;
+}
+
+function refreshDemoPaymentStatuses(s: State) {
+  let changed = false;
+  for (const order of s.orders) {
+    if (order.paymentMethod === "CASH" && order.status === "DELIVERED" && !order.paymentDueAt) {
+      order.deliveredAt ??= new Date().toISOString();
+      order.paymentDueAt = order.deliveredAt;
+      changed = true;
+    }
+  }
+  for (const member of s.users) {
+    const account = member.customerAccount;
+    if (!account || account.creditStatus === "RESTRICTED" || account.creditStatus === "PAYMENT_DELAY" && !account.creditStatusAutomatic) continue;
+    const orders = s.orders.filter((order) => order.customerAccount?.id === account.id || order.userId === member.id);
+    if (!account.creditStatusAutomatic && !orders.some((order) => order.paymentMethod)) continue;
+    const status = customerPaymentStatus(orders);
+    if (account.creditStatus !== status) {
+      (s.creditChanges ??= {})[account.id] ??= [];
+      s.creditChanges[account.id].unshift({ id: id(), action: "CUSTOMER_PAYMENT_STATUS_AUTOMATIC", createdAt: new Date().toISOString(),
+        metadata: { before: { creditStatus: account.creditStatus }, after: { creditStatus: status }, source: "PAYMENT_TERMS" }, user: { email: "Sistema" } });
+      account.creditStatus = status;
+      changed = true;
+    }
+    if (!account.creditStatusAutomatic) { account.creditStatusAutomatic = true; changed = true; }
+    for (const order of orders) if (order.customerAccount) Object.assign(order.customerAccount, { creditStatus: status, creditStatusAutomatic: true });
+  }
+  return changed;
 }

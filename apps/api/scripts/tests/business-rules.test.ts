@@ -67,8 +67,9 @@ function testMultiplePromotionTargets() {
 
 function testCreditReview() {
   assert.equal(requiresManualReview(CreditStatus.GOOD_STANDING), false);
-  assert.equal(requiresManualReview(CreditStatus.PAYMENT_PENDING), true);
-  assert.equal(submittedStatusForCredit(CreditStatus.PAYMENT_PENDING), 'PENDING_REVIEW');
+  assert.equal(requiresManualReview(CreditStatus.PAYMENT_PENDING), false);
+  assert.equal(submittedStatusForCredit(CreditStatus.PAYMENT_PENDING), 'SUBMITTED');
+  assert.equal(requiresManualReview(CreditStatus.PAYMENT_DELAY), true);
   assert.equal(submittedStatusForCredit(CreditStatus.GOOD_STANDING), 'SUBMITTED');
 }
 

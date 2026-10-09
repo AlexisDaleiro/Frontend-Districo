@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AccountStatus, OrderStatus, Permission, Prisma, Role } from '@prisma/client';
+import { AccountStatus, CreditStatus, OrderStatus, Permission, Prisma, Role } from '@prisma/client';
 import { effectivePermissions } from '../../src/common/business/account-access';
 import { OrdersService } from '../../src/orders/orders.service';
 import { OrderBillingService } from '../../src/orders/order-billing.service';
@@ -299,13 +299,33 @@ test('checkout puts orders above available credit into manual review', async () 
     productVariant: { update: async () => ({}) },
     cartItem: { deleteMany: async () => ({}) },
   };
-  const prisma = { cart: { findUnique: async () => cart }, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
+  const prisma = { $queryRaw: async () => [], cart: { findUnique: async () => cart }, $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx) } as unknown as PrismaService;
   const orders = new OrdersService(prisma, { validateAvailableStock: () => {} } as never, { calculateDiscounts: async () => [] } as never, { log: async () => {} } as never, { notify: async () => {} } as never);
   const user = { sub: 'client-1', email: 'client@example.test', role: Role.CLIENT, customerAccountId: 'account-1', permissions: [Permission.CAN_PLACE_ORDERS] };
   const result = await orders.checkout(user, false, 'address-1');
   assert.equal(created?.status, OrderStatus.PENDING_REVIEW);
   assert.equal(created?.reviewReason, 'CREDIT_LIMIT_EXCEEDED');
   assert.equal(result?.status, OrderStatus.PENDING_REVIEW);
+  assert.equal(created?.paymentMethod, 'CASH');
+  assert.equal(created?.paymentDueAt, null);
+  await orders.checkout(user, false, 'address-1', { paymentMethod: 'INSTALLMENTS', paymentTermMonths: 3 });
+  assert.equal(created?.paymentMethod, 'INSTALLMENTS');
+  assert.equal(created?.installmentCount, 3);
+  assert.equal((created?.paymentSchedule as { amountCents: number }[]).reduce((sum, item) => sum + item.amountCents, 0), 6000);
+});
+
+test('checkout persists a freshly expired payment status even when confirmation needs review', async () => {
+  const account = { accountStatus: AccountStatus.APPROVED, creditStatus: CreditStatus.PAYMENT_PENDING as CreditStatus, addresses: [], address: 'Calle 1' };
+  let checked = false;
+  const prisma = {
+    $queryRaw: async () => { checked = true; account.creditStatus = CreditStatus.PAYMENT_DELAY; return []; },
+    cart: { findUnique: async () => ({ items: [{}], user: { customerAccount: account } }) },
+  } as unknown as PrismaService;
+  const orders = new OrdersService(prisma, {} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(() => orders.checkout({ sub: 'client-1', email: 'client@example.test', role: Role.CLIENT,
+    customerAccountId: 'account-1', permissions: [Permission.CAN_PLACE_ORDERS] }), BadRequestException);
+  assert.equal(checked, true);
+  assert.equal(account.creditStatus, CreditStatus.PAYMENT_DELAY);
 });
 
 test('voiding a payment keeps the original and reduces the paid balance with audit', async () => {

@@ -23,6 +23,7 @@ export type Customer = {
   rut: string;
   accountStatus: string;
   creditStatus: string;
+  creditStatusAutomatic?: boolean;
   medicationPermission: boolean;
   phone?: string;
   address?: string;
@@ -153,6 +154,12 @@ export type Order = {
   createdAt: string;
   total: number;
   paidTotal?: number | string;
+  paymentMethod?: "CASH" | "INSTALLMENTS" | null;
+  paymentTermMonths?: number | null;
+  installmentCount?: number | null;
+  paymentSchedule?: { number: number; amountCents: number; dueAt: string }[] | null;
+  paymentDueAt?: string | null;
+  deliveredAt?: string | null;
   creditedTotal?: number | string;
   refundedTotal?: number | string;
   subtotal: number;

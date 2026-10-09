@@ -4,6 +4,10 @@
   "private": true,
   "description": "Backend demo B2B para el e-commerce mayorista de DISTRICO S.A.",
   "scripts": {
+    "pretest": "npm run test:payment-terms",
+    "payments:monitor": "ts-node scripts/enable-payment-monitor.ts",
+    "test:payment-terms": "ts-node scripts/tests/payment-terms.test.ts",
+    "test:payment-terms:db": "ts-node scripts/tests/payment-terms.integration.ts",
     "test:dashboard-enhancements": "ts-node scripts/tests/dashboard-enhancements.test.ts",
     "catalog:download-laboratory-logos": "node scripts/download-laboratory-logos.cjs",
     "catalog:sync-laboratory-logos": "ts-node scripts/sync-laboratory-logos.ts",

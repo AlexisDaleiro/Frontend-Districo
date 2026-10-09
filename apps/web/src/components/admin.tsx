@@ -582,6 +582,7 @@ export function OrderProgressControl({ order, onUpdated }: { order: Order; onUpd
           {selected !== order.status && (
             <p className="small-copy muted order-management-status-effect">
               {orderStockEffect(order.status, selected)}
+              {selected === "DELIVERED" && order.paymentMethod === "CASH" && orderBalance(order).due > 0 && " Confirmás la entrega del pedido: vence el pago al contado y el saldo impago marca la cuenta como pago atrasado."}
             </p>
           )}
         </form>

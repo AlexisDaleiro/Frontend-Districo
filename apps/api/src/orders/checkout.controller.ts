@@ -15,6 +15,6 @@ export class CheckoutController {
 
   @Post()
   checkout(@CurrentUser() user: JwtUser, @Body() dto: CheckoutDto) {
-    return this.ordersService.checkout(user, dto.acceptManualReview ?? false, dto.deliveryAddressId);
+    return this.ordersService.checkout(user, dto.acceptManualReview ?? false, dto.deliveryAddressId, dto);
   }
 }

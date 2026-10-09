@@ -32,7 +32,7 @@ export function canViewPrice(role: Role | undefined, permissions: Permission[] |
 }
 
 export function requiresManualReview(creditStatus?: CreditStatus | null) {
-  return creditStatus === CreditStatus.PAYMENT_DELAY || creditStatus === CreditStatus.PAYMENT_PENDING || creditStatus === CreditStatus.RESTRICTED;
+  return creditStatus === CreditStatus.PAYMENT_DELAY || creditStatus === CreditStatus.RESTRICTED;
 }
 
 export function submittedStatusForCredit(creditStatus?: CreditStatus | null) {
