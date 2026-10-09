@@ -4,13 +4,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 const revealSelector = [
-  ".needs-intro",
-  ".need",
+  ".species-card",
+  ".category-tile",
   ".hero:not(.home-carousel-slide) .hero-copy",
   ".hero:not(.home-carousel-slide) .hero-visual",
   ".section-title",
-  ".line-card",
-  ".brand-word",
+  ".brand-promo",
+  ".brand-promo-wide",
   ".product-card",
   ".cta-band",
   ".page-heading",
@@ -64,7 +64,7 @@ const parallaxSelector =
   ".hero:not(.home-carousel-slide) .hero-visual img, .company-hero-visual img, .site-story-media img, .site-operation-photo > img";
 const lineSelector = ".reference-line";
 const staggerSelector =
-  ".need-list, .line-grid, .brand-list, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";
+  ".species-grid, .category-tiles, .brand-promos, .featured-track, .product-grid, .directory-grid, .company-facts dl, .company-card-grid, .contact-branch-grid, .contact-store-list, .auth-layout form, .cart-items, .account-panels, .orders-list, .admin-cards, tbody, .stats, .error-page, .site-line-list, .site-product-grid, .site-facts, .site-steps, .site-operation-cards, .site-news-grid, .site-benefits, .reference-line-copy";
 
 // Mientras corre la transición de página, lo que ya está en pantalla entra con
 // ella; solo las grillas escalonan por su cuenta.
@@ -142,7 +142,7 @@ export function MotionSystem() {
           for (const entry of entries) {
             if (!entry.isIntersecting) continue;
             reveal(entry.target);
-            // Las listas con scroll horizontal (necesidades en móvil) recortan
+            // Las listas con scroll horizontal (destacados) recortan
             // sus hijos: se revelan juntos con los hermanos de la misma fila.
             const parent = entry.target.parentElement;
             if (!parent?.matches(staggerSelector)) continue;

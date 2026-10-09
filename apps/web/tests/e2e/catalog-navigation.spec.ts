@@ -74,22 +74,23 @@ async function checkHomeCategories(page: Page, testInfo: { outputPath: (name: st
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await page.goto("/tienda");
-    const section = page.getByRole("region", { name: "Comprar por necesidad", exact: true });
-    await expect(section.locator("a.need")).toHaveText(roots);
+    const section = page.getByRole("region", { name: "Comprar por especie", exact: true });
+    for (const name of roots)
+      await expect(section.getByRole("link", { name, exact: true })).toBeVisible();
     await expect(section.getByRole("link", { name: "Arenas sanitarias", exact: true })).toHaveCount(0);
     for (const image of await section.locator("img").all()) {
       await image.scrollIntoViewIfNeeded();
       await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth > 0)).toBe(true);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    expect(await section.locator("a.need").evaluateAll((nodes) => nodes.every((node) => {
+    expect(await section.locator("a").evaluateAll((nodes) => nodes.every((node) => {
       const bounds = node.getBoundingClientRect();
       return bounds.left >= 0 && bounds.right <= innerWidth;
     }))).toBe(true);
-    await section.getByText("¿Qué estás buscando?", { exact: true }).scrollIntoViewIfNeeded();
+    await section.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`home-categories-${viewport.width}.png`), animations: "disabled" });
   }
-  const dogs = page.getByRole("region", { name: "Comprar por necesidad", exact: true }).getByRole("link", { name: "Perros", exact: true });
+  const dogs = page.getByRole("region", { name: "Comprar por especie", exact: true }).getByRole("link", { name: "Perros", exact: true });
   const target = new URL((await dogs.getAttribute("href"))!, page.url()).href;
   await dogs.click();
   await expect(page).toHaveURL(target);
