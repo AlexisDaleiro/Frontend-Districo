@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
   ShoppingBag,
+  Pencil,
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
@@ -21,6 +22,7 @@ import { FavoriteButton } from "./favorite-button";
 import { TechnicalAccordions } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
+import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import {
   ActionLink,
   Empty,
@@ -923,6 +925,11 @@ function ProductDetailContent({ product }: { product: Product }) {
           </p>
           <h1>{product.name}</h1>
           <FavoriteButton productId={product.id} name={product.name} className="detail-favorite" />
+          {canSeeAdminSection(user, "catalogo") && canEditAdminFeature(user, "catalogo") && (
+            <Link href={storeRoutes.adminProduct(product.slug)} className="icon-button detail-edit" title="Editar producto" aria-label="Editar producto">
+              <Pencil size={19} />
+            </Link>
+          )}
           {product.shortDescription &&
             product.shortDescription.trim().toLocaleLowerCase() !==
               product.name.trim().toLocaleLowerCase() && (

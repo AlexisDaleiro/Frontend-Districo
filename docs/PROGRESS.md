@@ -2,6 +2,13 @@
 
 Última actualización: 8 de octubre de 2026. Rama de trabajo: `main`.
 
+## Atajo de edición desde el producto en la tienda (8/10/2026)
+
+- La ficha individual del ecommerce muestra un enlace con ícono de lápiz y tooltip "Editar producto", que abre `storeRoutes.adminProduct(product.slug)` para ese mismo producto. Reutiliza los permisos de ver y editar catálogo; se oculta para clientes, personal de sólo lectura y cuentas sin acceso. No cambia el sitio institucional ni las rutas o controles del backend.
+- Archivos: `apps/web/src/components/catalog.tsx`, espaciado en `apps/web/src/app/globals.css` y `apps/web/tests/e2e/product-edit-shortcut.spec.ts`.
+- Verificación: 171 pruebas frontend, lint y typecheck correctos; 4 recorridos Playwright correctos, incluyendo edición del producto exacto en escritorio/móvil, cliente con favoritos, redirección del visitante al ingreso y permisos configurables. Sin desbordamiento en ambos anchos. La prueba anónima se ajustó al acceso mayorista protegido existente.
+- Publicación a `main` solicitada el 8/10. Se consultó `origin/main`: coincide con la base local `37732ad`, sin commits remotos pendientes ni necesidad de sobrescribir cambios del compañero. Se revisaron los cuatro archivos del cambio y se conservaron los controles existentes de permisos, favoritos y acceso mayorista.
+
 ## Fichas técnicas desde el dashboard (8/10/2026)
 
 - Ficha técnica en la página de edición del producto: editor visual de composición, recomendaciones y tablas; agregar, ordenar, renombrar y quitar secciones, características con íconos, vista previa, Ctrl+S y aviso de cambios sin guardar. Imágenes permanecen arriba.
