@@ -21,6 +21,9 @@ import { demoProductReturn } from "./demo-product-returns";
 import { demoRecommendationLabels, demoRecommendationPayload, demoRecommendations } from "./demo-recommendations";
 import { recommendationIds } from "./recommendation-scope";
 import { promotionTriggerIds } from "./promotion-scope";
+import { rulePage } from "./marketing-list";
+import { demoSalesReport } from "./demo-sales";
+import { salesReportCsv } from "./sales-report";
 import { staffListStatus } from "./admin-list-filters";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
@@ -40,6 +43,7 @@ type State = {
   products: Product[];
   users: User[];
   carts: Record<string, { id: string; variantId: string; quantity: number }[]>;
+  favorites?: Record<string, string[]>;
   applications: Application[];
   contactInquiries: ContactInquiry[];
   orders: Order[];
@@ -345,7 +349,7 @@ export async function demoRequest<T>(
       route.startsWith("admin/salespeople") ? "vendedores" :
       route.startsWith("admin/customers") ? "clientes" :
       route.startsWith("admin/orders") ? "pedidos" :
-      route === "admin/dashboard" ? "resumen" : route === "admin/sales" ? "ventas" :
+      route === "admin/dashboard" ? "resumen" : /^admin\/sales(?:\/|$)/.test(route) ? "ventas" :
       route.startsWith("admin/promotions") || route.startsWith("promotions") ? "promociones" :
       route.startsWith("admin/recommendations") || route.startsWith("recommendations") ? "recomendaciones" :
       route.startsWith("admin/banners") ? "banners" :
@@ -399,6 +403,29 @@ export async function demoRequest<T>(
     member.emailVerified = true;
     invitation.accepted = true;
     result = { success: true };
+  }
+  else if (route === "account/me/favorites" || route.startsWith("account/me/favorites/")) {
+    const current = needUser();
+    if (current.role !== "CLIENT" || !current.customerAccount) throw new ApiError("Los favoritos son exclusivos de clientes.", 403);
+    const saved = ((s.favorites ??= {})[current.id] ??= []);
+    const productId = route.split("/")[3];
+    if (method === "GET") {
+      let items = s.products.filter((item) => item.active !== false && saved.includes(item.id));
+      if (productId === "ids") result = items.map((item) => item.id);
+      else {
+        const search = (query.get("search") ?? "").trim().toLowerCase();
+        items = items.filter((item) => !search || item.name.toLowerCase().includes(search) || item.variants.some((variant) => variant.sku.toLowerCase().includes(search))).sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+        const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.min(100, Math.max(1, Number(query.get("limit")) || 20));
+        result = { items: items.slice((page - 1) * limit, page * limit).map((item) => publicProduct(item, current)), meta: { total: items.length, page, limit } };
+      }
+    } else if (method === "POST" && productId) {
+      if (!s.products.some((item) => item.id === productId && item.active !== false)) throw new ApiError("Producto no disponible.", 404);
+      if (!saved.includes(productId)) saved.push(productId);
+      result = { productId, favorite: true };
+    } else if (method === "DELETE" && productId) {
+      s.favorites![current.id] = saved.filter((id) => id !== productId);
+      result = { productId, favorite: false };
+    } else throw new ApiError("Acción no disponible.", 400);
   }
   else if (route === "account/me" || route.startsWith("account/me/addresses")) {
     const account = needUser().customerAccount;
@@ -740,7 +767,7 @@ export async function demoRequest<T>(
     route.startsWith("admin/") ||
     route.startsWith("inventory/") ||
     ["POST", "PATCH", "DELETE"].includes(method) ||
-    ["promotions", "promotions/expiration", "recommendations"].includes(route)
+    ["promotions", "promotions/expiration", "recommendations", "promotions/page", "recommendations/page"].includes(route)
   ) {
     needAdmin();
     const parts = route.split("/");
@@ -758,36 +785,22 @@ export async function demoRequest<T>(
           (inquiry) => inquiry.status === "NEW",
         ).length,
       };
-    else if (route === "admin/sales") {
-      const period = query.get("period") ?? "7d";
-      const days = period === "today" ? 1 : period === "7d" ? 7 : period === "30d" ? 30 : 90;
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const start = new Date(todayStart.getTime() - (days - 1) * 86400000);
-      const previousStart = new Date(start.getTime() - days * 86400000);
-      const valid = s.orders.filter((order) => !["DRAFT", "REJECTED", "CANCELLED"].includes(order.status));
-      const current = valid.filter((order) => new Date(order.createdAt) >= start);
-      const previous = valid.filter((order) => new Date(order.createdAt) >= previousStart && new Date(order.createdAt) < start);
-      const today = valid.filter((order) => new Date(order.createdAt) >= todayStart);
-      const amount = (orders: Order[]) => orders.reduce((sum, order) => sum + order.total, 0);
-      const top = new Map<string, { id: string; name: string; units: number; amount: number }>();
-      const series = new Map<string, { bucket: string; orders: number; amount: number }>();
-      for (const order of current) {
-        const bucket = period === "today" ? new Date(order.createdAt).toLocaleString("en-GB", { hour: "2-digit", hour12: false, timeZone: "America/Montevideo" }) : new Date(order.createdAt).toLocaleDateString("sv-SE", { timeZone: "America/Montevideo" });
-        const point = series.get(bucket) ?? { bucket, orders: 0, amount: 0 };
-        point.orders++;
-        point.amount += order.total;
-        series.set(bucket, point);
-        for (const item of order.items) {
-          const key = item.variantId;
-          const entry = top.get(key) ?? { id: key, name: item.productName, units: 0, amount: 0 };
-          entry.units += item.quantity;
-          entry.amount += item.subtotal;
-          top.set(key, entry);
-        }
-      }
-      const currentAmount = amount(current), previousAmount = amount(previous);
-      result = { period, timezone: "America/Montevideo", startAt: start.toISOString(), today: { orders: today.length, amount: amount(today) }, current: { orders: current.length, amount: currentAmount, units: current.flatMap((order) => order.items).reduce((sum, item) => sum + item.quantity, 0), collected: current.reduce((sum, order) => sum + (order.payments ?? []).filter((payment) => !payment.voidedAt).reduce((subtotal, payment) => subtotal + Number(payment.amount), 0), 0) }, previous: { orders: previous.length, amount: previousAmount }, changePercent: previousAmount ? Math.round((currentAmount - previousAmount) / previousAmount * 1000) / 10 : null, series: [...series.values()].sort((a, b) => a.bucket.localeCompare(b.bucket)), topProducts: [...top.values()].sort((a, b) => b.units - a.units).slice(0, 8) };
+    else if (route === "admin/sales/options") {
+      const current = needUser(), search = (query.get('search') ?? '').trim().toLowerCase();
+      const customers = s.users.flatMap((member) => member.customerAccount ? [member.customerAccount] : []).filter((account) => current.role !== 'SALES' || salespersonFor(account)?.userId === current.id);
+      result = {
+        salespeople: Object.entries(s.salespeople ?? {}).filter(([id]) => current.role !== 'SALES' || id === current.id).map(([, profile]) => ({ id: profile.id, name: profile.name })),
+        customers: [...new Map(customers.filter((account) => !search || [account.businessName, account.rut, ...s.users.filter((member) => member.customerAccount?.id === account.id).map((member) => member.email)].some((value) => value.toLowerCase().includes(search))).map((account) => [account.id, { id: account.id, name: account.businessName, rut: account.rut }])).values()].sort((a, b) => a.name.localeCompare(b.name)).slice(0, 40),
+        brands: s.brands.map((item) => ({ id: item.id, name: item.name })).sort((a, b) => a.name.localeCompare(b.name)),
+      };
+    } else if (route === "admin/sales" || route === "admin/sales/export") {
+      const current = needUser();
+      const members = s.users.map((member) => ({ ...member, customerAccount: member.customerAccount ? { ...member.customerAccount, salesperson: salespersonFor(member.customerAccount) } : undefined }));
+      const decorated = { ...current, staffAccess: current.role === "CUSTOM" ? s.customRoles?.find((item) => item.id === current.customRoleId)?.access : current.role !== 'CLIENT' ? s.staffRoleAccess?.[current.role] : undefined };
+      try {
+        const report = demoSalesReport(s.orders, members, s.products, query, decorated, route.endsWith('/export'));
+        result = route.endsWith('/export') ? salesReportCsv(report) : report;
+      } catch (error) { throw new ApiError(error instanceof Error ? error.message : 'Fechas inválidas.', 400); }
     } else if (route === "admin/banners") {
       if (method === "GET") {
         if (query.has("placement") && !["ECOMMERCE", "INSTITUTIONAL"].includes(query.get("placement")!)) throw new ApiError("Sitio de banners no válido.", 400);
@@ -1377,6 +1390,10 @@ export async function demoRequest<T>(
         "admin/promotions",
         "recommendations",
         "admin/recommendations",
+        "promotions/page",
+        "admin/promotions/page",
+        "recommendations/page",
+        "admin/recommendations/page",
         "promotions/expiration",
       ].includes(route)
     ) {
@@ -1395,7 +1412,7 @@ export async function demoRequest<T>(
         const value = { id: id(), active: true, ...payload };
         collection.push(value as Rule & Expiration);
         result = value;
-      } else result = route.includes("recommendations") ? s.rules.map((rule) => demoRecommendationLabels(rule, s)) : route === "promotions" || route === "admin/promotions" ? s.promotions.map((rule) => {
+      } else result = route.includes("recommendations") ? s.rules.map((rule) => demoRecommendationLabels(rule, s)) : route !== "promotions/expiration" ? s.promotions.map((rule) => {
         const label = (type: string, id: string) => type === "PRODUCT" ? s.products.find((item) => item.id === id)?.name :
           (type === "BRAND" ? s.brands : type === "CATEGORY" ? s.categories : s.laboratories).find((item) => item.id === id)?.name;
         return { ...rule,
@@ -1403,6 +1420,7 @@ export async function demoRequest<T>(
           targetTargets: rule.rewards?.flatMap((item) => item.targetId ? [{ id: item.targetId, name: label(item.targetType, item.targetId) ?? item.targetId }] : []),
         };
       }) : collection;
+      if (method === "GET" && route.endsWith("/page")) result = rulePage(result as Rule[], query);
     } else if (parts[0] === "categories" && parts[1] && parts[2] === "products") {
       const category = s.categories.find((item) => item.id === parts[1]);
       const productId = method === "POST" ? String(b.productId ?? "") : parts[3];

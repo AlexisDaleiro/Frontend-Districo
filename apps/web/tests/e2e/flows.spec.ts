@@ -274,9 +274,9 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
 }) => {
   await login(page);
   await page.goto("/tienda/admin");
-  await expect(
-    page.getByRole("heading", { name: "Acceso exclusivo de administración" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/tienda\/cuenta$/);
+  await expect(page.locator('.admin-sales')).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Administración', exact: true })).toHaveCount(0);
   await page.goto("/tienda/producto/alizin-10ml");
   await expect(
     page.getByText("Tu cuenta no está habilitada para comprar este producto."),
@@ -439,7 +439,7 @@ test("administración modifica precio y stock y crea recomendación", async ({
   await dialog.getByRole("group", { name: "Recomendar *", exact: true }).locator(".promotion-options label").nth(1).getByRole("checkbox").check();
   await dialog.getByRole("button", { name: "Guardar recomendación" }).click();
   await expect(
-    page.getByRole("heading", { name: "Recomendación prueba" }),
+    page.locator('.admin-marketing-table tbody tr').filter({ hasText: 'Recomendación prueba' }),
   ).toBeVisible();
 });
 for (const width of [360, 390, 768, 1024, 1440])

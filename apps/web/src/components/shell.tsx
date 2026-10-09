@@ -12,6 +12,7 @@ import {
   Linkedin,
   MapPin,
   LogOut,
+  Heart,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { DEMO, useSession, useApi } from "./providers";
@@ -323,6 +324,7 @@ export function Header() {
                 </small>
               </span>
             </Link>
+            {user?.role === "CLIENT" && <Link className="icon-button header-favorites" href={storeRoutes.favorites} title="Mis favoritos" aria-label="Mis favoritos"><Heart size={21} /></Link>}
             {/* Sin permiso para pedir, el ícono lleva a /carrito (pide ingresar). */}
             {isStaff(user) ? null : canOrder ? (
               <button
@@ -379,6 +381,7 @@ export function Header() {
       >
         <nav className="mobile-nav">
           {nav(true)}
+          {user?.role === "CLIENT" && <Link href={storeRoutes.favorites} onClick={() => setOpen(false)}><Heart size={18} /> Mis favoritos</Link>}
           {canAccessAdmin(user) ? (
             <Link href={storeRoutes.admin} onClick={() => setOpen(false)}>
               Administración
@@ -489,6 +492,7 @@ export function Footer() {
               <Link href={storeRoutes.account}>Mi cuenta</Link>
               <Link href={storeRoutes.orders}>Mis pedidos</Link>
               <Link href={storeRoutes.invoices}>Mis facturas</Link>
+              {user.role === "CLIENT" && <Link href={storeRoutes.favorites}>Mis favoritos</Link>}
             </>
           ) : (
             <Link href={storeRoutes.requestAccount}>Solicitar acceso mayorista</Link>

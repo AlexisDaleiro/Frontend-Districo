@@ -21,9 +21,11 @@ import { PromotionsService } from '../promotions/promotions.service';
 import { CreateRecommendationRuleDto } from '../recommendations/dto/create-recommendation-rule.dto';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AdminService } from './admin.service';
+import { SalesReportsService } from './sales-reports.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto } from './dto/admin-list-query.dto';
+import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto, SearchListQueryDto } from './dto/admin-list-query.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
+import { RuleListQueryDto } from './dto/rule-list-query.dto';
 import { UpdateStaffRoleDto } from './dto/update-staff-role.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateStaffActiveDto } from './dto/update-staff-active.dto';
@@ -49,6 +51,7 @@ export class AdminController {
     private readonly productReturns: ProductReturnsService,
     private readonly promotions: PromotionsService,
     private readonly recommendations: RecommendationsService,
+    private readonly salesReports: SalesReportsService,
   ) {}
 
   @Get('dashboard')
@@ -59,8 +62,24 @@ export class AdminController {
 
   @Get('sales')
   @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
-  sales(@Query() query: SalesQueryDto) {
-    return this.admin.sales(query.period);
+  sales(@Query() query: SalesQueryDto, @CurrentUser() user: JwtUser) {
+    return this.salesReports.report(query, user);
+  }
+
+  @Get('sales/options')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  salesOptions(@Query() query: SearchListQueryDto, @CurrentUser() user: JwtUser) {
+    return this.salesReports.options(query, user);
+  }
+
+  @Get('sales/export')
+  @Roles(Role.ADMIN, Role.SALES, Role.FINANCE)
+  async exportSales(@Query() query: SalesQueryDto, @CurrentUser() user: JwtUser, @Res({ passthrough: true }) response: Response) {
+    const csv = await this.salesReports.export(query, user);
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', 'attachment; filename="ventas.csv"');
+    response.setHeader('Cache-Control', 'private, no-store');
+    return new StreamableFile(Buffer.from(csv, 'utf8'));
   }
 
   @Get('customers')
@@ -256,6 +275,12 @@ export class AdminController {
     return this.promotions.findMany();
   }
 
+  @Get('promotions/page')
+  @Roles(Role.ADMIN, Role.CATALOG)
+  promotionsPage(@Query() query: RuleListQueryDto) {
+    return this.promotions.findPage(query);
+  }
+
   @Post('promotions')
   @Roles(Role.ADMIN, Role.CATALOG)
   createPromotion(@Body() dto: CreatePromotionDto, @CurrentUser() user: JwtUser) {
@@ -266,6 +291,12 @@ export class AdminController {
   @Roles(Role.ADMIN, Role.CATALOG)
   recommendationsList() {
     return this.recommendations.findMany();
+  }
+
+  @Get('recommendations/page')
+  @Roles(Role.ADMIN, Role.CATALOG)
+  recommendationsPage(@Query() query: RuleListQueryDto) {
+    return this.recommendations.findPage(query);
   }
 
   @Post('recommendations')

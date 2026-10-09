@@ -11,10 +11,11 @@ import { SalespeopleController } from './salespeople.controller';
 import { SalespeopleService } from './salespeople.service';
 import { AdminToolsController } from './admin-tools.controller';
 import { AdminToolsService } from './admin-tools.service';
+import { SalesReportsService } from './sales-reports.service';
 
 @Module({
   imports: [PrismaModule, AuditModule, OrdersModule, ApplicationsModule, PromotionsModule, RecommendationsModule],
   controllers: [AdminController, SalespeopleController, AdminToolsController],
-  providers: [AdminService, SalespeopleService, AdminToolsService],
+  providers: [AdminService, SalespeopleService, AdminToolsService, SalesReportsService],
 })
 export class AdminModule {}

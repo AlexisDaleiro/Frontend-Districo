@@ -6,6 +6,8 @@ import { calculatePromotionDiscounts, PromotionLine, PromotionSnapshot } from '.
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExpirationPromotionDto } from './dto/create-expiration-promotion.dto';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
+import { RuleListQueryDto } from '../admin/dto/rule-list-query.dto';
+import { marketingRuleWhere } from '../common/business/marketing-list';
 
 const promotionInclude = {
   conditions: true,
@@ -20,11 +22,21 @@ export class PromotionsService {
     private readonly hierarchy: CategoryHierarchyService,
   ) {}
 
-  async findMany() {
+  async findPage(query: RuleListQueryDto) {
+    const now = new Date();
+    const [items, total] = await Promise.all([
+      this.findMany(query, now),
+      this.prisma.promotion.count({ where: { deletedAt: null, ...marketingRuleWhere(query, now) } }),
+    ]);
+    return { items, meta: { total, page: query.page, limit: query.limit } };
+  }
+
+  async findMany(query?: RuleListQueryDto, now = new Date()) {
     const promotions = await this.prisma.promotion.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...(query ? marketingRuleWhere(query, now) : {}) },
       include: promotionInclude,
-      orderBy: [{ active: 'desc' }, { priority: 'desc' }],
+      orderBy: [{ active: 'desc' }, { priority: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+      ...(query ? { skip: (query.page - 1) * query.limit, take: query.limit } : {}),
     });
     const names = new Map<PromotionTargetType, Map<string, string>>();
     for (const type of Object.values(PromotionTargetType)) {

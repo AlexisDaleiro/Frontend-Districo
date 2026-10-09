@@ -5044,3 +5044,43 @@ td .button {
 .admin-list-filters > .icon-button { flex: 0 0 38px; }
 .admin-filter-check { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
 .admin-filter-check input { width: 16px; height: 16px; flex-shrink: 0; }
+
+.admin-marketing-table { min-width: 800px; width: 100%; table-layout: fixed; }
+.admin-marketing-table th, .admin-marketing-table td { padding: 12px 10px; vertical-align: top; overflow-wrap: anywhere; }
+.admin-marketing-table th:first-child { width: 22%; }
+.admin-marketing-table th:nth-child(2), .admin-marketing-table th:nth-child(3) { width: 21%; }
+.admin-marketing-table th:nth-child(4) { width: 16%; }
+.admin-marketing-table th:nth-child(5) { width: 12%; }
+.admin-marketing-table th:last-child { width: 118px; }
+.admin-rule-description { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: 4px 0 0; }
+.admin-rule-actions { flex-wrap: nowrap; gap: 4px; }
+.admin-rule-actions .icon-button { width: 32px; height: 32px; }
+.rule-status-active { background: #e1f1e8; color: #21573b; }
+.rule-status-scheduled { background: #e6eef7; color: #285278; }
+.rule-status-expired { background: #f8e6e3; color: #8c3e32; }
+.rule-status-inactive { background: #edf0f1; color: #536164; }
+.admin-rule-product-search { max-width: 420px; margin-top: 24px; }
+.product-card { position: relative; }
+.favorite-button { flex-shrink: 0; background: white; color: var(--muted); }
+.favorite-button.is-favorite { color: #b53b55; border-color: #e2bac3; background: #fff3f6; }
+.product-card-favorite { position: absolute; z-index: 2; top: 10px; right: 10px; width: 36px; height: 36px; box-shadow: 0 1px 5px #00000010; }
+.detail-favorite { margin: 0 0 12px; }
+.favorites-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.favorites-toolbar .field { width: 340px; max-width: 100%; }
+.favorites-toolbar input { width: 100%; }
+.customer-favorites-page .product-grid { margin-top: 16px; }
+.admin-sales-controls { flex-wrap: wrap; }
+.admin-sales-date-range { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding-top: 16px; }
+.admin-sales-date-range .field { flex: 1 1 160px; max-width: 230px; }
+.admin-sales-filters { border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.admin-sales-filters .field { flex-basis: 150px; }
+.admin-sales-breakdown { margin-top: 24px; }
+.admin-sales-table { width: 100%; min-width: 440px; }
+.admin-sales-table td:not(:first-child), .admin-sales-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.admin-sales-table td:first-child { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .admin-sales-controls .admin-sales-periods { flex-basis: 100%; flex-wrap: wrap; }
+  .admin-sales-controls .admin-sales-periods button { flex: 1 1 auto; }
+  .admin-sales-date-range .field { max-width: none; }
+  .favorites-toolbar { align-items: start; flex-direction: column; }
+}

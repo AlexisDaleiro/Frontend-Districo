@@ -3,6 +3,7 @@ export function allowedPath(path: string, method: string) {
   const rules: Record<string, string[]> = {
     GET: [
       "auth/me",
+      "account/me/favorites(/ids)?",
       "products",
       "products/cards",
       "products/admin/list",
@@ -26,8 +27,11 @@ export function allowedPath(path: string, method: string) {
       "promotions",
       "promotions/expiration",
       "recommendations",
+      "(promotions|recommendations)/page",
+      "admin/(promotions|recommendations)/page",
       `inventory/variants/${id}/stock`,
       "admin/(dashboard|sales|customers|applications|orders|promotions|recommendations|audit-logs|banners|staff)",
+      "admin/sales/(options|export)",
       "admin/staff/access",
       "admin/staff/page",
       "admin/staff/page/options",
@@ -53,6 +57,7 @@ export function allowedPath(path: string, method: string) {
       "auth/staff-invitations/accept",
       "applications",
       "cart/items",
+      `account/me/favorites/${id}`,
       "checkout",
       "products",
       `products/${id}/(variants|media)`,
@@ -104,7 +109,7 @@ export function allowedPath(path: string, method: string) {
       `recommendations/${id}/active`,
       `(brands|categories|laboratories)/${id}`,
     ],
-    DELETE: [`admin/staff/roles/${id}`, `cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
+    DELETE: [`account/me/favorites/${id}`, `admin/staff/roles/${id}`, `cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
   };
   return (rules[method] ?? []).some((pattern) =>
     new RegExp(`^${pattern}$`).test(path),

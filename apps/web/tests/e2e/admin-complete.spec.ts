@@ -101,7 +101,7 @@ test("personal, categorías y clientes tienen flujos administrables", async ({ p
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Abrir Alimentación" }).click();
-  await expect(page.getByText("Subcategoría de prueba")).toBeVisible();
+  await expect(page.locator('.admin-category-name').filter({ hasText: 'Subcategoría de prueba' })).toBeVisible();
   const categoryToggle = page.getByRole("checkbox", { name: "Visible en la tienda: Subcategoría de prueba" });
   await categoryToggle.uncheck();
   await expect(categoryToggle).not.toBeChecked();
@@ -227,12 +227,13 @@ test("crea promociones simples y por vencimiento", async ({ page }) => {
     .getByRole("textbox", { name: "Nombre *", exact: true })
     .fill("Descuento de prueba");
   const promotionDialog = page.getByRole("dialog", { name: "Crear promoción" });
-  await promotionDialog.getByRole("group", { name: "Elegir Productos" }).getByRole("checkbox").first().check();
+  await promotionDialog.getByRole('checkbox', { name: 'Requiere compra para activar' }).uncheck();
+  await promotionDialog.getByRole('group', { name: 'Aplicar promoción a *', exact: true }).getByRole('checkbox').first().check();
   await promotionDialog.getByRole("spinbutton", { name: "Porcentaje *" }).fill("10");
   await promotionDialog.getByRole("button", { name: "Guardar promoción" }).click();
   await expect(promotionDialog).not.toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Descuento de prueba" }),
+    page.locator('.admin-marketing-table tbody tr').filter({ hasText: 'Descuento de prueba' }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Crear por vencimiento" }).click();
   await page

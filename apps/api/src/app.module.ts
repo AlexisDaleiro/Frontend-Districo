@@ -22,6 +22,7 @@ import { ApplicationsModule } from './applications/applications.module';
 import { AdminModule } from './admin/admin.module';
 import { ContactInquiriesModule } from './contact-inquiries/contact-inquiries.module';
 import { BannersModule } from './banners/banners.module';
+import { FavoritesModule } from './favorites/favorites.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { BannersModule } from './banners/banners.module';
     AdminModule,
     ContactInquiriesModule,
     BannersModule,
+    FavoritesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

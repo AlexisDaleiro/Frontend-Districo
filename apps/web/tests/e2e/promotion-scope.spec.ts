@@ -24,9 +24,9 @@ test("promociones admite varios productos o una marca o categoría", async ({ pa
   await dialog.getByRole("spinbutton", { name: "Porcentaje *" }).fill("12");
   await dialog.getByRole("button", { name: "Guardar promoción" }).click();
   await expect(dialog).not.toBeVisible();
-  const card = page.locator(".admin-cards .card").filter({ hasText: "Selección de prueba" });
+  const card = page.locator(".admin-marketing-table tbody tr").filter({ hasText: "Selección de prueba" });
   await expect(card).toContainText("2 productos");
-  await card.getByRole("button", { name: "Editar" }).click();
+  await card.getByRole("button", { name: "Editar Selección de prueba" }).click();
   const editDialog = page.getByRole("dialog", { name: "Editar promoción" });
   await editDialog.getByRole("radio", { name: "Marcas" }).check();
   await expect(editDialog.locator(".promotion-options label").first()).toBeVisible();
@@ -86,11 +86,11 @@ test("promoción con activadores y destinos múltiples conserva ambas seleccione
   await page.setViewportSize({ width: 1280, height: 800 });
   await dialog.getByRole("button", { name: "Guardar promoción" }).click();
   await expect(dialog).not.toBeVisible();
-  const card = page.locator(".admin-cards .card").filter({ hasText: "Cruce múltiple" });
-  await expect(card).toContainText("Se activa al comprar:");
+  const card = page.locator(".admin-marketing-table tbody tr").filter({ hasText: "Cruce múltiple" });
+  await expect(card.locator('td').nth(1)).not.toBeEmpty();
   await expect(card).toContainText("2 marcas");
-  await expect(card).toContainText("Cantidad mínima: 2");
-  await card.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(card).toContainText("Mínimo 2 u.");
+  await card.getByRole("button", { name: "Editar Cruce múltiple", exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Editar promoción" });
   const editTrigger = edit.getByRole("group", { name: "Se activa al comprar *", exact: true });
   const editTarget = edit.getByRole("group", { name: "Aplicar promoción a *", exact: true });

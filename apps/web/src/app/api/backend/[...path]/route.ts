@@ -58,7 +58,7 @@ async function handle(
     /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path) ||
     /^admin\/(applications|customers)\/[a-zA-Z0-9_-]+\/documents\/[a-zA-Z0-9_-]+$/.test(path)
   );
-  const csvDownload = request.method === "GET" && path === "admin/orders/export";
+  const csvDownload = request.method === "GET" && ["admin/orders/export", "admin/sales/export"].includes(path);
   let body: BodyInit | undefined;
   if (multipartUpload) {
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data;"))

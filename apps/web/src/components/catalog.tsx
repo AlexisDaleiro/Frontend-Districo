@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
+import { FavoriteButton } from "./favorite-button";
 import { TechnicalAccordions, useProductSheet } from "./product-sheet";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
@@ -66,6 +67,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       onMouseEnter={prefetchDetail}
       onFocus={prefetchDetail}
     >
+      <FavoriteButton productId={product.id} name={product.name} className="product-card-favorite" />
       <Link
         href={storeRoutes.product(product.slug)}
         className="product-image"
@@ -920,6 +922,7 @@ function ProductDetailContent({ product }: { product: Product }) {
             )}
           </p>
           <h1>{product.name}</h1>
+          <FavoriteButton productId={product.id} name={product.name} className="detail-favorite" />
           {product.shortDescription &&
             product.shortDescription.trim().toLocaleLowerCase() !==
               product.name.trim().toLocaleLowerCase() && (

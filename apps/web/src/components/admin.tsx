@@ -47,6 +47,8 @@ import { AdminRoles, AdminStaff } from "./admin-staff";
 import { AdminSalespeople } from "./admin-salespeople";
 import { AdminPromotionForm } from "./admin-promotion-form";
 import { AdminRecommendationForm } from "./admin-recommendation-form";
+import { AdminMarketingTable } from "./admin-marketing-table";
+import { ruleStatusOptions } from "@/lib/marketing-list";
 import { AdminListFilters, ListPagination } from "./admin-list-filters";
 import { adminListPath } from "@/lib/admin-list-filters";
 import { AdminRecordLink, ShareAdminList, useAdminListField, useAdminListScroll } from "./admin-list-navigation";
@@ -58,7 +60,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
 import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
-import { promotionTriggerIds, scopedPromotion } from "@/lib/promotion-scope";
+import { scopedPromotion } from "@/lib/promotion-scope";
 import {
   label,
   money,
@@ -1037,7 +1039,19 @@ function Marketing({
     const timer = setTimeout(() => setDebouncedProductSearch(productSearch.trim()), 250);
     return () => clearTimeout(timer);
   }, [productSearch]);
-  const q = useApi<Rule[]>(path);
+  const [search, setSearch] = useAdminListField("search", "");
+  const [page, setPage] = useAdminListField("page", 1);
+  const [status, setStatus] = useAdminListField("status", "", ["", ...ruleStatusOptions.map(([value]) => value)]);
+  const [debounced, setDebounced] = useState(search.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const q = useApi<{ items: Rule[]; meta: { total: number; page: number; limit: number } }>(adminListPath(`${path}/page`, { page, limit: 20, search: debounced, status }));
+  useAdminListScroll(!q.isPending && !q.error && debounced === search.trim());
+  useEffect(() => {
+    if (q.data && page > Math.max(1, Math.ceil(q.data.meta.total / q.data.meta.limit))) setPage(Math.max(1, Math.ceil(q.data.meta.total / q.data.meta.limit)));
+  }, [q.data, page, setPage]);
   const products = useApi<ProductList>(`products?limit=100&search=${encodeURIComponent(debouncedProductSearch)}`, !recommendations);
   const brands = useApi<Entity[]>("brands", !recommendations),
     categories = useApi<Entity[]>("categories/catalog", !recommendations),
@@ -1076,7 +1090,7 @@ function Marketing({
     setBusyId(rule.id);
     setActionError(undefined);
     try {
-      await request(target, method, body);
+      await request(target, method, method === "PATCH" ? body ?? {} : body);
       await invalidateAdminMutation(client, target);
       notify(method === "DELETE" ? "Regla eliminada." : "Regla actualizada.");
     } catch (cause) { setActionError(cause); }
@@ -1218,7 +1232,11 @@ function Marketing({
         </button>}
         {!recommendations && canEdit && <button className="button small secondary" disabled={!products.data} onClick={() => create(undefined, true)}>Crear regla cruzada</button>}
       </div>
-      {!recommendations && <input className="form-input admin-category-search" type="search" aria-label="Buscar producto para reglas cruzadas" placeholder="Buscar producto para reglas cruzadas" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />}
+      <AdminListFilters active={!!(search || status)} onClear={() => { setSearch(""); setDebounced(""); setStatus(""); setPage(1); }}>
+        <label className="field">Buscar reglas<input className="form-input" type="search" maxLength={120} placeholder="Nombre de la regla" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></label>
+        <label className="field">Vigencia<select className="form-input" aria-label="Filtrar reglas por vigencia" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">Todas</option>{ruleStatusOptions.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>
+        <ShareAdminList />
+      </AdminListFilters>
       {actionError && <ErrorBox error={actionError} />}
       {products.error && (
         <ErrorBox
@@ -1230,63 +1248,21 @@ function Marketing({
         <Loading />
       ) : q.error ? (
         <ErrorBox error={q.error} />
-      ) : q.data.length ? (
-        <div className="admin-cards">
-          {q.data.map((rule) => (
-            <div className="card" key={rule.id}>
-              <h3>{rule.name}</h3>
-              {!recommendations && <p className="small-copy muted">
-                {rule.description ??
-                  "Promoción configurada"}
-              </p>}
-              <p className="small-copy">
-                {rule.startsAt
-                  ? `Desde ${new Date(rule.startsAt).toLocaleDateString("es-UY")}`
-                  : "Sin fecha inicial"}
-                {rule.endsAt
-                  ? ` · Hasta ${new Date(rule.endsAt).toLocaleDateString("es-UY")}`
-                  : ""}
-              </p>
-              <p className="small-copy">
-                {rule.active === false ? "Inactiva" : "Activa"}
-              </p>
-              {recommendations && <>
-                <p className="small-copy">Se activa al comprar: {rule.triggerTargets?.map((item) => item.name).join(", ") ?? rule.triggerIds?.join(", ") ?? rule.triggerId}</p>
-                <p className="small-copy">Recomendar: {rule.targetTargets?.map((item) => item.name).join(", ") ?? rule.targetIds?.join(", ") ?? rule.products?.map((item) => item.productId).join(", ")}</p>
-              </>}
-              {!recommendations && scopedPromotion(rule) && <>
-              <p className="small-copy">{rule.conditions?.length
-                ? `Se activa al comprar: ${rule.triggerTargets?.map((item) => item.name).join(", ") || promotionTriggerIds(rule.conditions[0]).join(", ")}`
-                : "Sin compra condicionante"}</p>
-              {rule.conditions?.[0] && <p className="small-copy muted">{rule.conditions[0].metric === "MIN_AMOUNT"
-                ? `Importe mínimo de la selección: ${money(Number(rule.conditions[0].minAmount ?? 0))}`
-                : `Cantidad mínima: ${rule.conditions[0].minQuantity ?? 1}`}</p>}
-              <p className="small-copy">
-                Aplicada a {rule.rewards.length} {rule.rewards[0].targetType === "PRODUCT"
-                  ? rule.rewards.length === 1 ? "producto" : "productos"
-                  : rule.rewards[0].targetType === "BRAND"
-                    ? rule.rewards.length === 1 ? "marca" : "marcas"
-                    : rule.rewards.length === 1 ? "categoría" : "categorías"}
-              </p></>}
-              {canEdit && <div className="actions">
-                <button className="button small secondary" disabled={!!busyId || (!recommendations && !scopedPromotion(rule) && !products.data)} onClick={() => create(rule)}><Pencil size={15} /> Editar</button>
-                <button className="button small secondary" disabled={!!busyId} onClick={() => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}>
-                  {rule.active === false ? "Activar" : "Desactivar"}
-                </button>
-                <button className="icon-button" title={`Eliminar ${rule.name}`} aria-label={`Eliminar ${rule.name}`} disabled={!!busyId} onClick={() => void action(rule, `${mutationPath}/${rule.id}`, "DELETE")}><Trash2 size={16} /></button>
-              </div>}
-            </div>
-          ))}
-        </div>
+      ) : q.data.items.length ? (
+        <AdminMarketingTable items={q.data.items} recommendations={recommendations} canEdit={canEdit} busy={!!busyId || (!recommendations && !products.data)} onEdit={create}
+          onActive={(rule) => void action(rule, recommendations ? `recommendations/${rule.id}/active` : `promotions/${rule.id}/${rule.active === false ? "activate" : "deactivate"}`, "PATCH", recommendations ? { active: rule.active === false } : undefined)}
+          onDelete={(rule) => void action(rule, `${mutationPath}/${rule.id}`, "DELETE")} />
       ) : (
         <Empty
           title={
-            recommendations
+            search || status ? "No hay reglas que coincidan con los filtros" : recommendations
               ? "Todavía no hay recomendaciones"
               : "Todavía no hay promociones"
           }
         />
-      )}{" "}
+      )}
+      {q.data && <ListPagination meta={q.data.meta} onPage={setPage} />}
+      {!recommendations && canEdit && <label className="field admin-rule-product-search">Producto para reglas cruzadas o vencimientos<input className="form-input" type="search" aria-label="Buscar producto para reglas cruzadas" placeholder="Nombre o SKU" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} /></label>}
       {!recommendations && (
         <section style={{ marginTop: 35 }}>
           <div className="admin-toolbar">

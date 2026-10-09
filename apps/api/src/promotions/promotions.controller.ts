@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -9,6 +9,7 @@ import { JwtUser } from '../common/types/jwt-user.type';
 import { CreateExpirationPromotionDto } from './dto/create-expiration-promotion.dto';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { PromotionsService } from './promotions.service';
+import { RuleListQueryDto } from '../admin/dto/rule-list-query.dto';
 
 @ApiTags('promotions')
 @ApiBearerAuth()
@@ -21,6 +22,11 @@ export class PromotionsController {
   @Get()
   findMany() {
     return this.promotionsService.findMany();
+  }
+
+  @Get('page')
+  findPage(@Query() query: RuleListQueryDto) {
+    return this.promotionsService.findPage(query);
   }
 
   @Post()

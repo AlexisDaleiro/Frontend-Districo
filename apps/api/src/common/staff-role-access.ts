@@ -49,7 +49,7 @@ export function staffFeatureForPath(path: string): StaffFeature | undefined {
   if (/^\/admin\/staff(?:\/|$)/.test(clean)) return 'personal';
   if (/^\/admin\/salespeople(?:\/|$)/.test(clean)) return 'vendedores';
   if (/^\/admin\/dashboard$/.test(clean)) return 'resumen';
-  if (/^\/admin\/sales$/.test(clean)) return 'ventas';
+  if (/^\/admin\/sales(?:\/|$)/.test(clean)) return 'ventas';
   if (/^\/admin\/contact-inquiries(?:\/|$)/.test(clean)) return 'consultas';
   if (/^\/(?:admin\/)?applications(?:\/|$)/.test(clean)) return 'solicitudes';
   if (/^\/admin\/customers(?:\/|$)/.test(clean)) return 'clientes';

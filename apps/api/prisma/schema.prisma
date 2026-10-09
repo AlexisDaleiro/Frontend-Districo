@@ -172,6 +172,7 @@ model User {
   staffInvitations  StaffInvitation[]
   salesperson       Salesperson?
   carts             Cart[]
+  productFavorites  ProductFavorite[]
   priceChanges      PriceHistory[]   @relation("PriceChangedBy")
   orders            Order[]
   reviewedApplications CustomerApplication[] @relation("ApplicationReviewedBy")
@@ -337,11 +338,23 @@ model Product {
   variants                     ProductVariant[]
   media                        ProductMedia[]
   attributes                   ProductAttributeValue[]
+  favorites                    ProductFavorite[]
   createdAt                    DateTime                @default(now())
   updatedAt                    DateTime                @updatedAt
   deletedAt                    DateTime?
 
   @@unique([source, sourceExternalId])
+}
+
+model ProductFavorite {
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+  @@index([productId])
 }
 
 model ProductVariant {

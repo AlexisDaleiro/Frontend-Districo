@@ -12,6 +12,18 @@ const params = (path: string) => ({
   params: Promise.resolve({ path: path.split("/") }),
 });
 describe("Frontera entre frontend y API", () => {
+  it('permite sólo las rutas propias de favoritos y transporta CSV de ventas como archivo privado', async () => {
+    for (const [path, method] of [['account/me/favorites', 'GET'], ['account/me/favorites/ids', 'GET'], ['account/me/favorites/p1', 'POST'], ['account/me/favorites/p1', 'DELETE'], ['admin/promotions/page', 'GET'], ['admin/recommendations/page', 'GET'], ['admin/sales/options', 'GET'], ['admin/sales/export', 'GET']]) expect(allowedPath(path, method)).toBe(true);
+    expect(allowedPath('account/other/favorites', 'GET')).toBe(false);
+    expect(allowedPath('account/me/favorites', 'POST')).toBe(false);
+    vi.stubEnv('NEXT_PUBLIC_DATA_MODE', 'real');
+    vi.stubEnv('BACKEND_API_URL', 'http://backend.test/api');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Desde,Importe\r\n2026-10-01,100\r\n', { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="ventas.csv"' } })));
+    const result = await GET(new NextRequest('http://localhost/api/backend/admin/sales/export?groupBy=brand'), params('admin/sales/export'));
+    expect(result.status).toBe(200); expect(result.headers.get('content-type')).toContain('text/csv');
+    expect(result.headers.get('cache-control')).toBe('no-store, private');
+    expect(await result.text()).toContain('2026-10-01,100');
+  });
   it("usa datos reales por defecto y reserva demo al desarrollo explícito", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "");
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");

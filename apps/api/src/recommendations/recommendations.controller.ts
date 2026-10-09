@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -9,6 +9,7 @@ import { JwtUser } from '../common/types/jwt-user.type';
 import { CreateRecommendationRuleDto } from './dto/create-recommendation-rule.dto';
 import { RecommendationsService } from './recommendations.service';
 import { IsBoolean } from 'class-validator';
+import { RuleListQueryDto } from '../admin/dto/rule-list-query.dto';
 
 class SetRecommendationActiveDto {
   @IsBoolean()
@@ -26,6 +27,11 @@ export class RecommendationsController {
   @Get()
   findMany() {
     return this.recommendationsService.findMany();
+  }
+
+  @Get('page')
+  findPage(@Query() query: RuleListQueryDto) {
+    return this.recommendationsService.findPage(query);
   }
 
   @Post()

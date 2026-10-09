@@ -13,6 +13,7 @@ import { UpdateProductMediaDto } from './dto/update-product-media.dto';
 import { ProductsRepository } from './products.repository';
 import { sortProductVariants } from './variant-order';
 import { CatalogImagesService } from '../images/catalog-images.service';
+import { SearchListQueryDto } from '../../admin/dto/admin-list-query.dto';
 
 type CatalogProduct = NonNullable<Awaited<ReturnType<ProductsRepository['findBySlug']>>>;
 
@@ -22,6 +23,11 @@ export class ProductsService {
 
   async findMany(filters: ProductFilterDto, user?: JwtUser | null) {
     const result = await this.productsRepository.findMany(filters);
+    return { ...result, items: result.items.map((product) => this.toPublicProduct(product, user)) };
+  }
+
+  async findFavorites(user: JwtUser, query: SearchListQueryDto) {
+    const result = await this.productsRepository.findFavorites(user.sub, query);
     return { ...result, items: result.items.map((product) => this.toPublicProduct(product, user)) };
   }
 

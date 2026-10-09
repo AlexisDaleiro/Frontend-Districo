@@ -6,6 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecommendationRuleDto } from './dto/create-recommendation-rule.dto';
 import { CategoryHierarchyService } from '../catalog/categories/category-hierarchy.service';
 import { recommendationScope } from './recommendation-scope';
+import { RuleListQueryDto } from '../admin/dto/rule-list-query.dto';
+import { marketingRuleWhere } from '../common/business/marketing-list';
 
 @Injectable()
 export class RecommendationsService {
@@ -46,10 +48,21 @@ export class RecommendationsService {
     return rule;
   }
 
-  async findMany() {
+  async findPage(query: RuleListQueryDto) {
+    const now = new Date();
+    const [items, total] = await Promise.all([
+      this.findMany(query, now),
+      this.prisma.recommendationRule.count({ where: marketingRuleWhere(query, now, true) }),
+    ]);
+    return { items, meta: { total, page: query.page, limit: query.limit } };
+  }
+
+  async findMany(query?: RuleListQueryDto, now = new Date()) {
     const rules = await this.prisma.recommendationRule.findMany({
+      where: query ? marketingRuleWhere(query, now, true) : undefined,
       include: { products: true },
-      orderBy: [{ active: 'desc' }, { priority: 'desc' }],
+      orderBy: [{ active: 'desc' }, { priority: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+      ...(query ? { skip: (query.page - 1) * query.limit, take: query.limit } : {}),
     });
     const idsFor = (type: RecommendationTriggerType) => [...new Set(rules.flatMap((rule) => [
       ...(rule.triggerType === type ? rule.triggerIds.length ? rule.triggerIds : [rule.triggerId] : []),

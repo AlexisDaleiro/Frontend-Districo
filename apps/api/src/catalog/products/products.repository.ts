@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CategoryHierarchyService } from '../categories/category-hierarchy.service';
+import { SearchListQueryDto } from '../../admin/dto/admin-list-query.dto';
 
 const productInclude = () =>
   ({
@@ -108,6 +109,21 @@ export class ProductsRepository {
     ]);
 
     return { items, meta: { total, page: filters.page, limit: filters.limit } };
+  }
+
+  async findFavorites(userId: string, query: SearchListQueryDto) {
+    const where: Prisma.ProductWhereInput = {
+      active: true, deletedAt: null, favorites: { some: { userId } },
+      ...(query.search?.trim() ? { OR: [
+        { name: { contains: query.search.trim(), mode: 'insensitive' } },
+        { variants: { some: { deletedAt: null, sku: { contains: query.search.trim(), mode: 'insensitive' } } } },
+      ] } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({ where, relationLoadStrategy: 'join', include: productInclude(), orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: (query.page - 1) * query.limit, take: query.limit }),
+      this.prisma.product.count({ where }),
+    ]);
+    return { items, meta: { total, page: query.page, limit: query.limit } };
   }
 
   private async productWhere(filters: ProductFilterDto | AdminProductFilterDto, admin = false): Promise<Prisma.ProductWhereInput> {
