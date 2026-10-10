@@ -1,5 +1,6 @@
 import type { Editor, Field } from "@/components/admin-form";
-import type { Entity, Product } from "./types";
+import type { Attribute, Entity, Product } from "./types";
+import { petStage } from "./pet-stage";
 
 const text = (key: string, label: string, required = true): Field => ({ key, label, required });
 const select = (key: string, label: string, values: { value: string; label: string }[], required = true): Field =>
@@ -11,7 +12,11 @@ export function adminProductEditor(
   brands?: Entity[],
   categories?: Entity[],
   laboratories?: Entity[],
+  attributes?: Attribute[],
 ): Editor {
+  const stage = petStage(attributes);
+  const stageIds = new Set(stage?.values.map((value) => value.id));
+  const currentStage = product?.attributes?.find((item) => stageIds.has(item.attributeValue.id));
   const primaryCategoryId = product?.categories[0]?.categoryId;
   const categoryOptions = categories?.map((category) => ({
     value: primaryCategoryId && category.aliasIds?.includes(primaryCategoryId)
@@ -41,6 +46,7 @@ export function adminProductEditor(
         { value: "RAICOR", label: "RAICOR" },
         { value: "MAGNIS", label: "MAGNIS" },
       ], false),
+      ...(stage ? [{ ...select("stageValueId", "Etapa (alimentos para mascotas)", stage.values.map((value) => ({ value: value.id, label: value.value })), false), allowEmpty: true, showWhen: { key: "productType", value: "FOOD" } }] : []),
       select("brandId", "Marca", entityOptions(brands), false),
       select("laboratoryId", "Laboratorio", entityOptions(laboratories), false),
       select("categoryId", "Categoría principal", categoryOptions),
@@ -53,9 +59,16 @@ export function adminProductEditor(
       brandId: product.brand?.id,
       laboratoryId: product.laboratory?.id,
       categoryId: primaryCategoryId,
+      stageValueId: currentStage?.attributeValue.id ?? "",
     } : { active: true, productType: "OTHER", source: "DISTRICO" },
-    transform: ({ categoryId, ...data }) => ({
+    transform: ({ categoryId, stageValueId, ...data }) => ({
       ...data,
+      ...(stageValueId !== undefined ? {
+        attributeValueIds: [
+          ...(product?.attributes?.filter((item) => !stageIds.has(item.attributeValue.id)).map((item) => item.attributeValue.id) ?? []),
+          ...(stageValueId ? [String(stageValueId)] : []),
+        ],
+      } : {}),
       categoryIds: categoryId
         ? [String(categoryId), ...(product?.categories.slice(1).map((item) => item.categoryId) ?? [])]
         : (product?.categories.map((item) => item.categoryId) ?? []),

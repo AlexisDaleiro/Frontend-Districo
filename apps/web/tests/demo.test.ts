@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { demoRequest as api, resetDemo } from "../src/lib/demo";
 import type {
   Application,
+  Attribute,
   Cart,
   ContactInquiry,
   CustomerDetail,
@@ -25,6 +26,34 @@ beforeEach(() => {
 const login = (email = "cliente@gmail.com") =>
   api("auth/login", "POST", { email, password: "Demo1234!" });
 describe("Demo B2B: permisos y aislamiento", () => {
+  it("cuenta todas las presentaciones activas aunque la tarjeta sólo reciba una", async () => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    const product = state.products[0];
+    product.variants = Array.from({ length: 5 }, (_, index) => ({ ...product.variants[0], id: `variant-${index}`, active: index < 4 }));
+    state.products = [product];
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    const cards = await api<ProductCardList>("products/cards");
+    expect(cards.items[0].variantCount).toBe(4);
+    expect(cards.items[0].variants).toHaveLength(1);
+    expect(cards.items[0].variants[0].price).toBeUndefined();
+    product.variants.forEach((variant: { active: boolean }) => { variant.active = false; });
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    const empty = await api<ProductCardList>("products/cards");
+    expect(empty.items[0].variantCount).toBe(0);
+    expect(empty.items[0].variants).toHaveLength(0);
+  });
+
+  it("persiste la etapa editable y filtra alimentos por etapa sin buscar el nombre", async () => {
+    await login("admin@districo.com");
+    const attributes = await api<Attribute[]>("attributes");
+    const value = attributes.find((attribute) => attribute.slug === "etapa")!.values[0];
+    const products = await api<ProductList>("products?productType=FOOD");
+    const product = products.items[0];
+    await api(`products/${product.id}`, "PATCH", { attributeValueIds: [value.id] });
+    expect((await api<ProductList>(`products?productType=FOOD&attributeValueIds=${value.id}`)).items.some((item) => item.id === product.id)).toBe(true);
+    await api(`products/${product.id}`, "PATCH", { attributeValueIds: [] });
+    expect((await api<ProductList>(`products?productType=FOOD&attributeValueIds=${value.id}`)).items.some((item) => item.id === product.id)).toBe(false);
+  });
   it.each(["PRODUCT", "BRAND", "CATEGORY"].flatMap((trigger) => ["PRODUCT", "BRAND", "CATEGORY"].map((target) => [trigger, target])))
   ("activa por %s y descuenta a %s al confirmar el pedido", async (trigger, target) => {
     await login("admin@districo.com");

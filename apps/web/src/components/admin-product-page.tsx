@@ -14,7 +14,7 @@ import { Empty, ErrorBox, Loading, Modal, PageHeading } from "./ui";
 import { adminProductEditor } from "@/lib/admin-product-editor";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
-import type { Entity, Product } from "@/lib/types";
+import type { Attribute, Entity, Product } from "@/lib/types";
 import { useAdminReturnHref } from "./admin-list-navigation";
 import { adminRecordHref } from "@/lib/admin-list-navigation";
 import { salesLineLabel } from "@/lib/sales-line";
@@ -27,6 +27,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
   const brands = useApi<Entity[]>("brands");
   const categories = useApi<Entity[]>("categories/catalog");
   const laboratories = useApi<Entity[]>("laboratories");
+  const attributes = useApi<Attribute[]>("attributes");
   const productId = product.data?.id;
 
   useEffect(() => {
@@ -74,12 +75,12 @@ export function AdminProductPage({ slug }: { slug: string }) {
                 <AdminProductImages product={item} edit={setEditor} />
                 <section id="edicion" className="admin-product-section">
                   <div className="admin-toolbar"><h2>Editar producto</h2></div>
-                  {brands.isPending || categories.isPending || laboratories.isPending ? <Loading /> :
-                    brands.error || categories.error || laboratories.error ?
-                      <ErrorBox error={brands.error ?? categories.error ?? laboratories.error} /> :
+                  {brands.isPending || categories.isPending || laboratories.isPending || attributes.isPending ? <Loading /> :
+                    brands.error || categories.error || laboratories.error || attributes.error ?
+                      <ErrorBox error={brands.error ?? categories.error ?? laboratories.error ?? attributes.error} /> :
                       <AdminForm
                         key={item.id}
-                        editor={adminProductEditor(item, brands.data, categories.data, laboratories.data)}
+                        editor={adminProductEditor(item, brands.data, categories.data, laboratories.data, attributes.data)}
                         onDone={(result) => {
                           const updated = result as Product | undefined;
                           if (updated?.slug && updated.slug !== slug) router.replace(adminRecordHref(storeRoutes.adminProduct(updated.slug), catalog));

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Layers3 } from "lucide-react";
 import {
   apiQueryKey,
   request,
@@ -9,7 +9,7 @@ import {
   usePublicApi,
   useSession,
 } from "./providers";
-import type { Entity, ProductCardData, ProductCardList } from "@/lib/types";
+import type { Attribute, Entity, ProductCardData, ProductCardList } from "@/lib/types";
 import { Picture, ActionLink, ErrorBox, Loading } from "./ui";
 import { ProductCard } from "./catalog";
 import { HomeCarousel } from "./home-carousel";
@@ -17,7 +17,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { catalogCardsPath } from "@/lib/catalog-query";
 import { catalogCategoryKind } from "@/lib/catalog-navigation";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
-import { mappedNeeds } from "@/lib/needs";
+import { homeCategories, homePromoBrand } from "@/lib/home-catalog";
+import { juvenileStageId } from "@/lib/pet-stage";
 import {
   SpeciesArt,
   TileArt,
@@ -30,17 +31,14 @@ import {
 // Color de fondo de la mitad clara (--lime-soft) para los cortes del dibujo.
 const LIME_SOFT = "#f1f5d1";
 
-// La API no tiene subcategorías por especie: los accesos filtran la categoría
-// raíz por tipo de producto (`productType`) o por búsqueda en el nombre.
 const speciesCards: {
   kind: string;
   main: SpeciesKind;
   sub: SpeciesKind;
   subName: string;
-  subSearch: string;
 }[] = [
-  { kind: "perros", main: "dog", sub: "puppy", subName: "Cachorros", subSearch: "cachorro" },
-  { kind: "gatos", main: "cat", sub: "kitten", subName: "Gatitos", subSearch: "gatito" },
+  { kind: "perros", main: "dog", sub: "puppy", subName: "Cachorros" },
+  { kind: "gatos", main: "cat", sub: "kitten", subName: "Gatitos" },
 ];
 const speciesTypes = ["FOOD", "SUPPLEMENT", "HYGIENE", "ACCESSORY"];
 
@@ -65,11 +63,16 @@ export function Home() {
   };
   const categories = usePublicApi<Entity[]>("categories/catalog"),
     featured = useApi<ProductCardList>("products/cards?featured=true&limit=10"),
-    brands = usePublicApi<Entity[]>("brands");
+    brands = usePublicApi<Entity[]>("brands"),
+    attributes = usePublicApi<Attribute[]>("attributes");
   // Mismas categorías raíz activas que la navegación del catálogo.
-  const roots = mappedNeeds(categories.data);
+  const roots = homeCategories(categories.data);
   const root = (kind: string) =>
-    roots.find((c) => catalogCategoryKind(c.name) === kind);
+    roots.species.find((c) => catalogCategoryKind(c.name) === kind);
+  const juvenile = juvenileStageId(attributes.data);
+  const biofresh = homePromoBrand(brands.data, "biofresh", "Biofresh");
+  const granplus = homePromoBrand(brands.data, "gran-plus", "Gran Plus");
+  const threeDogs = homePromoBrand(brands.data, "three-dogs", "Three Dogs");
   const categoryLink = (id: string, extra?: Record<string, string>) => {
     const params = new URLSearchParams({ categoryId: id, ...extra });
     return {
@@ -80,12 +83,7 @@ export function Home() {
       onFocus: () => prefetch(params),
     };
   };
-  const brandHref = (kind: string) => {
-    const brand = brands.data?.find((b) => catalogCategoryKind(b.name) === kind);
-    return brand
-      ? withSearch(storeRoutes.products, new URLSearchParams({ brandId: brand.id }))
-      : storeRoutes.brands;
-  };
+  const brandHref = (brand: Entity) => withSearch(storeRoutes.products, new URLSearchParams({ brandId: brand.id }));
   return (
     <div className="container home-container">
       <HomeCarousel brands={brands.data} />
@@ -100,6 +98,7 @@ export function Home() {
           aria-label="Comprar por especie"
           aria-busy={categories.isPending}
         >
+          {attributes.error && <ErrorBox error={attributes.error} retry={() => void attributes.refetch()} />}
           <div className="species-grid">
             {speciesCards.map((s) => {
               if (categories.isPending)
@@ -114,18 +113,18 @@ export function Home() {
               if (!category) return null;
               return (
                 <div className="species-card" key={s.kind}>
-                  <div className="species-head">
+                  <div className={`species-head${juvenile ? "" : " species-head-single"}`}>
                     <Link className="species-main" {...categoryLink(category.id)}>
                       <SpeciesArt kind={s.main} />
                       {category.name}
                     </Link>
-                    <Link
+                    {juvenile && <Link
                       className="species-sub"
-                      {...categoryLink(category.id, { search: s.subSearch })}
+                      {...categoryLink(category.id, { productType: "FOOD", attributeValueIds: juvenile })}
                     >
                       <SpeciesArt kind={s.sub} ground={LIME_SOFT} />
                       {s.subName}
-                    </Link>
+                    </Link>}
                   </div>
                   <ul className="species-types">
                     {speciesTypes.map((type) => (
@@ -154,21 +153,18 @@ export function Home() {
               </span>
               <span className="category-tile-name">Destacados</span>
             </Link>
-            {categoryTiles.map((t) => {
-              const category = root(t.kind);
-              if (!category) return null;
+            {roots.other.map((category) => {
+              const t = categoryTiles.find((tile) => tile.kind === catalogCategoryKind(category.name));
               return (
                 <Link
                   className="category-tile"
-                  key={t.kind}
+                  key={category.id}
                   {...categoryLink(category.id)}
                 >
                   <span className="category-tile-art">
-                    {t.species ? (
+                    {t?.species ? (
                       <SpeciesArt kind={t.species} className="" />
-                    ) : (
-                      <TileArt kind={t.tile!} />
-                    )}
+                    ) : t?.tile ? <TileArt kind={t.tile} /> : <Layers3 size={64} strokeWidth={1.5} />}
                   </span>
                   <span className="category-tile-name">{category.name}</span>
                 </Link>
@@ -183,21 +179,21 @@ export function Home() {
           </div>
         </section>
       )}
-      <section className="brand-promos" aria-label="Marcas insignia">
-        <Link className="brand-promo is-biofresh" href={brandHref("biofresh")}>
+      {brands.error && <ErrorBox error={brands.error} retry={() => void brands.refetch()} />}
+      {(biofresh || granplus || threeDogs) && <section className={`brand-promos${biofresh && granplus ? "" : " brand-promos-single"}`} aria-label="Marcas insignia">
+        {biofresh && <Link className="brand-promo is-biofresh" href={brandHref(biofresh)}>
           <div className="brand-promo-copy">
             <Picture
               className="brand-promo-logo"
-              src="/images/brands/biofresh.png"
-              alt="Biofresh"
+              src={biofresh.logo}
+              alt={biofresh.name}
               sizes="120px"
             />
             <h2>
-              Ingredientes <span>frescos</span> de verdad
+              {biofresh.name}
             </h2>
             <p>
-              Súper premium natural para perros y gatos, por etapa de vida y
-              tamaño de raza.
+              Conocé los productos de {biofresh.name}.
             </p>
             <span className="brand-promo-pill">Ver productos</span>
           </div>
@@ -207,22 +203,20 @@ export function Home() {
               <Picture src="/images/hero-biofresh-castrados.png" alt="" sizes="180px" loading="lazy" />
             </div>
           </div>
-        </Link>
-        <Link className="brand-promo is-granplus" href={brandHref("gran plus")}>
+        </Link>}
+        {granplus && <Link className="brand-promo is-granplus" href={brandHref(granplus)}>
           <div className="brand-promo-copy">
             <Picture
               className="brand-promo-logo"
-              src="/images/brands/gran-plus.png"
-              alt="Gran Plus"
+              src={granplus.logo}
+              alt={granplus.name}
               sizes="80px"
             />
-            <span className="brand-promo-tag">Gourmet</span>
             <h2>
-              <span>Húmedo</span> para cachorros
+              {granplus.name}
             </h2>
             <p>
-              Pouch sabor pollo, 100 g. También en línea seca para perros y
-              gatos.
+              Conocé los productos de {granplus.name}.
             </p>
             <span className="brand-promo-pill">Ver productos</span>
           </div>
@@ -242,8 +236,8 @@ export function Home() {
               loading="lazy"
             />
           </div>
-        </Link>
-        <Link className="brand-promo-wide" href={brandHref("three dogs")}>
+        </Link>}
+        {threeDogs && <Link className="brand-promo-wide" href={brandHref(threeDogs)}>
           <Picture
             className="brand-promo-photo"
             src="/images/brand-panels/three-dogs.jpg"
@@ -254,17 +248,17 @@ export function Home() {
           <div className="brand-promo-side">
             <div className="brand-promo-box">
               <Picture
-                src="/images/brands/three-dogs.png"
-                alt="Three Dogs"
+                src={threeDogs.logo}
+                alt={threeDogs.name}
                 sizes="80px"
               />
-              <strong>Super Premium y Original</strong>
-              <span>Dos líneas de alimento para perros, de cachorro a senior.</span>
+              <strong>{threeDogs.name}</strong>
+              <span>Conocé todos sus productos.</span>
             </div>
             <span className="brand-promo-big-pill">Ver productos</span>
           </div>
-        </Link>
-      </section>
+        </Link>}
+      </section>}
       <section className="section featured-section" aria-labelledby="featured-title">
         {featured.isPending ? (
           <Loading />

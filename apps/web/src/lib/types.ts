@@ -134,6 +134,7 @@ export type ProductCardData = Pick<
   Product,
   "id" | "slug" | "name" | "featured" | "requiresMedicationPermission" | "brand" | "laboratory"
 > & {
+  variantCount?: number;
   media: Pick<Media, "id" | "url" | "alt" | "type">[];
   variants: Pick<Variant, "id" | "active" | "price">[];
 };
@@ -141,7 +142,7 @@ export type ProductCardList = {
   items: ProductCardData[];
   meta: ProductList["meta"];
 };
-export type Attribute = Entity & { values: { id: string; value: string }[] };
+export type Attribute = Entity & { values: { id: string; value: string; slug?: string }[] };
 export type CartItem = {
   id: string;
   quantity: number;

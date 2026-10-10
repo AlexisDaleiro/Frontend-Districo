@@ -69,6 +69,7 @@ import {
 } from "@/lib/commerce";
 import type {
   Application,
+  Attribute,
   ContactInquiry,
   Customer,
   Entity,
@@ -771,14 +772,15 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
   );
   const brands = useApi<Entity[]>("brands"),
     categories = useApi<Entity[]>("categories/catalog"),
-    labs = useApi<Entity[]>("laboratories");
+    labs = useApi<Entity[]>("laboratories"),
+    attributes = useApi<Attribute[]>("attributes");
   useAdminListScroll(!q.isPending && !q.error && productSearch === search.trim());
   return (
     <>
       <div className="admin-toolbar">
         <h2>Catálogo y existencias</h2>
         <ShareAdminList />
-        {canEdit && <button className="button small" onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data))}>
+        {canEdit && <button className="button small" disabled={attributes.isPending || !!attributes.error} onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data, attributes.data))}>
           <Plus size={16} />
           Crear producto
         </button>}

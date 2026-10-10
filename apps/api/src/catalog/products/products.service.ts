@@ -60,6 +60,7 @@ export class ProductsService {
           brand: product.brand,
           laboratory: product.laboratory,
           media: product.media,
+          variantCount: product._count.variants,
           variants: variant
             ? [{
                 id: variant.id,

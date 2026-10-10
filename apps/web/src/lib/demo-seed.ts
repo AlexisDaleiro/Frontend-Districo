@@ -1,6 +1,7 @@
 import catalog from "@/data/catalog.json";
 import sheets from "../../public/data/fichas-tecnicas.json";
 import type { Customer, Entity, Product, ProductSheet, SalesLine, User } from "./types";
+import { demoPetStage } from "./pet-stage";
 const initialBrandLines: Record<string, SalesLine> = { Biofresh: "SPECIALIZED", Stack: "COMMERCIAL", "4PETS": "SPECIALIZED", Kets: "SPECIALIZED", "Procão": "SPECIALIZED" };
 export const initialBrandSalesLine = (name: string) => initialBrandLines[name] ?? null;
 const initialSheets = sheets as Record<string, ProductSheet>;
@@ -72,7 +73,11 @@ export function seedProducts(): Product[] {
           category: categories.find((c) => c.id === record.category),
         },
       ],
-      attributes: [],
+      attributes: record.category === "alimentacion" ? (() => {
+        const slug = /cachorr|kitten|puppy|filhot/i.test(record.name) ? "cachorro-gatito" : /adult/i.test(record.name) ? "adulto" : /senior/i.test(record.name) ? "senior" : undefined;
+        const value = demoPetStage.values.find((item) => item.slug === slug);
+        return value ? [{ attributeValue: { id: value.id, value: value.value, attribute: demoPetStage } }] : [];
+      })() : [],
       requiresMedicationPermission: restricted,
       featured: index < 4,
       active: true,

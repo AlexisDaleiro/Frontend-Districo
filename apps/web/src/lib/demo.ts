@@ -1,9 +1,11 @@
 import { seedProducts, seedUsers, categories, initialProductSheet, initialBrandSalesLine } from "./demo-seed";
 import { normalizeProductSheet } from "./product-sheet";
 import { isSalesLine } from "./sales-line";
+import { demoPetStage } from "./pet-stage";
 import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
+  Attribute,
   Cart,
   ContactInquiry,
   Customer,
@@ -12,6 +14,7 @@ import type {
   Expiration,
   Order,
   Product,
+  ProductCardData,
   ProductSheet,
   Rule,
   User,
@@ -56,6 +59,7 @@ type State = {
   promotions: Rule[];
   expiration: Expiration[];
   categories: Entity[];
+  attributes?: Attribute[];
   brands: Entity[];
   laboratories: Entity[];
   banners?: StoreBanner[];
@@ -82,6 +86,7 @@ export const blankState = (): State => ({
   promotions: [],
   expiration: [],
   categories: [...categories],
+  attributes: [structuredClone(demoPetStage)],
   brands: Array.from(
     new Map(
       seedProducts().flatMap((p) =>
@@ -116,6 +121,7 @@ function read() {
     )
       throw Error();
     data.contactInquiries ??= [];
+    data.attributes ??= [structuredClone(demoPetStage)];
     data.banners ??= [];
     data.staffInvitations ??= [];
     data.staffRoleAccess ??= {};
@@ -195,6 +201,26 @@ function publicProduct(p: Product, user?: User): Product {
       price: priceAllowed ? v.price : undefined,
     })),
   };
+}
+function publicCard(p: Product, user?: User): ProductCardData {
+  const product = publicProduct(p, user);
+  const variants = product.variants.filter((variant) => variant.active !== false);
+  return {
+    id: product.id, slug: product.slug, name: product.name, featured: product.featured,
+    requiresMedicationPermission: product.requiresMedicationPermission,
+    brand: product.brand, laboratory: product.laboratory,
+    media: product.media.filter((media) => media.type === "IMAGE").slice(0, 1),
+    variantCount: variants.length,
+    variants: variants.slice(0, 1).map(({ id, active, price }) => ({ id, active, price })),
+  };
+}
+function productAttributes(s: State, ids: string[]): NonNullable<Product["attributes"]> {
+  return [...new Set(ids)].map((id) => {
+    const attribute = s.attributes?.find((item) => item.values.some((value) => value.id === id));
+    const value = attribute?.values.find((value) => value.id === id);
+    if (!attribute || !value) throw new ApiError("Valor de atributo no encontrado.", 400);
+    return { attributeValue: { id, value: value.value, attribute } };
+  });
 }
 function userCart(s: State, u: User): Cart {
   const items = (s.carts[u.id] ?? []).map((item) => {
@@ -602,14 +628,14 @@ export async function demoRequest<T>(
     result = {
       items: items
         .slice((page - 1) * limit, page * limit)
-        .map((p) => publicProduct(p, user)),
+        .map((p) => route === "products/cards" ? publicCard(p, user) : publicProduct(p, user)),
       meta: { total: items.length, page, limit },
     };
   } else if (
     ["categories", "categories/catalog", "categories/admin", "brands", "laboratories", "brands/admin", "laboratories/admin", "attributes"].includes(route) &&
     method === "GET"
   )
-    result = route === "attributes" ? [] : route === "categories/admin" ? (needAdmin(), s.categories) :
+    result = route === "attributes" ? s.attributes?.filter((attribute) => attribute.active !== false) ?? [] : route === "categories/admin" ? (needAdmin(), s.categories) :
       route === "categories" || route === "categories/catalog" ? s.categories.filter((category) => category.active !== false) :
       route.endsWith("/admin") ? (needAdmin(), s[route.split("/")[0] as "brands" | "laboratories"]) :
       s[route as "brands" | "laboratories"].filter((item) => item.active !== false);
@@ -1337,6 +1363,7 @@ export async function demoRequest<T>(
         slug: String(b.slug || `producto-${id()}`),
         variants: [],
         media: [],
+        attributes: productAttributes(s, (b.attributeValueIds as string[]) ?? []),
         categories: ((b.categoryIds as string[]) ?? []).map((categoryId) => ({
           categoryId,
           category: s.categories.find((c) => c.id === categoryId),
@@ -1403,7 +1430,9 @@ export async function demoRequest<T>(
       result = { technicalSheet: sheet, technicalSheetRevision: p.technicalSheetRevision };
     } else if (parts[0] === "products" && method === "PATCH") {
       const p = s.products.find((p) => p.id === parts[1])!;
+      const attributes = b.attributeValueIds ? productAttributes(s, b.attributeValueIds as string[]) : p.attributes;
       Object.assign(p, b);
+      p.attributes = attributes;
       if (b.brandId) p.brand = s.brands.find((x) => x.id === b.brandId);
       if (b.laboratoryId)
         p.laboratory = s.laboratories.find((x) => x.id === b.laboratoryId);

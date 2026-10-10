@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { request, useSession } from "./providers";
@@ -18,6 +18,7 @@ export type Field = {
   step?: string;
   options?: { value: string; label: string }[];
   hint?: string;
+  showWhen?: { key: string; value: string };
 };
 export type Editor = {
   title: string;
@@ -42,6 +43,7 @@ export function AdminForm({
   const form = useForm<Record<string, unknown>>({
     defaultValues: editor.initial,
   });
+  const values = useWatch({ control: form.control });
   const [error, setError] = useState<unknown>();
   const client = useQueryClient();
   const { notify } = useSession();
@@ -50,6 +52,7 @@ export function AdminForm({
     const data: Record<string, unknown> = {};
     let invalid = false;
     for (const field of editor.fields) {
+      if (field.showWhen && raw[field.showWhen.key] !== field.showWhen.value) continue;
       const value = raw[field.key];
       if (field.type === "checkbox") {
         data[field.key] = !!value;
@@ -127,7 +130,7 @@ export function AdminForm({
         </p>
       )}
       <div className="form-grid">
-        {editor.fields.map((field) =>
+        {editor.fields.filter((field) => !field.showWhen || values[field.showWhen.key] === field.showWhen.value).map((field) =>
           field.type === "checkbox" ? (
             <label key={field.key} className="check-field span-2">
               <input type="checkbox" {...form.register(field.key)} />

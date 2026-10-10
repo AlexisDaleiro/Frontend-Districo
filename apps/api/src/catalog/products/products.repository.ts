@@ -76,6 +76,7 @@ export class ProductsRepository {
           requiresMedicationPermission: true,
           brand: { select: { id: true, name: true, salesLine: true } },
           laboratory: { select: { id: true, name: true } },
+          _count: { select: { variants: { where: { deletedAt: null, active: true } } } },
           media: {
             where: { type: 'IMAGE' },
             orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],

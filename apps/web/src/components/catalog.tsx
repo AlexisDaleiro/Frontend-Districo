@@ -55,7 +55,7 @@ import {
 export function ProductCard({ product }: { product: ProductCardData }) {
   const active = product.variants.filter((v) => v.active !== false);
   const variant = active[0];
-  const presentations = active.length;
+  const presentations = product.variantCount ?? active.length;
   const price = variant?.price;
   const { user } = useSession();
   const client = useQueryClient();
@@ -838,6 +838,7 @@ function ProductInfo({
         )),
     ],
     ["Tipo", product.productType !== "OTHER" && label(product.productType)],
+    ...(product.productType === "FOOD" ? product.attributes?.filter((item) => item.attributeValue.attribute.slug === "etapa").map((item): [string, ReactNode] => ["Etapa", item.attributeValue.value]) ?? [] : []),
     [
       "Presentación",
       variant &&

@@ -4778,6 +4778,9 @@ td .button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.species-head-single {
+  grid-template-columns: 1fr;
+}
 .species-head a {
   display: flex;
   flex-direction: column;
@@ -4903,6 +4906,9 @@ td .button {
   display: grid;
   gap: 20px;
   padding-top: 40px;
+}
+.brand-promos.brand-promos-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 .brand-promo {
   position: relative;

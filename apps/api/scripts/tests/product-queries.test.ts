@@ -104,6 +104,8 @@ test('card listing selects only the fields used by product cards', async () => {
   assert.equal('attributes' in listArgs.select!, false);
   assert.equal('categories' in listArgs.select!, false);
   assert.deepEqual(listArgs.select!.brand, { select: { id: true, name: true, salesLine: true } });
+  assert.deepEqual(listArgs.select!._count, { select: { variants: { where: { deletedAt: null, active: true } } } });
+  assert.equal((listArgs.select!.variants as Prisma.Product$variantsArgs).take, 1);
 });
 
 test('card prices keep the same account and medication restrictions as detail', async () => {
@@ -112,6 +114,7 @@ test('card prices keep the same account and medication restrictions as detail', 
       items: [{
         id: 'p1', slug: 'professional', name: 'Professional', featured: false,
         requiresMedicationPermission: true, brand: null, laboratory: null, media: [],
+        _count: { variants: 4 },
         variants: [{
           id: 'v1', active: true,
           prices: [{ amount: new Prisma.Decimal('100'), currency: 'UYU', priceList: { name: 'General' } }],
@@ -124,6 +127,8 @@ test('card prices keep the same account and medication restrictions as detail', 
   const filters = { page: 1, limit: 12 };
 
   const anonymous = await service.findCards(filters);
+  assert.equal(anonymous.items[0].variantCount, 4);
+  assert.equal(anonymous.items[0].variants.length, 1);
   assert.equal(anonymous.items[0].variants[0].price, undefined);
 
   const pricesOnly = await service.findCards(filters, {

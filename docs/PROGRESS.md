@@ -2,6 +2,15 @@
 
 Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
 
+## Correcciones de portada y etapa de alimentos (9/10/2026)
+
+- Se conserva el rediseño B2B del compañero. Gatitos y Cachorros filtran por categoría de especie, tipo Alimento y atributo Etapa, sin búsquedas literales ni categorías nuevas por edad. Etapa editable al crear/editar alimentos, disponible en filtros y ficha comercial; cambiarla o quitarla conserva los otros atributos.
+- `products/cards` incorpora `variantCount` contando variantes activas/no eliminadas, sin cargar más variantes ni cambiar la protección de precios. Tarjetas demo reflejan el mismo contrato compacto. Caso real Alfombra de Entrenamiento Procão: una variante recibida, total 4, igual a la ficha.
+- Portada recorre todas las raíces activas del catálogo; categorías nuevas o renombradas siguen visibles, con icono genérico si no existe ilustración asociada. Bloques Biofresh/Gran Plus/Three Dogs usan nombre, logo y estado actuales; marcas inactivas o eliminadas dejan de aparecer. Se mantiene el carrusel gestionado por banners y el diseño institucional sin cambios.
+- Script de preparación con simulación, proyecto esperado, transacción serializable, condiciones de estado y auditoría. Aplicado al Supabase configurado: 145 alimentos importados como OTHER normalizados a FOOD por su categoría existente y 101 etapas explícitas asignadas (33 juveniles, 53 adultos, 15 senior). Repetición: 0 cambios. Precios, stock, permisos y asociaciones de categorías intactos; no se inventan etapas para los 52 alimentos pendientes. Instrucciones en `docs/PET-STAGES.md`.
+- Verificación realizada: 183 pruebas frontend, 18 API de consultas/filtros y 2 de inferencia de etapas, typecheck/lint correctos y compilaciones API/producción web. Playwright enfocado: 11 recorridos correctos y 1 prueba real omitida por configuración demo; incluye etapa editable/limpiable, conteo de variantes, categorías nuevas/renombradas, marcas inactivas y logo personalizado, dropdown desktop/mobile, carrusel y líneas de marcas. Los 3 recorridos nuevos se repitieron con éxito después del último ajuste del formulario y del espacio de marcas. Capturas desktop/mobile revisadas. API real y navegador real confirman 12 productos en Gatitos y conteo 4 en Procão. API local reiniciada en 3001; frontend continúa en 3002.
+- Pendientes de datos: 52 etapas a confirmar y tres alimentos para gato ya asociados también a alimento para perro, documentados en PET-STAGES. No se publicaron estos cambios ni se hizo commit: no hubo pedido de push en este turno.
+
 ## Líneas de venta heredadas de la marca (9/10/2026)
 
 - Nueva clasificación editable en Marcas: Línea especializada, Línea comercial y Ambos (aclaración del usuario). Persistencia en `Brand.salesLine`, validación enum y migración aditiva `20261009120000_brand_sales_line`. Cada producto hereda la marca actual por relación, sin duplicar un campo editable; incluidas tarjetas, detalles y favoritos. No se alteran permisos, precios, laboratorios ni las siete familias institucionales del compañero.
