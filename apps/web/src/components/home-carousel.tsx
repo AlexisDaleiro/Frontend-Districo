@@ -123,11 +123,6 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           ),
         )
       : storeRoutes.products);
-  const show = (index: number) =>
-    setSlide((current) => ({
-      active: index,
-      direction: index < current.active ? "back" : "forward",
-    }));
   const step = (delta: 1 | -1) =>
     setSlide((current) => ({
       active: (Math.min(current.active, slides.length - 1) + delta + slides.length) % slides.length,
@@ -170,6 +165,8 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           id="home-carousel-slide"
           role="group"
           aria-roledescription="diapositiva"
+          aria-live={rotating ? "off" : "polite"}
+          aria-atomic="true"
           aria-label={`${shownIndex + 1} de ${slides.length}: ${slide.name}`}
         >
           <div className="hero-copy">
@@ -207,7 +204,26 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
             </picture>
           </div>
         </article>
+        <span
+          key={`timer-${slide.id}`}
+          className="home-carousel-timer"
+          aria-hidden="true"
+          onAnimationEnd={(event) => {
+            if (event.animationName === "motion-progress") step(1);
+          }}
+        />
         <div className="home-carousel-nav">
+          {!reduced && (
+            <button
+              className="home-carousel-arrow"
+              type="button"
+              aria-label={playing ? "Pausar carrusel" : "Reanudar carrusel"}
+              aria-controls="home-carousel-slide"
+              onClick={() => setPlaying((value) => !value)}
+            >
+              {playing ? <Pause size={15} /> : <Play size={15} />}
+            </button>
+          )}
           <button
             className="home-carousel-arrow home-carousel-arrow-prev"
             type="button"
@@ -226,50 +242,6 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
           >
             <ChevronRight size={21} />
           </button>
-        </div>
-      </div>
-      <div className="home-carousel-pagination">
-        {/* Mientras rota solo no se anuncia cada cambio (WCAG 4.1.3). */}
-        <span
-          className="home-carousel-count"
-          aria-live={rotating ? "off" : "polite"}
-          aria-atomic="true"
-        >
-          {String(shownIndex + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
-          <span aria-hidden="true"> · </span>
-          {slide.name}
-        </span>
-        <div className="home-carousel-controls">
-          {!reduced && (
-            <button
-              className="home-carousel-toggle"
-              type="button"
-              aria-label={playing ? "Pausar carrusel" : "Reanudar carrusel"}
-              aria-controls="home-carousel-slide"
-              onClick={() => setPlaying((value) => !value)}
-            >
-              {playing ? <Pause size={15} /> : <Play size={15} />}
-            </button>
-          )}
-          <div className="home-carousel-dots" aria-label="Elegir banner">
-            {slides.map((item, index) => (
-              <button
-                className={`home-carousel-dot${index === shownIndex ? " is-active" : ""}`}
-                type="button"
-                key={item.id}
-                aria-label={`Mostrar ${item.name}`}
-                aria-controls="home-carousel-slide"
-                aria-current={index === shownIndex ? "true" : undefined}
-                onClick={() => show(index)}
-                // La barra de progreso del punto activo (motion.css) marca el
-                // tiempo: al terminar pasa al siguiente banner.
-                onAnimationEnd={(event) => {
-                  if (event.animationName === "motion-progress")
-                    step(1);
-                }}
-              />
-            ))}
-          </div>
         </div>
       </div>
     </section>

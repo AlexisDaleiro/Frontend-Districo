@@ -2,6 +2,16 @@
 
 Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
 
+## Recuperación de ajustes visuales perdidos después del pull (9/10/2026)
+
+- Base conservada: `678a43d5`, con el rediseño B2B y las líneas de venta heredadas de marca. El árbol estaba limpio al iniciar. Se reaplicaron únicamente los ajustes de esta conversación que faltaban; no se restauraron archivos completos ni se modificaron backend, migraciones, permisos o clasificación comercial.
+- `globals.css`: separación de tarjetas del catálogo de 64 px en escritorio, 32 en tablet y 12–20 en móvil; separación del banner del inicio del menú de 24 px en escritorio y 16 en móvil.
+- `catalog.tsx`: el banner filtra por la marca pulsada y propone la siguiente, limitado a Biofresh → Gran Plus → Guabi/Guabi Natural → Three Dogs → Stack → Biofresh. Logos e imágenes corresponden a la marca; sólo participan marcas disponibles.
+- `home-carousel.tsx`, `globals.css`, `motion.css`: eliminada la franja inferior de contador e indicadores; pausa y flechas dentro del banner. Rotación, pausa y movimiento reducido conservados mediante temporizador invisible. Pruebas existentes de carrusel actualizadas a esos controles.
+- El paginador público compartido y el footer de ingreso ya estaban en el pull y se conservaron sin cambios.
+- Verificación: typecheck, lint y 177 pruebas frontend correctos. Vitest requirió salir del sandbox por EPERM en temporales de Windows. Playwright: 3 pruebas de carrusel correctas, más revisión del espaciado en seis anchos y del ciclo de las cinco marcas/separación del inicio a 1440 y 390. Las tres marcas ausentes de la demo se añadieron sólo a una sesión aislada del navegador de prueba. `git diff --check`: correcto.
+- Regresiones de líneas de venta y atajo de edición: 6/6 correctas (incluidos permisos y móvil); total 9 pruebas E2E correctas además de los recorridos de espaciado y marcas. HEAD sigue en `678a43d5`; sólo cambiaron cuatro archivos de implementación, dos pruebas de carrusel y este registro. Sin commit ni push. Siguiente acción: revisar `/tienda` y `/tienda/productos` con los ajustes recuperados.
+
 ## Líneas de venta heredadas de la marca (9/10/2026)
 
 - Nueva clasificación editable en Marcas: Línea especializada, Línea comercial y Ambos (aclaración del usuario). Persistencia en `Brand.salesLine`, validación enum y migración aditiva `20261009120000_brand_sales_line`. Cada producto hereda la marca actual por relación, sin duplicar un campo editable; incluidas tarjetas, detalles y favoritos. No se alteran permisos, precios, laboratorios ni las siete familias institucionales del compañero.
