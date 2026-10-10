@@ -93,7 +93,19 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         {active.map((item) => (
           <button key={item.id} type="button" className="product-variant-pill" aria-pressed={variant?.id === item.id} disabled={mutation.isPending}
             title={[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
-            onClick={() => { setSelection({ id: item.id, quantity: firstQuantity(item) }); mutation.reset(); }}>
+            onClick={(event) => {
+              setSelection({ id: item.id, quantity: firstQuantity(item) });
+              mutation.reset();
+              const pill = event.currentTarget;
+              const rail = pill.parentElement;
+              if (rail) {
+                const offset = pill.getBoundingClientRect().left - rail.getBoundingClientRect().left;
+                rail.scrollTo({
+                  left: rail.scrollLeft + offset - (rail.clientWidth - pill.offsetWidth) / 2,
+                  behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+                });
+              }
+            }}>
             {[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
           </button>
         ))}

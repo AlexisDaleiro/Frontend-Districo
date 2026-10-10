@@ -62,6 +62,11 @@ for (const width of [1440, 390]) {
     await add.click();
     await expect.poll(saved).toContainEqual(expect.objectContaining({ variantId: "card-10kg", quantity: 1 }));
     await card.getByRole("button", { name: "20 kg", exact: true }).click();
+    await expect.poll(() => card.locator('.product-variant-pill[aria-pressed="true"]').evaluate((pill) => {
+      const bounds = pill.getBoundingClientRect();
+      const rail = pill.parentElement!.getBoundingClientRect();
+      return bounds.left >= rail.left - 1 && bounds.right <= rail.right + 1;
+    })).toBe(true);
     await expect(card).toContainText("Sin stock para el mínimo de compra");
     await expect(add).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

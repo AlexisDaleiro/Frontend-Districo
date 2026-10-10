@@ -2,6 +2,11 @@
 
 Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
 
+## Desplazamiento al seleccionar presentaciones (9/10/2026)
+
+- Al elegir una píldora en ProductCard, su fila se desplaza horizontalmente hacia ella, intentando centrarla dentro del espacio disponible. Sólo se desplaza la fila; se conserva la posición vertical de la página. Movimiento suave salvo preferencia de movimiento reducido.
+- Verificación: typecheck correcto y 3 pruebas Playwright de compra correctas, con comprobación de visibilidad de la variante seleccionada en escritorio y móvil. Sin cambios de backend, commit ni push. Siguiente acción: revisión del usuario en el catálogo.
+
 ## Verificación después del merge fc9b30d0 (9/10/2026)
 
 - Conflicto de documentación resuelto conservando ambos registros; merge finalizado con padres `1f1b89f6` y `42e4f315`. Sin conflictos pendientes ni push.
