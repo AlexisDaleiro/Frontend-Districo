@@ -3,7 +3,7 @@ import { Role } from '@prisma/client';
 export const staffFeatures = [
   'resumen', 'ventas', 'consultas', 'solicitudes', 'clientes', 'pedidos',
   'facturacion', 'catalogo', 'marcas', 'categorias', 'promociones',
-  'banners', 'recomendaciones', 'personal', 'roles', 'vendedores',
+  'banners', 'recomendaciones', 'personal', 'roles', 'vendedores', 'ofertas-laborales', 'integraciones',
 ] as const;
 
 export type StaffFeature = typeof staffFeatures[number];
@@ -26,10 +26,12 @@ const defaults: Record<StaffFeature, Partial<Record<Role, StaffAccess>>> = {
   personal: {},
   roles: {},
   vendedores: {},
+  'ofertas-laborales': {},
+  integraciones: {},
 };
 
 export function defaultStaffAccess(role: Role, feature: StaffFeature): StaffAccess {
-  if (role === Role.ADMIN) return { canView: true, canEdit: !['resumen', 'ventas'].includes(feature) };
+  if (role === Role.ADMIN) return { canView: true, canEdit: !['resumen', 'ventas', 'integraciones'].includes(feature) };
   return defaults[feature][role] ?? { canView: false, canEdit: false };
 }
 
@@ -60,6 +62,8 @@ export function staffFeatureForPath(path: string): StaffFeature | undefined {
   if (/^\/categories(?:\/|$)/.test(clean)) return 'categorias';
   if (/^\/(?:admin\/)?promotions(?:\/|$)/.test(clean)) return 'promociones';
   if (/^\/admin\/banners(?:\/|$)/.test(clean)) return 'banners';
+  if (/^\/admin\/jobs(?:\/|$)/.test(clean)) return 'ofertas-laborales';
+  if (/^\/admin\/integrations$/.test(clean)) return 'integraciones';
   if (/^\/(?:admin\/)?recommendations(?:\/|$)/.test(clean)) return 'recomendaciones';
   return undefined;
 }

@@ -17,6 +17,7 @@ const relatedPaths: Record<string, string[]> = {
   recommendations: ["recommendations", "admin/recommendations", "cart"],
   "admin/recommendations": ["recommendations", "admin/recommendations", "cart"],
   "admin/banners": ["admin/banners", "banners"],
+  "admin/jobs": ["admin/jobs", "jobs"],
   "admin/staff": ["admin/staff", "admin/salespeople", "admin/customers/page/options"],
 };
 

@@ -21,6 +21,7 @@ import { PromotionsService } from '../promotions/promotions.service';
 import { CreateRecommendationRuleDto } from '../recommendations/dto/create-recommendation-rule.dto';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AdminService } from './admin.service';
+import { integrationConnections } from './integration-status';
 import { SalesReportsService } from './sales-reports.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto, SearchListQueryDto } from './dto/admin-list-query.dto';
@@ -53,6 +54,11 @@ export class AdminController {
     private readonly recommendations: RecommendationsService,
     private readonly salesReports: SalesReportsService,
   ) {}
+
+  @Get('integrations')
+  integrations() {
+    return integrationConnections();
+  }
 
   @Get('dashboard')
   @Roles(Role.ADMIN, Role.SALES, Role.CATALOG, Role.FINANCE)

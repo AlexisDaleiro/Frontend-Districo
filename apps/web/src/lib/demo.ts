@@ -2,6 +2,8 @@ import { seedProducts, seedUsers, categories, initialProductSheet, initialBrandS
 import { normalizeProductSheet } from "./product-sheet";
 import { isSalesLine } from "./sales-line";
 import { demoPetStage } from "./pet-stage";
+import { inactiveIntegrations } from "./integrations";
+import { demoJobOpenings, jobDraftSchema, jobToday, type JobOpening } from "@/data/job-openings";
 import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
@@ -63,6 +65,7 @@ type State = {
   brands: Entity[];
   laboratories: Entity[];
   banners?: StoreBanner[];
+  jobs?: JobOpening[];
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess; retiredAt?: string }[];
@@ -96,6 +99,7 @@ export const blankState = (): State => ({
   ),
   laboratories: [],
   banners: [],
+  jobs: structuredClone(demoJobOpenings),
   staffInvitations: [],
   staffRoleAccess: {},
   customRoles: [],
@@ -123,6 +127,7 @@ function read() {
     data.contactInquiries ??= [];
     data.attributes ??= [structuredClone(demoPetStage)];
     data.banners ??= [];
+    data.jobs ??= structuredClone(demoJobOpenings);
     data.staffInvitations ??= [];
     data.staffRoleAccess ??= {};
     data.customRoles ??= [];
@@ -393,6 +398,8 @@ export async function demoRequest<T>(
       route.startsWith("admin/promotions") || route.startsWith("promotions") ? "promociones" :
       route.startsWith("admin/recommendations") || route.startsWith("recommendations") ? "recomendaciones" :
       route.startsWith("admin/banners") ? "banners" :
+      route.startsWith("admin/jobs") ? "ofertas-laborales" :
+      route === "admin/integrations" ? "integraciones" :
       /^(products|pricing|inventory|attributes)(\/|$)/.test(route) ? "catalogo" :
       /^(brands|laboratories)(\/|$)/.test(route) ? "marcas" :
       /^(categories)(\/|$)/.test(route) ? "categorias" :
@@ -817,6 +824,8 @@ export async function demoRequest<T>(
         ? orders
         : orders.find((o) => o.id === route.split("/")[2]);
     if (!result) throw new ApiError("Pedido no encontrado.", 404);
+  } else if (route === "jobs" && method === "GET") {
+    result = (s.jobs ?? []).filter((job) => job.active && job.published <= jobToday()).sort((a, b) => b.published.localeCompare(a.published) || a.id.localeCompare(b.id));
   } else if (route === "banners" && method === "GET") {
     const now = new Date().toISOString();
     const placement = query.get("placement") ?? "ECOMMERCE";
@@ -846,7 +855,9 @@ export async function demoRequest<T>(
           (inquiry) => inquiry.status === "NEW",
         ).length,
       };
-    else if (route === "admin/sales/options") {
+    else if (route === "admin/integrations" && method === "GET") {
+      result = inactiveIntegrations.map((integration) => ({ ...integration }));
+    } else if (route === "admin/sales/options") {
       const current = needUser(), search = (query.get('search') ?? '').trim().toLowerCase();
       const customers = s.users.flatMap((member) => member.customerAccount ? [member.customerAccount] : []).filter((account) => current.role !== 'SALES' || salespersonFor(account)?.userId === current.id);
       result = {
@@ -862,6 +873,26 @@ export async function demoRequest<T>(
         const report = demoSalesReport(s.orders, members, s.products, query, decorated, route.endsWith('/export'));
         result = route.endsWith('/export') ? salesReportCsv(report) : report;
       } catch (error) { throw new ApiError(error instanceof Error ? error.message : 'Fechas inválidas.', 400); }
+    } else if (route === "admin/jobs" || route.startsWith("admin/jobs/")) {
+      if (route === "admin/jobs" && method === "GET") {
+        const term = (query.get("search") ?? "").trim().toLowerCase();
+        const status = query.get("status");
+        const page = Number(query.get("page") ?? 1), limit = Number(query.get("limit") ?? 20);
+        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100 || term.length > 150 || status && !["active", "inactive"].includes(status)) throw new ApiError("Filtros de ofertas no válidos.", 400);
+        const jobs = [...(s.jobs ?? [])].filter((job) => (!term || [job.title, job.area, job.location].some((value) => value.toLowerCase().includes(term))) && (!status || job.active === (status === "active"))).sort((a, b) => b.published.localeCompare(a.published) || a.id.localeCompare(b.id));
+        result = { items: jobs.slice((page - 1) * limit, page * limit), meta: { total: jobs.length, page, limit } };
+      } else {
+        const existing = s.jobs?.find((job) => job.id === parts[2]);
+        if (parts[2] && !existing) throw new ApiError("Oferta laboral no encontrada.", 404);
+        if (method === "DELETE" && existing) {
+          s.jobs = s.jobs!.filter((job) => job.id !== existing.id); result = { success: true };
+        } else if (method === "POST" && !parts[2] || method === "PATCH" && existing) {
+          const parsed = jobDraftSchema.safeParse(b);
+          if (!parsed.success) throw new ApiError("Datos de la oferta no válidos.", 400);
+          if (existing) { Object.assign(existing, parsed.data); result = existing; }
+          else { const job = { ...parsed.data, id: id() }; (s.jobs ??= []).push(job); result = job; }
+        } else throw new ApiError("Acción no válida.", 405);
+      }
     } else if (route === "admin/banners") {
       if (method === "GET") {
         if (query.has("placement") && !["ECOMMERCE", "INSTITUTIONAL"].includes(query.get("placement")!)) throw new ApiError("Sitio de banners no válido.", 400);
@@ -1014,7 +1045,7 @@ export async function demoRequest<T>(
       const entries = b.entries as { feature: StaffFeature; canView: boolean; canEdit: boolean }[];
       if (!staffRoles.some((item) => item === role) || role === "ADMIN" || !Array.isArray(entries) || entries.length !== staffFeatures.length ||
           new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
-          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && !entry.canView)) {
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones"))) {
         throw new ApiError("Configuración de permisos inválida.", 400);
       }
       s.staffRoleAccess ??= {};
@@ -1036,7 +1067,7 @@ export async function demoRequest<T>(
       if (!item) throw new ApiError("Rol no encontrado.", 404);
       if (!Array.isArray(entries) || entries.length !== staffFeatures.length ||
           new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
-          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && !entry.canView)) {
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones"))) {
         throw new ApiError("Configuración de permisos inválida.", 400);
       }
       item.access = Object.fromEntries(entries.map((entry) => [entry.feature, { canView: entry.canView, canEdit: entry.canEdit }])) as DemoRoleAccess;

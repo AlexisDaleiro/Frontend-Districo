@@ -12,6 +12,7 @@ import {
 import {
   BadgePercent,
   BriefcaseBusiness,
+  Cable,
   Images,
   ClipboardList,
   Download,
@@ -43,6 +44,8 @@ import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
 import { CountUp } from "./count-up";
 import { AdminSales } from "./admin-sales";
 import { AdminBanners } from "./admin-banners";
+import { AdminJobs } from "./admin-jobs";
+import { AdminIntegrations } from "./admin-integrations";
 import { AdminRoles, AdminStaff } from "./admin-staff";
 import { AdminSalespeople } from "./admin-salespeople";
 import { AdminPromotionForm } from "./admin-promotion-form";
@@ -94,8 +97,10 @@ const sections: [string, string, string, LucideIcon, string?][] = [
   ["Marketing", "promociones", "Promociones", BadgePercent],
   ["Marketing", "banners", "Banners", Images],
   ["Marketing", "recomendaciones", "Recomendaciones", Sparkles],
+  ["Institucional", "ofertas-laborales", "Ofertas laborales", BriefcaseBusiness],
   ["Acceso", "personal", "Personal", ShieldCheck],
   ["Acceso", "roles", "Roles", ListChecks],
+  ["Configuración", "integraciones", "Integraciones", Cable],
 ];
 const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
@@ -1551,6 +1556,10 @@ function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) 
     <Marketing edit={edit} />
   ) : section === "banners" ? (
     <AdminBanners />
+  ) : section === "ofertas-laborales" ? (
+    <AdminJobs />
+  ) : section === "integraciones" ? (
+    <AdminIntegrations />
   ) : section === "recomendaciones" ? (
     <Marketing edit={edit} recommendations />
   ) : section === "personal" ? (

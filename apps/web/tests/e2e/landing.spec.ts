@@ -228,16 +228,14 @@ test("empleos: acceso desde la navegación y CV por correo", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Trabajá en DISTRICO");
   await expect(page.getByRole("link", { name: "Enviar mi CV" })).toHaveAttribute("href", /^mailto:contacto@districo\.com\.uy/);
   const jobs = page.locator(".jobs-item");
-  if ((await jobs.count()) === 0) {
-    await expect(page.getByRole("heading", { name: "No hay búsquedas abiertas en este momento." })).toBeVisible();
-    return;
-  }
+  await expect(jobs).toHaveCount(2);
   await expect(page.getByText(/puestos de ejemplo/)).toBeVisible();
   const total = await jobs.count();
   await page.getByRole("checkbox", { name: /Ventas/ }).check();
   await expect.poll(() => jobs.count()).toBeLessThan(total);
   await jobs.first().getByRole("button", { name: "Ver puesto" }).click();
-  await expect(jobs.first().getByRole("link", { name: "Postularme" })).toHaveAttribute("href", /^mailto:contacto@districo\.com\.uy\?subject=/);
+  await expect(jobs.first().getByRole("link", { name: "Postularme" })).toHaveCount(0);
+  await expect(jobs.first().getByText("Ejemplo", { exact: true })).toBeVisible();
 });
 
 test("nosotros: línea de tiempo de hitos interactiva", async ({ page }) => {

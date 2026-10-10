@@ -170,7 +170,7 @@ export class AdminService {
 
   private validateStaffAccess(entries: StaffAccessEntryDto[]) {
     if (new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
-        entries.some((entry) => entry.canEdit && !entry.canView)) {
+        entries.some((entry) => entry.canEdit && (!entry.canView || entry.feature === 'integraciones'))) {
       throw new BadRequestException('Configuración de permisos inválida.');
     }
     if (entries.find((entry) => entry.feature === 'pedidos')?.canEdit &&

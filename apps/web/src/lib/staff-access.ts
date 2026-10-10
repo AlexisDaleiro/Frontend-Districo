@@ -13,6 +13,8 @@ export const staffFeatures = [
   ["promociones", "Promociones"], ["banners", "Banners"],
   ["recomendaciones", "Recomendaciones"], ["personal", "Personal"],
   ["roles", "Roles"], ["vendedores", "Vendedores"],
+  ["ofertas-laborales", "Ofertas laborales"],
+  ["integraciones", "Integraciones"],
 ] as const;
 export type StaffFeature = typeof staffFeatures[number][0];
 
@@ -21,6 +23,8 @@ const sectionFeature: Record<string, StaffFeature> = {
   pedidos: "pedidos", catalogo: "catalogo", marcas: "marcas", categorias: "categorias",
   promociones: "promociones", banners: "banners", recomendaciones: "recomendaciones",
   personal: "personal", roles: "roles", vendedores: "vendedores", organizacion: "catalogo",
+  "ofertas-laborales": "ofertas-laborales",
+  integraciones: "integraciones",
 };
 
 const defaultSections: Record<BuiltInStaffRole, string[]> = {
@@ -56,6 +60,7 @@ export function canAccessAdmin(user: User | null | undefined) {
 
 export function canEditAdminFeature(user: User | null | undefined, feature: StaffFeature) {
   if (!user || !isStaff(user)) return false;
+  if (feature === "integraciones") return false;
   if (user.role === "ADMIN") return true;
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canEdit ?? false;
   return user.staffAccess?.[feature]?.canEdit ?? (

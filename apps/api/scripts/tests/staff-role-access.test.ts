@@ -10,6 +10,7 @@ import { AdminService } from '../../src/admin/admin.service';
 import { AuditService } from '../../src/audit/audit.service';
 import { OrdersService } from '../../src/orders/orders.service';
 import { ApplicationsService } from '../../src/applications/applications.service';
+import { integrationConnections } from '../../src/admin/integration-status';
 
 test('every staff feature has defaults and editing never exists without viewing', () => {
   for (const feature of staffFeatures) {
@@ -29,6 +30,7 @@ test('admin routes map to the section they protect', () => {
   assert.equal(staffFeatureForPath('/api/admin/contact-inquiries/page'), 'consultas');
   assert.equal(staffFeatureForPath('/api/products/admin/list'), 'catalogo');
   assert.equal(staffFeatureForPath('/api/admin/banners'), 'banners');
+  assert.equal(staffFeatureForPath('/api/admin/integrations'), 'integraciones');
   assert.equal(staffFeatureForPath('/api/brands/admin'), 'marcas');
   assert.equal(staffFeatureForPath('/api/laboratories/admin'), 'marcas');
   assert.equal(staffFeatureForPath('/api/admin/staff/access'), 'roles');
@@ -66,8 +68,11 @@ test('guard enforces saved view and edit rights across staff sections', async ()
   assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/staff', 'GET', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/salespeople', 'GET', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/integrations', 'GET', Role.SALES)), false);
+  assert.equal(await guard.canActivate(context('/api/admin/integrations', 'GET', Role.CLIENT)), false);
   override = { canView: true, canEdit: false };
   assert.equal(await guard.canActivate(context('/api/admin/staff/access', 'GET', Role.SALES)), true);
+  assert.equal(await guard.canActivate(context('/api/admin/integrations', 'GET', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/admin/staff/roles', 'POST', Role.SALES)), false);
   assert.equal(await guard.canActivate(context('/api/admin/staff', 'GET', Role.SALES)), true);
   assert.equal(await guard.canActivate(context('/api/admin/staff/invitations', 'POST', Role.SALES)), false);
@@ -198,6 +203,23 @@ test('editing orders requires billing visibility', async () => {
   const service = new AdminService({} as PrismaService, {} as AuditService, {} as OrdersService, {} as ApplicationsService);
   const entries = staffFeatures.map((feature) => ({ feature, canView: feature === 'pedidos', canEdit: feature === 'pedidos' }));
   await assert.rejects(service.updateStaffRoleAccess(Role.SALES, entries, 'admin-1'), /facturación/);
+});
+
+test('integration status is read-only and contains no provider credentials', async () => {
+  assert.deepEqual(integrationConnections(), [
+    { id: 'whatsapp', name: 'WhatsApp', status: 'INACTIVE' },
+    { id: 'mailing', name: 'Mailing', status: 'INACTIVE' },
+    { id: 'mercarea', name: 'Mercarea', status: 'INACTIVE' },
+  ]);
+  assert.deepEqual(defaultStaffAccess(Role.ADMIN, 'integraciones'), { canView: true, canEdit: false });
+  for (const role of [Role.SALES, Role.CATALOG, Role.FINANCE, Role.CUSTOM]) {
+    assert.deepEqual(defaultStaffAccess(role, 'integraciones'), { canView: false, canEdit: false });
+  }
+  const prisma = { customStaffRole: { findFirst: async () => ({ id: 'custom-1' }) } } as unknown as PrismaService;
+  const service = new AdminService(prisma, {} as AuditService, {} as OrdersService, {} as ApplicationsService);
+  const entries = staffFeatures.map((feature) => ({ feature, canView: feature === 'integraciones', canEdit: feature === 'integraciones' }));
+  await assert.rejects(service.updateStaffRoleAccess(Role.SALES, entries, 'admin-1'), /permisos inválida/);
+  await assert.rejects(service.updateCustomRoleAccess('custom-1', entries, 'admin-1'), /permisos inválida/);
 });
 
 test('delegated role editor cannot grant access beyond their own rights', async () => {

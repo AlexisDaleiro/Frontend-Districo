@@ -4,6 +4,21 @@ Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b3382
 
 **Verificación del 26/09/2026:** `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración a monorepo (`Dockerfile`, `README.md`, `.dockerignore` y lockfile propio eliminados). `src/` y `prisma/` son idénticos a la referencia, y `origin/backend` sigue en `eacea83`. Cada ruta que admite `src/lib/proxy-policy.ts` existe en los controladores. Los contratos consumidos no cambiaron.
 
+## Integraciones (9/10/2026)
+
+- `GET admin/integrations`: listado protegido con `{id,name,status}` de WhatsApp, Mailing y Mercarea. Los tres devuelven `INACTIVE`: no hay adaptadores conectados ni comprobaciones en vivo de proveedores. No devuelve credenciales ni admite escrituras.
+- Apartado `/tienda/admin/integraciones`, con permiso independiente `integraciones` de sólo lectura. Acceso predeterminado únicamente para ADMIN, delegable mediante Ver en Roles; Editar deshabilitado y rechazado por la API. Demo conserva el mismo contrato, sin sustituir errores de la API real.
+- Requiere desplegar frontend/API coordinados por la nueva entrada de permisos; no requiere migración de base de datos.
+
+## Ofertas laborales (9/10/2026)
+
+- `GET jobs`: listado público de ofertas activas, no eliminadas y con fecha de publicación alcanzada en America/Montevideo. Cada oferta incluye puesto, área, sede, jornada, fecha `published` (AAAA-MM-DD), descripción, requisitos, beneficios, correo de postulaciones e `isExample`.
+- `GET admin/jobs`: búsqueda por puesto/área/sede (`search`), `status=active|inactive`, `page` y `limit` (máximo 100); `{items,meta:{total,page,limit}}` con filtros previos a la paginación.
+- `POST admin/jobs` y `PATCH admin/jobs/:id`: formulario completo validado (`title`, `area`, `location`, `schedule`, `published`, `description`, `requirements[]`, `benefits[]`, `contactEmail`, `active`, `isExample`). `DELETE admin/jobs/:id` retira la oferta mediante borrado lógico. Todas las escrituras registran responsable y contenido anterior/nuevo en auditoría transaccional.
+- Permiso independiente `ofertas-laborales`, con Ver/Editar en Roles y sin acceso predeterminado para ventas, catálogo o finanzas. Administrador habilitado; roles personalizados y permisos delegados se verifican también en backend.
+- `/trabajo` consume el endpoint público, sin sustituir una falla de conexión por ofertas ficticias. Los ejemplos tienen etiqueta visible y no reciben postulaciones; las ofertas reales conservan el envío mediante correo, no un sistema de recepción de CV dentro del sitio.
+- Despliegue y ejemplos opcionales: `docs/JOB-OPENINGS.md`.
+
 ## Linea de venta de marcas (9/10/2026)
 
 - `Brand.salesLine`: `SPECIALIZED | COMMERCIAL | BOTH | null`; `POST brands` y `PATCH brands/:id` aceptan el campo con los permisos existentes de Marcas. Sigue siendo opcional para importadores anteriores; valores fuera del enum son rechazados. `null` significa sin clasificar, no Ambos.

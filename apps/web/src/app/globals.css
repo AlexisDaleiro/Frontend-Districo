@@ -4,6 +4,7 @@
   --color-lime: #b1ca00;
   --font-sans: "Manrope Variable", sans-serif;
 }
+.admin-job-fields { display: grid; gap: 16px; border: 0; padding: 0; min-width: 0; }
 :root {
   /* Paleta de districo.com.uy (Elementor post-11.css y post-53.css) */
   --ink: #204f5f;
@@ -1847,6 +1848,21 @@ td .button {
 }
 .admin-main {
   min-width: 0;
+}
+.admin-integration-name, .admin-integration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-integration-name svg { flex-shrink: 0; color: var(--muted); }
+.admin-integration-status {
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 .admin-main .page-heading {
   margin-bottom: 24px;
