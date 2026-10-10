@@ -57,6 +57,7 @@ test("Gatitos y Cachorros filtran por especie y etapa; las tarjetas cuentan toda
 test("categorías nuevas y renombradas permanecen en portada; logos y marcas siguen al admin", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await seed(page);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
