@@ -2,18 +2,19 @@
 
 import { useRef, useState } from "react";
 import { BriefcaseBusiness, Clock, MapPin, Search } from "lucide-react";
-import { jobOpenings, jobOpeningsAreExamples, type JobOpening } from "@/data/job-openings";
+import { jobAreas as areas, jobLocations, jobSchedules as schedules, type JobOpening } from "@/data/job-openings";
+import { usePublicApi } from "./providers";
+import { ErrorBox, Loading } from "./ui";
 
 const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const areas = ["Logística y depósito", "Ventas", "Administración", "Marketing"] as const;
-const schedules = ["Jornada completa", "Medio tiempo"] as const;
 const publishedLabel = (date: string) =>
   `Publicada el ${new Date(`${date}T12:00:00Z`).toLocaleDateString("es-UY", { day: "numeric", month: "long", timeZone: "UTC" })}`;
 const applyHref = (job: JobOpening) =>
-  `mailto:contacto@districo.com.uy?subject=${encodeURIComponent(`Postulación: ${job.title} (${job.location})`)}`;
+  `mailto:${job.contactEmail}?subject=${encodeURIComponent(`Postulación: ${job.title} (${job.location})`)}`;
 const toggle = <T,>(list: readonly T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
 
 export function SiteJobs() {
+  const jobs = usePublicApi<JobOpening[]>("jobs");
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [pickedAreas, setPickedAreas] = useState<readonly string[]>([]);
@@ -21,6 +22,10 @@ export function SiteJobs() {
   const [sort, setSort] = useState<"recent" | "az">("recent");
   const [open, setOpen] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  if (jobs.isPending) return <Loading />;
+  if (jobs.error) return <ErrorBox error={jobs.error} retry={() => void jobs.refetch()} />;
+  const jobOpenings = jobs.data;
 
   if (jobOpenings.length === 0) {
     return (
@@ -59,8 +64,7 @@ export function SiteJobs() {
           <span className="visually-hidden">Sede</span>
           <select value={location} onChange={(event) => setLocation(event.target.value)}>
             <option value="">Todas las sedes</option>
-            <option value="Montevideo">Montevideo</option>
-            <option value="Maldonado">Maldonado</option>
+            {jobLocations.map((value) => <option key={value}>{value}</option>)}
           </select>
         </label>
         <button className="button lime" type="submit">Buscar</button>
@@ -94,8 +98,8 @@ export function SiteJobs() {
         </aside>
 
         <section aria-labelledby="jobs-result">
-          {jobOpeningsAreExamples && (
-            <p className="jobs-note">Modo demo: puestos de ejemplo. En el sitio real se muestran solo las búsquedas cargadas por DISTRICO.</p>
+          {jobOpenings.some((job) => job.isExample) && (
+            <p className="jobs-note">Los puestos de ejemplo son demostrativos: no son búsquedas reales ni reciben postulaciones.</p>
           )}
           <div className="jobs-result-head">
             <h2 id="jobs-result" aria-live="polite">{shown.length === 1 ? "1 puesto disponible" : `${shown.length} puestos disponibles`}</h2>
@@ -114,7 +118,7 @@ export function SiteJobs() {
                 <li key={job.id} className={`jobs-item${expanded ? " is-open" : ""}`}>
                   <div className="jobs-row">
                     <div className="jobs-main">
-                      <h3>{job.title}</h3>
+                      <h3>{job.title}{job.isExample && <small className="jobs-example">Ejemplo</small>}</h3>
                       <ul className="jobs-meta">
                         <li><MapPin size={16} aria-hidden="true" />{job.location}</li>
                         <li><BriefcaseBusiness size={16} aria-hidden="true" />{job.area}</li>
@@ -139,15 +143,11 @@ export function SiteJobs() {
                         <h4>Qué buscamos</h4>
                         <ul>{job.requirements.map((item) => <li key={item}>{item}</li>)}</ul>
                       </div>
-                      <div>
+                      {job.benefits.length > 0 && <div>
                         <h4>Qué ofrecemos</h4>
-                        <ul>
-                          <li>Gimnasio sin costo para colaboradores</li>
-                          <li>Comedor con menú diario</li>
-                          <li>Lavado de uniforme y ropa de deporte</li>
-                        </ul>
-                      </div>
-                      <a className="button lime" href={applyHref(job)}>Postularme</a>
+                        <ul>{job.benefits.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                      </div>}
+                      {!job.isExample && <a className="button lime" href={applyHref(job)}>Postularme</a>}
                     </div>
                   )}
                 </li>

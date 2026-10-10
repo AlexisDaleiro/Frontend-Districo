@@ -831,6 +831,26 @@ model RecommendationRuleProduct {
   position    Int                @default(0)
 }
 
+model JobOpening {
+  id           String   @id @default(cuid())
+  title        String
+  area         String
+  location     String
+  schedule     String
+  published    DateTime @db.Date
+  description  String
+  requirements String[]
+  benefits     String[]
+  contactEmail String
+  active       Boolean  @default(true)
+  isExample    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  @@index([active, deletedAt, published])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String?

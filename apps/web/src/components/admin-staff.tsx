@@ -134,7 +134,7 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
       <tbody>{staffFeatures.map(([feature, title]) => <tr key={feature}>
         <td>{title}</td>
         <td><input type="checkbox" aria-label={`Ver ${title}`} checked={draft[feature].canView} disabled={locked || busy} onChange={(event) => toggle(feature, "canView", event.target.checked)} /></td>
-        <td><input type="checkbox" aria-label={`Editar ${title}`} checked={draft[feature].canEdit} disabled={locked || busy || feature === "resumen" || feature === "ventas"} onChange={(event) => toggle(feature, "canEdit", event.target.checked)} /></td>
+        <td><input type="checkbox" aria-label={`Editar ${title}`} checked={draft[feature].canEdit} disabled={locked || busy || feature === "resumen" || feature === "ventas" || feature === "integraciones"} onChange={(event) => toggle(feature, "canEdit", event.target.checked)} /></td>
       </tr>)}</tbody></table></div>
     {error && <p className="error" role="alert">{error}</p>}
     {!locked && <div className="actions"><button className="button small" type="submit" disabled={!dirty || busy}><Save size={16} />{busy ? "Guardando…" : "Guardar permisos"}</button>

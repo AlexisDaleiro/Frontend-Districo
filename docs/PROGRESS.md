@@ -14,6 +14,30 @@
 - Verificación: typecheck y lint correctos; 3 nuevas pruebas Playwright de variantes, cantidades, stock y permisos, más 6 regresiones de líneas de venta y atajo de edición, todas correctas. Las 3 nuevas se repitieron tras el ajuste visual final. Capturas a 1440 y 390 revisadas, sin desbordamiento. `git diff --check` correcto. Servidor demo de pruebas detenido al terminar.
 - Sin commit ni push. Pendiente: revisión visual del usuario en `/tienda/productos`.
 
+## Revisión para publicar Ofertas laborales e Integraciones (9/10/2026)
+
+- Publicación a `main` autorizada por el usuario. Fetch inicial y final: `origin/main` sigue en `6baa0d4`, sin commits nuevos del compañero. Los cambios de `81b6f5f` ya estaban integrados: catálogo, portada, carrusel, movimiento, rutas, header y lockfile permanecen idénticos a la base remota; los estilos nuevos se limitan a empleos e integraciones.
+- Revisión de archivos pendientes: sólo las dos funcionalidades solicitadas, sus contratos/permisos, ejemplos, pruebas, migraciones y documentación. Sin secretos, capturas, temporales ni cambios de dependencias.
+- La batería completa detectó que JobOpening necesitaba protección directa de la base: se agregó `20261010001000_job_openings_rls` separada de la migración ya aplicada, con RLS y revocación a PUBLIC/anon/authenticated. Aplicada al Supabase de la demo sin borrar ni modificar ofertas; prueba de regresión añadida. Otros entornos deben desplegar ambas migraciones y coordinar API/frontend según JOB-OPENINGS.
+- Verificación final: 194 pruebas frontend y toda la batería API correctas; lint/tipos de ambas apps y compilaciones Nest/producción Next correctas. Playwright: 39 recorridos correctos (acceso, roles, integraciones, CRUD de empleos, landing, catálogo, carrusel, teclado, diálogos y movimiento reducido), con comprobaciones de anchos entre 320 y 1440. API real de ofertas e integraciones repetida después de la protección: correcta, ejemplo QA retirado y sesiones cerradas. `git diff --check` correcto.
+- Localhost conservado en 3002 y API en 3001; publicación mediante push normal, sin forzar ni reescribir historia compartida.
+
+## Integraciones en dashboard (9/10/2026)
+
+- Nuevo apartado `/tienda/admin/integraciones` en Configuración: listado compacto de WhatsApp, Mailing y Mercarea, los tres Inactivo. Sin botones de conexión ni integraciones externas simuladas.
+- Consulta protegida `GET admin/integrations`, sólo identificador, nombre y estado, sin credenciales ni escrituras. Permiso independiente Integraciones/Ver en Roles, Editar deshabilitado y rechazado por backend/demo; clientes sin acceso. No requiere cambios en datos o migraciones.
+- Verificación: 194 pruebas frontend y 12 de permisos API correctas; lint y tipos de ambas apps, compilación Nest correctos. Playwright: 10 recorridos de Integraciones, acceso administrativo y regresión de Ofertas laborales correctos; capturas a 1280 y 390 revisadas sin desbordamiento ni errores de página. Prueba contra API real con cuentas existentes confirma lectura administrativa, bloqueo de visitantes/clientes, matriz de permisos y ausencia de escrituras; sesiones de prueba cerradas.
+- API local recompilada/reiniciada en 3001; frontend continúa en 3002. Se preservan los cambios previos de Ofertas laborales. No se conectó ningún proveedor externo. Sin commit ni push en este pedido.
+
+## Ofertas laborales en dashboard y landing (9/10/2026)
+
+- Nuevo apartado institucional `/tienda/admin/ofertas-laborales`, separado de Personal y Roles: listado compacto con búsqueda, estado, paginación y filtros compartibles; alta, edición, activación/programación por fecha y eliminación con confirmación. Formulario con requisitos, beneficios, correo de postulaciones, Ctrl+S y aviso de cambios sin guardar.
+- `/trabajo` conserva el diseño, buscador, sedes, filtros y ficha desplegable del compañero, pero ahora consume las ofertas activas de la API. Desactivar o retirar una oferta la oculta; errores de conexión muestran reintento, sin recurrir a datos ficticios. Las postulaciones de ofertas reales conservan el enlace por correo, no una recepción de CV dentro de la aplicación.
+- Modelo `JobOpening`, migración aditiva `20261010000000_job_openings`, endpoints públicos/administrativos y validación. Auditoría transaccional del responsable y contenido anterior/nuevo; borrado lógico. Permiso independiente Ofertas laborales (Ver/Editar), denegado por defecto a otros roles y comprobado en backend.
+- Migración aplicada en el Supabase configurado y dos ejemplos solicitados: Vendedor/a mayorista (Maldonado) y Auxiliar de depósito (Montevideo). Ambos llevan etiqueta Ejemplo y no reciben postulaciones. Cargador idempotente con simulación/proyecto esperado, sin sobrescribir ediciones ni reponer registros retirados; repetición confirmó 0 pendientes y 2 conservados. Demo del navegador usa los mismos ejemplos, con persistencia separada.
+- Verificación: 189 pruebas frontend, 6 API de ofertas y 16 de permisos/ciclo de roles; lint y tipos de ambas apps, compilaciones API y producción web correctas. Flujo completo contra API real/Supabase con cuentas de prueba existentes: CRUD, publicación/retiro, búsqueda, validaciones y bloqueo de clientes, con oferta QA retirada y sesiones cerradas al terminar. Playwright: 3 recorridos nuevos más regresión de Empleos correctos; luego 8 recorridos de ofertas y acceso administrativo correctos tras la compilación. Capturas desktop/mobile revisadas sin desbordamiento.
+- API local recompilada/reiniciada en 3001; frontend sigue en 3002 y el proxy real devuelve sólo los dos ejemplos solicitados. Instrucciones para otro entorno en `docs/JOB-OPENINGS.md`; requiere desplegar migración/API y frontend coordinados. Sin commit ni push en este pedido.
+
 ## Correcciones de portada y etapa de alimentos (9/10/2026)
 
 - Se conserva el rediseño B2B del compañero. Gatitos y Cachorros filtran por categoría de especie, tipo Alimento y atributo Etapa, sin búsquedas literales ni categorías nuevas por edad. Etapa editable al crear/editar alimentos, disponible en filtros y ficha comercial; cambiarla o quitarla conserva los otros atributos.
