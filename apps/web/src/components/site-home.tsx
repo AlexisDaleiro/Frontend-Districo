@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, History, Pause, PawPrint, Play, Warehouse } from "lucide-react";
 import { usePublicApi, useSession } from "./providers";
 import { Picture } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
@@ -195,20 +195,23 @@ function HomeHero() {
 
 function HomeStats() {
   const stats = [
-    ["Desde 1995", "Empresa uruguaya, de Distribuidora Colón a DISTRICO."],
-    [`${siteBrands.length} marcas`, "Alimento, arenas, higiene, snacks, accesorios y farmacia."],
-    ["10.000 m²", "Casa Matriz en Montevideo y sucursal propia en Maldonado."],
-    ["ISO 9001", "Calidad certificada en la Casa Matriz desde 2019."],
+    { value: "Desde 1995", label: "Empresa uruguaya, de Distribuidora Colón a DISTRICO.", Icon: History },
+    { value: `${siteBrands.length} marcas`, label: "Alimento, arenas, higiene, snacks, accesorios y farmacia.", Icon: PawPrint },
+    { value: "10.000 m²", label: "Casa Matriz en Montevideo y sucursal propia en Maldonado.", Icon: Warehouse },
+    { value: "ISO 9001", label: "Calidad certificada en la Casa Matriz desde 2019.", Icon: BadgeCheck },
   ];
   return (
     <section className="home-stats" aria-label="DISTRICO en números">
-      <div className="container home-stats-grid">
-        {stats.map(([value, label]) => (
+      <div className="container">
+        <div className="home-stats-grid">
+        {stats.map(({ value, label, Icon }) => (
           <div key={value} className="home-stat">
+            <span className="home-stat-icon"><Icon size={28} strokeWidth={1.7} aria-hidden="true" /></span>
             <strong>{value}</strong>
-            <span>{label}</span>
+            <span className="home-stat-description">{label}</span>
           </div>
         ))}
+        </div>
       </div>
     </section>
   );

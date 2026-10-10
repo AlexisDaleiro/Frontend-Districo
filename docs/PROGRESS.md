@@ -1,6 +1,15 @@
 # Registro de avance
 
-Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 10 de octubre de 2026. Rama de trabajo: `main`.
+
+## Cifras institucionales con arco horizontal (10/10/2026)
+
+- Quitado el encabezado visible «DISTRICO en números» y su estilo; conservado el nombre accesible de la sección. Revisión del diff correcta.
+- Reducido nuevamente el espacio inferior: padding bajo cifras de 16 px móvil/20 escritorio y separación inicial de la sección siguiente de 32–48 px. Regla limitada a la sección inmediatamente posterior a HomeStats. Revisión del diff y `git diff --check` correctos.
+- Ajuste compacto solicitado: menor padding vertical, separación interna y entre filas; círculos de 50 px en escritorio y 44 en móvil, arco proporcionado al nuevo alto. Texto y tamaño de cifras conservados. Se repitieron los 6 recorridos de desbordamiento entre 320 y 1440, todos correctos; `git diff --check` correcto.
+- Aplicada la opción «Arco horizontal» elegida por el usuario a HomeStats: arco suave decorativo, círculos lima con iconos de trayectoria, mascotas, infraestructura y calidad; cuatro columnas en escritorio, dos en móvil. Conservados los textos y conteo dinámico de marcas. Sin cambios del hero, catálogo ni backend.
+- `site-home.tsx` y `site-home.css`: nueva composición y eliminación de separadores anteriores. Decoración sin semántica ni interacción; contenido disponible sin JavaScript.
+- Verificación: typecheck y ESLint del componente correctos; 7 recorridos Playwright correctos (sin JavaScript y sin desbordamiento a 320, 360, 390, 768, 1024 y 1440). Capturas 1440/390 revisadas, cuatro iconos y sin desbordamiento. Servidor demo temporal detenido. Sin commit ni push; pendiente revisión del usuario en la portada pública.
 
 ## Desplazamiento al seleccionar presentaciones (9/10/2026)
 
