@@ -155,7 +155,6 @@ button {
 .button:active:not(:disabled),
 .icon-button:active:not(:disabled),
 .home-carousel-arrow:active,
-.home-carousel-toggle:active,
 .chip:active {
   scale: 0.96;
 }
@@ -358,43 +357,19 @@ button {
   animation-delay: 330ms;
 }
 
-/* Barra de progreso del punto activo: su fin avanza al siguiente slide. */
-.home-carousel-dot {
-  position: relative;
-}
-
-.home-carousel-dot::after {
-  content: "";
+.home-carousel-timer {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 26px;
-  height: 5px;
-  margin: -2.5px 0 0 -13px;
-  border-radius: 6px;
-  background: var(--lime);
-  transform: scaleX(0);
-  transform-origin: left;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   pointer-events: none;
 }
-
-.home-carousel[data-autoplay="true"] .home-carousel-dot.is-active::after {
+.home-carousel[data-autoplay="true"] .home-carousel-timer {
   animation: motion-progress var(--carousel-interval) linear both;
 }
-
-/* Pausa con el puntero encima, con foco de teclado o con el botón. Un clic
-   no pausa: el foco de mouse no es :focus-visible. */
-.home-carousel[data-autoplay="true"]:is(
-    :hover,
-    :has(:focus-visible),
-    [data-paused="true"]
-  )
-  .home-carousel-dot.is-active::after {
+.home-carousel[data-autoplay="true"]:is(:hover, :has(:focus-visible), [data-paused="true"]) .home-carousel-timer {
   animation-play-state: paused;
-}
-
-.home-carousel-dot.is-active::before {
-  transition: background-color var(--dur-base) ease;
 }
 
 @keyframes motion-slide-forward {
@@ -736,7 +711,7 @@ button {
   .home-carousel-slide,
   .home-carousel-slide .hero-copy > *,
   .home-carousel-slide .hero-visual img,
-  .home-carousel-dot::after {
+  .home-carousel-timer {
     animation: none !important;
   }
 

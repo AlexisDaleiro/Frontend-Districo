@@ -16,7 +16,8 @@ import {
   ShoppingBag,
   Pencil,
 } from "lucide-react";
-import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
+import { apiQueryKey, request, useApi, usePublicApi, useSession, DEMO } from "./providers";
+import { brandLogoSrc } from "@/lib/brand-logos";
 import { CatalogPagination } from "./catalog-pagination";
 import { FavoriteButton } from "./favorite-button";
 import { TechnicalAccordions } from "./product-sheet";
@@ -261,6 +262,24 @@ function CategoryPicker({
     </details>
   );
 }
+function CatalogPromoPacks({ brandId }: { brandId: string }) {
+  const products = usePublicApi<ProductCardList>(
+    `products/cards?${new URLSearchParams({ brandId, limit: "3" })}`,
+  );
+  const images = products.data?.items.flatMap((product) => {
+    const image = product.media.find((media) => media.type === "IMAGE");
+    return image ? [image] : [];
+  }) ?? [];
+  if (!images.length) return null;
+  return (
+    <div className="catalog-promo-packs" aria-hidden="true">
+      {images.map((image, index) => (
+        <Picture key={`${image.url}-${index}`} src={image.url} alt="" sizes="140px" />
+      ))}
+    </div>
+  );
+}
+
 export function Catalog({ categoryId }: { categoryId?: string }) {
   const params = useSearchParams(),
     router = useRouter();
@@ -394,9 +413,25 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
     ? categories.data?.find((c) => c.id === categoryId)?.name
     : undefined;
   const productType = filters.get("productType") ?? "";
-  const promoBrand = brands.data?.find(
-    (b) => normalize(b.name).trim() === "biofresh",
+  const promoBrandKeys = ["biofresh", "granplus", "guabi", "threedogs", "stack"];
+  const brandKey = (value: string) => normalize(value).replace(/[^a-z0-9]/g, "");
+  const promoBrands = promoBrandKeys.flatMap((key) => {
+    const brand = brands.data?.find((item) =>
+      [item.name, item.slug ?? ""].some((value) => {
+        const normalized = brandKey(value);
+        return normalized === key || (key === "guabi" && normalized === "guabinatural");
+      }),
+    );
+    return brand ? [brand] : [];
+  });
+  const selectedBrandIndex = promoBrands.findIndex(
+    (brand) => brand.id === filters.get("brandId"),
   );
+  const promoBrand = promoBrands[selectedBrandIndex + 1] ?? promoBrands[0];
+  const promoName = promoBrand?.name ?? "Biofresh";
+  const isBiofresh = normalize(promoName).trim() === "biofresh";
+  const promoLogo = promoBrand?.imageUrl || brandLogoSrc(promoBrand?.slug) ||
+    (isBiofresh ? "/images/brands/biofresh.png" : null);
   return (
     <div className="container section catalog-page">
       <div className="breadcrumbs">
@@ -429,20 +464,24 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
           }
         >
           <div className="catalog-promo-copy">
-            <Picture
-              src="/images/brands/biofresh.png"
-              alt="Biofresh"
-              sizes="100px"
-            />
-            <h2>Una fórmula para cada etapa y tamaño</h2>
-            <p>Cachorros, adultos y senior, de razas mini a gigantes.</p>
-            <span className="button small">Ver línea Biofresh</span>
+            {promoLogo ? (
+              <Picture src={promoLogo} alt={promoName} sizes="100px" />
+            ) : (
+              <strong>{promoName}</strong>
+            )}
+            <h2>{isBiofresh ? "Una fórmula para cada etapa y tamaño" : `La línea de ${promoName}`}</h2>
+            <p>{isBiofresh ? "Cachorros, adultos y senior, de razas mini a gigantes." : "Conocé sus productos y presentaciones disponibles."}</p>
+            <span className="button small">Ver línea {promoName}</span>
           </div>
-          <div className="catalog-promo-packs" aria-hidden="true">
-            <Picture src="/images/product-0-3.png" alt="" sizes="120px" />
-            <Picture src="/images/hero-biofresh-castrados.png" alt="" sizes="140px" />
-            <Picture src="/images/product-0-2.png" alt="" sizes="120px" />
-          </div>
+          {isBiofresh ? (
+            <div className="catalog-promo-packs" aria-hidden="true">
+              <Picture src="/images/product-0-3.png" alt="" sizes="120px" />
+              <Picture src="/images/hero-biofresh-castrados.png" alt="" sizes="140px" />
+              <Picture src="/images/product-0-2.png" alt="" sizes="120px" />
+            </div>
+          ) : promoBrand ? (
+            <CatalogPromoPacks key={promoBrand.id} brandId={promoBrand.id} />
+          ) : null}
         </Link>
       </div>
       <nav className="catalog-types" aria-label="Tipos de producto">

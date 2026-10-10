@@ -172,6 +172,7 @@ test("el banner conserva su posición y anima cada cambio de slide", async ({
   await expect(
     carousel.getByRole("heading", { name: "Gran Plus en DISTRICO." }),
   ).toBeVisible();
+  await expect(stage).toHaveAttribute("data-slide-starts", "forward ");
   await carousel.getByRole("button", { name: "Banner anterior" }).click();
   await expect(
     carousel.getByRole("heading", { name: "Biofresh para tu negocio." }),
@@ -208,7 +209,7 @@ test("el carrusel avanza solo, se pausa y no rota con movimiento reducido", asyn
   await expect.poll(progressState).toBe("running");
   expect(await progress()).toBeTruthy();
 
-  // Al terminar la barra del punto activo pasa al siguiente banner.
+  // Al terminar el temporizador pasa al siguiente banner.
   await page.evaluate(() =>
     document
       .getAnimations()
@@ -234,7 +235,7 @@ test("el carrusel avanza solo, se pausa y no rota con movimiento reducido", asyn
     carousel.getByRole("button", { name: "Reanudar carrusel" }),
   ).toBeVisible();
   await expect.poll(progressState).toBe("paused");
-  await expect(carousel.locator(".home-carousel-count")).toHaveAttribute(
+  await expect(carousel.locator(".home-carousel-slide")).toHaveAttribute(
     "aria-live",
     "polite",
   );

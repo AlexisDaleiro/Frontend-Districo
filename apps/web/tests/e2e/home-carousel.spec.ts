@@ -60,7 +60,9 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
     expect(nextBox).not.toBeNull();
     if (width <= 900) {
       expect(nextBox!.x).toBeLessThan(stageBox!.x + stageBox!.width / 2);
-      expect(nextBox!.y).toBeGreaterThan(stageBox!.y + stageBox!.height);
+      expect(nextBox!.y + nextBox!.height).toBeLessThan(
+        stageBox!.y + stageBox!.height,
+      );
     } else {
       expect(nextBox!.x).toBeGreaterThan(stageBox!.x + stageBox!.width / 2);
       expect(nextBox!.y + nextBox!.height).toBeLessThan(
@@ -89,7 +91,7 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
       "transform",
       "none",
     );
-    await carousel.getByRole("button", { name: "Mostrar DISTRICO" }).click();
+    await carousel.getByRole("button", { name: "Banner siguiente" }).click();
     await expect(
       carousel.getByRole("heading", {
         name: "Marcas que acompañan tu negocio.",
@@ -131,7 +133,7 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
   await expect(page).toHaveURL(/\/tienda\/productos\?brandId=/);
 
   await page.goto("/tienda");
-  await page.getByRole("button", { name: "Mostrar Gran Plus" }).click();
+  await page.getByRole("button", { name: "Banner siguiente" }).click();
   const granPlusLink = page.getByRole("link", { name: "Ver Gran Plus", exact: true });
   await expect(granPlusLink).toHaveAttribute(
     "href",
