@@ -2,6 +2,13 @@
 
 Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
 
+## Verificación después del merge fc9b30d0 (9/10/2026)
+
+- Conflicto de documentación resuelto conservando ambos registros; merge finalizado con padres `1f1b89f6` y `42e4f315`. Sin conflictos pendientes ni push.
+- Cliente Prisma local desactualizado tras incorporar JobOpening: regenerado sin migraciones ni cambios de datos. La API en ejecución bloqueaba el motor en Windows; se liberó el proceso de 3001 para generar el cliente. API vuelve a responder: `GET /api/jobs` HTTP 200.
+- Verificación sobre la combinación: 194 pruebas frontend, 7 de ofertas laborales API y 12 de permisos API correctas; lint frontend/backend, tipos frontend/backend y compilaciones Nest/Next de producción correctos. Diez recorridos Playwright correctos: compra desde tarjetas (desktop/móvil/permiso veterinario), líneas comerciales, integraciones y ofertas laborales. No se realizaron escrituras de prueba contra datos reales.
+- Restaurado el archivo generado `next-env.d.ts` a su contenido previo tras la compilación; sin cambios de implementación. Este registro queda sin commit. Siguiente acción: revisión del usuario antes de publicar.
+
 ## Presentaciones y compra desde las tarjetas B2B (9/10/2026)
 
 - Eliminado «Ocultar filtros» y su estado/control de restauración del catálogo; los filtros permanecen visibles en escritorio y conservan su panel modal móvil. Limpiados estilos sin uso. ESLint del componente y `git diff --check` correctos.
