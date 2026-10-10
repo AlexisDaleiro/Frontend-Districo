@@ -54,78 +54,85 @@ import {
   quantityError,
 } from "@/lib/commerce";
 export function ProductCard({ product }: { product: ProductCardData }) {
-  const active = product.variants.filter((v) => v.active !== false);
-  const variant = active[0];
-  const presentations = product.variantCount ?? active.length;
-  const price = variant?.price;
-  const { user } = useSession();
+  const { user, notify } = useSession();
   const client = useQueryClient();
+  const detail = useApi<Product>(`products/${encodeURIComponent(product.slug)}`);
+  const active = detail.data?.variants.filter((item) => item.active !== false) ?? [];
+  const [selection, setSelection] = useState<{ id: string; quantity: number }>();
+  const variant = active.find((item) => item.id === selection?.id) ?? active[0];
+  const quantity = variant ? (selection?.id === variant.id ? selection.quantity : firstQuantity(variant)) : 1;
+  const price = variant?.price ?? (!detail.data ? product.variants[0]?.price : undefined);
+  const allowed = canBuy(user, detail.data ?? product);
+  const cart = useApi<Cart>("cart", allowed);
+  const saved = cart.data?.items.find((item) => item.variant.id === variant?.id);
+  const validation = variant ? quantityError(variant, quantity) : null;
+  const mutation = useMutation({
+    mutationFn: (item: { variantId: string; quantity: number }) => request<Cart>("cart/items", "POST", item),
+    onSuccess: (nextCart) => {
+      client.setQueryData(apiQueryKey("cart", user?.id), nextCart);
+      void client.invalidateQueries({ queryKey: apiQueryKey("cart", user?.id) });
+      notify("Cantidad guardada en tu carrito.");
+    },
+  });
   const prefetchDetail = () => {
-    const path = `products/${encodeURIComponent(product.slug)}`;
     void client.prefetchQuery({
-      queryKey: apiQueryKey(path, user?.id),
-      queryFn: () => request<Product>(path),
+      queryKey: apiQueryKey(`products/${encodeURIComponent(product.slug)}`, user?.id),
+      queryFn: () => request<Product>(`products/${encodeURIComponent(product.slug)}`),
       staleTime: 20_000,
     });
   };
   return (
-    <article
-      className="product-card"
-      onMouseEnter={prefetchDetail}
-      onFocus={prefetchDetail}
-    >
+    <article className="product-card" onMouseEnter={prefetchDetail} onFocus={prefetchDetail}>
       <FavoriteButton productId={product.id} name={product.name} className="product-card-favorite" />
-      <Link
-        href={storeRoutes.product(product.slug)}
-        className="product-image"
-        aria-label={`Ver ${product.name}`}
-      >
-        {product.requiresMedicationPermission && (
-          <span className="tag">Uso profesional</span>
-        )}
-        <Picture
-          src={
-            product.media.find((m) => m.type === "IMAGE")?.url ??
-            "/images/placeholder.svg"
-          }
-          alt={product.name}
-          loading="lazy"
-          sizes="(max-width: 767px) 50vw, 300px"
-        />
+      <div className="product-card-media">
+      <Link href={storeRoutes.product(product.slug)} className="product-image" aria-label={`Ver ${product.name}`}>
+        {product.requiresMedicationPermission && <span className="tag">Uso profesional</span>}
+        <Picture src={product.media.find((item) => item.type === "IMAGE")?.url ?? "/images/placeholder.svg"} alt={product.name} loading="lazy" sizes="(max-width: 767px) 50vw, 300px" />
       </Link>
-      <p className="product-meta">
-        {product.brand?.name ??
-          product.laboratory?.name ??
-          " "}
-      </p>
-      <Link href={storeRoutes.product(product.slug)}>
-        <h3>{product.name}</h3>
-      </Link>
+      <div className="product-variants" role="group" aria-label={`Presentaciones de ${product.name}`} aria-busy={detail.isPending}>
+        {active.map((item) => (
+          <button key={item.id} type="button" className="product-variant-pill" aria-pressed={variant?.id === item.id} disabled={mutation.isPending}
+            title={[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
+            onClick={() => { setSelection({ id: item.id, quantity: firstQuantity(item) }); mutation.reset(); }}>
+            {[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
+          </button>
+        ))}
+        {detail.isPending && <span className="muted">Cargando presentaciones…</span>}
+        {detail.data && !active.length && <span className="muted">Sin presentaciones disponibles</span>}
+      </div>
+      </div>
+      <p className="product-meta">{product.brand?.name ?? product.laboratory?.name ?? " "}</p>
+      <Link href={storeRoutes.product(product.slug)}><h3>{product.name}</h3></Link>
       <div className="product-price">
-        <span className="product-price-head">
-          {presentations
-            ? `${presentations} ${presentations === 1 ? "presentación" : "presentaciones"}`
-            : "Sin presentaciones"}
-        </span>
         <div className="product-price-row">
-          <span>Precio mayorista</span>
-          {price ? (
-            <strong>{money(price.amount, price.currency)}</strong>
-          ) : (
-            <span className="product-price-locked">
-              <LockKeyhole size={12} aria-hidden />
-              {variant ? hiddenPriceText(user, product) : "No disponible"}
-            </span>
+          <span>Precio</span>
+          {price ? <strong>{money(price.amount, price.currency)}</strong> : (
+            <span className="product-price-locked"><LockKeyhole size={12} aria-hidden />{variant ? hiddenPriceText(user, detail.data ?? product) : detail.isPending ? "Cargando…" : "No disponible"}</span>
           )}
         </div>
       </div>
-      <Link
-        href={storeRoutes.product(product.slug)}
-        className="button small product-cta"
-        aria-label={`Ver presentaciones de ${product.name}`}
-      >
-        Ver presentaciones
-      </Link>
+      <div className="product-card-buy">
+        {detail.error ? (
+          <ErrorBox error={detail.error} retry={() => void detail.refetch()} />
+        ) : !allowed ? (
+          <p className="product-card-note">{user ? "Tu cuenta no está habilitada para comprar este producto." : "Ingresá para comprar."}</p>
+        ) : variant && purchasable(variant) ? (
+          <>
+            <fieldset className="product-card-actions" disabled={mutation.isPending}>
+              <Quantity variant={variant} value={quantity} onChange={(value) => { setSelection({ id: variant.id, quantity: value }); mutation.reset(); }} />
+              <button type="button" className="button small" aria-label={`Agregar ${product.name} al carrito`} disabled={!!validation || !variant.price || mutation.isPending}
+                onClick={() => { if (!validation && variant.price && allowed) mutation.mutate({ variantId: variant.id, quantity }); }}>
+                <ShoppingBag size={16} aria-hidden />{mutation.isPending ? "Guardando…" : "Agregar"}
+              </button>
+            </fieldset>
+            {saved && <p className="product-card-note">En carrito: {saved.quantity}. La cantidad elegida reemplaza la anterior.</p>}
+            {validation && <p className="field-error" role="status">{validation}</p>}
+            {mutation.error && <ErrorBox error={mutation.error} />}
+          </>
+        ) : (
+          <p className="product-card-note">{detail.isPending ? "Cargando…" : variant ? "Sin stock para el mínimo de compra" : "No disponible"}</p>
+        )}
+      </div>
     </article>
   );
 }
@@ -286,7 +293,6 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
   const filters = new URLSearchParams(params);
   if (categoryId) filters.set("categoryId", categoryId);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filtersHidden, setFiltersHidden] = useState(false);
   const client = useQueryClient();
   const { user, loading } = useSession();
   const products = useApi<ProductCardList>(catalogCardsPath(filters)),
@@ -500,32 +506,12 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
           </button>
         ))}
       </nav>
-      <div
-        className={`catalog-layout${filtersHidden ? " is-filters-hidden" : ""}`}
-      >
-        <aside className="filters" aria-label="Filtros del catálogo">
-          <button
-            type="button"
-            className="filters-toggle"
-            onClick={() => setFiltersHidden(true)}
-          >
-            <X size={18} aria-hidden />
-            Ocultar filtros
-          </button>
-          <div className="filters-panel">{filterContent}</div>
+        <div className="catalog-layout">
+          <aside className="filters" aria-label="Filtros del catálogo">
+            <div className="filters-panel">{filterContent}</div>
         </aside>
         <div className="catalog-results">
           <div className="catalog-toolbar">
-            {filtersHidden && (
-              <button
-                type="button"
-                className="button secondary small filters-show"
-                onClick={() => setFiltersHidden(false)}
-              >
-                <SlidersHorizontal size={16} />
-                Mostrar filtros
-              </button>
-            )}
             <span>
               {products.data
                 ? `${products.data.meta.total} productos`

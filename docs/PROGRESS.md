@@ -2,6 +2,18 @@
 
 Última actualización: 9 de octubre de 2026. Rama de trabajo: `main`.
 
+## Presentaciones y compra desde las tarjetas B2B (9/10/2026)
+
+- Eliminado «Ocultar filtros» y su estado/control de restauración del catálogo; los filtros permanecen visibles en escritorio y conservan su panel modal móvil. Limpiados estilos sin uso. ESLint del componente y `git diff --check` correctos.
+- Ajuste posterior: títulos de tarjeta de 16 px en escritorio y 14 px en móvil; etiqueta simplificada de «Precio mayorista» a «Precio». Conservado el límite de dos líneas. Revisión del diff y `git diff --check` correctos; sin repetir pruebas de compra por este cambio de texto y tamaño.
+- Reemplazado el cartel lima de conteo por píldoras de variantes activas. Cada tarjeta consulta la ficha existente para mostrar presentaciones, talles o kilajes completos; seleccionar una variante actualiza precio y cantidad mínima.
+- Reemplazado «Ver presentaciones» por selector de cantidad y «Agregar» al carrito. Se respetan permisos, mínimos, múltiplos y stock. Se conserva el contrato de cantidad absoluta del carrito y se aclara cuando la variante ya está agregada. Sin cambios de backend.
+- Tarjetas con altura adaptable; píldoras en una fila desplazable superpuesta sobre la parte inferior de la imagen, sin reducir su caja ni ocupar una fila adicional. Controles de compra acomodados para móvil. Se mantienen marcas, líneas comerciales, favoritos y acceso a la ficha.
+- Ajuste de superposición verificado con typecheck y las 3 pruebas de compra correctas; capturas a 1440 y 390 revisadas. Los botones quedan fuera del enlace de la imagen para permitir seleccionar variantes sin navegar.
+- Imagen más alta: caja mínima de 260 px en catálogo, 240 en destacados y 190 en móvil; absorbe el espacio flexible de la tarjeta, dejando cantidad y compra justo debajo del precio. Se mantiene `object-fit: contain`, proporción original y selección de resolución de `Picture`. Las 3 pruebas de compra y `git diff --check` correctos; capturas de escritorio y móvil revisadas tras este ajuste.
+- Verificación: typecheck y lint correctos; 3 nuevas pruebas Playwright de variantes, cantidades, stock y permisos, más 6 regresiones de líneas de venta y atajo de edición, todas correctas. Las 3 nuevas se repitieron tras el ajuste visual final. Capturas a 1440 y 390 revisadas, sin desbordamiento. `git diff --check` correcto. Servidor demo de pruebas detenido al terminar.
+- Sin commit ni push. Pendiente: revisión visual del usuario en `/tienda/productos`.
+
 ## Correcciones de portada y etapa de alimentos (9/10/2026)
 
 - Se conserva el rediseño B2B del compañero. Gatitos y Cachorros filtran por categoría de especie, tipo Alimento y atributo Etapa, sin búsquedas literales ni categorías nuevas por edad. Etapa editable al crear/editar alimentos, disponible en filtros y ficha comercial; cambiarla o quitarla conserva los otros atributos.
