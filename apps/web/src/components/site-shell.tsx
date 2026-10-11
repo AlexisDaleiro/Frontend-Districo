@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Facebook, Linkedin, Menu, Phone } from "lucide-react";
+import { Facebook, Linkedin, Menu, Phone, UserRound } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Picture, Modal } from "./ui";
 import { WhatsAppFab } from "./whatsapp-fab";
@@ -102,6 +102,7 @@ export function PublicHeader({ solid = false }: { solid?: boolean }) {
           </nav>
           <div className="site-header-actions">
             <Link className="site-login" href={storeRoutes.login}>
+              <UserRound aria-hidden="true" />
               Ingresar
             </Link>
             <Link

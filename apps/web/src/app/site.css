@@ -26,6 +26,7 @@
 .site-header-actions { display: none; align-items: center; gap: 12px; }
 .site-header-actions .button { min-height: 42px; padding-inline: 15px; white-space: nowrap; }
 .site-login { font-size: 12px; font-weight: 750; padding: 10px; white-space: nowrap; }
+.site-login svg { display: none; }
 .site-header .button.lime:hover { color: var(--ink); background: #c4da30; }
 .site-menu-button { margin-left: auto; color: white; }
 .site-menu-button:hover { background: var(--on-ink-line); }
@@ -409,8 +410,10 @@
   .site-header-inner { gap: 8px; }
   .site-logo img { width: 126px; }
   .site-header-actions { display: flex; margin-left: auto; }
-  .site-header-actions .site-login { display: none; }
-  .site-header-actions .site-apply { min-height: 38px; padding-inline: 9px; font-size: 10px; }
+  .site-header-actions .site-apply { display: none; }
+  .site-header-actions .site-login { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 7px; background: var(--lime); color: var(--ink); }
+  .site-header-actions .site-login:hover { background: #c4da30; color: var(--ink); }
+  .site-header-actions .site-login svg { display: block; width: 16px; height: 16px; }
   .site-menu-button { margin-left: 0; }
   .site-section-heading { display: grid; }
   .site-section-heading .button { justify-self: start; }

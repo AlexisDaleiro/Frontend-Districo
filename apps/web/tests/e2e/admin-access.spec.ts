@@ -10,7 +10,8 @@ async function login(page: Page, account: "Cliente mayorista" | "Administración
     expect(await page.getByLabel("Correo electrónico").inputValue()).toBe(email);
   }).toPass({ timeout: 10000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda$/);
+  // The first login may compile the store in development.
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 15000 });
 }
 
 async function trackAdminShell(page: Page) {

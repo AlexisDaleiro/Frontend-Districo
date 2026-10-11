@@ -42,6 +42,21 @@ test("hero a sangre con header transparente y accesos principales", async ({ pag
   await expect(page).toHaveURL(/\/tienda\/ingresar$/);
 });
 
+test("el acceso institucional movil sigue visible y abre el ingreso", async ({ page }, info) => {
+  await page.goto("/");
+  const actions = page.locator(".site-header-actions");
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(actions.getByRole("link", { name: "Ingresar", exact: true })).toBeVisible();
+    await expect(actions.getByRole("link", { name: "Solicitar cuenta", exact: true })).not.toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  }
+  await page.screenshot({ path: info.outputPath("institutional-mobile-access.png"), fullPage: false });
+  await actions.getByRole("link", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/tienda\/ingresar$/, { timeout: 15000 });
+  await expect(page.getByRole("heading", { name: "Ingresá a tu cuenta", exact: true })).toBeVisible();
+});
+
 test("el hero rota, se pausa y se maneja con flechas y puntos", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".home-hero");
@@ -179,7 +194,7 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
         route,
       ).toBe(0);
       if (width < 768)
-        await expect(page.locator(".site-header .site-apply")).toBeVisible();
+        await expect(page.locator(".site-header .site-login")).toBeVisible();
     }
     expect(errors).toEqual([]);
   });

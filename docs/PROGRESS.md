@@ -2,6 +2,14 @@
 
 Última actualización: 11 de octubre de 2026. Rama de trabajo: `main`.
 
+## Integracion verificada para main (11/10/2026)
+
+- Descargados los tres commits del companero hasta `b6a9c45`: ajustes responsive de las lineas institucionales, acceso movil con Ingresar y retirada del bloque Nosotros en portada. Cambios locales guardados en `8748020` antes del merge; integracion automatica sin conflictos. Sus componentes y estilos de portada, header y catalogo se conservan; `site.css` reune el acceso nuevo y los estilos de postulaciones de ambos trabajos.
+- Verificacion de la combinacion: 209 unidades frontend y bateria API completa correctas (266 comprobaciones TAP mas los scripts de aserciones); lint/tipos de ambas apps y compilaciones Nest/Next de produccion correctos. Build frontend aislado en `.next/push-check`, sin detener el localhost habitual.
+- Bateria completa de navegador: 124 correctas, 7 opt-in omitidas y 4 fallidas inicialmente. Una esperaba solo 5 segundos para compilar la tienda tras el primer ingreso; otras tres buscaban Solicitar cuenta, sustituido deliberadamente por Ingresar en la cabecera movil del companero. Ajustados solo margen de ingreso y expectativas de pruebas, sin cambiar guards ni diseno. Repetidos dos veces esos recorridos y los seis anchos responsive, mas una nueva prueba del acceso movil: 16 correctas. Captura de 390 px revisada, sin solapamientos en la cabecera; todas las anchuras entre 320 y 1440 verificadas sin desbordamiento.
+- Conservados permisos, postulaciones, descuentos, navegacion y optimizaciones de datos. Sin escrituras comerciales ni nuevas migraciones en esta integracion. Los siete ensayos opt-in de produccion/base real no se presentan como ejecutados nuevamente. Restaurados archivos de configuracion generados por las pruebas/build a los del companero; logs y artefactos de ensayo permanecen ignorados.
+- Publicacion autorizada en `main` mediante merge que conserva ambos historiales, sin force push. Siguiente accion: finalizar el merge, volver a comprobar el remoto y ejecutar el push normal.
+
 ## Carga de datos del dashboard (11/10/2026)
 
 - Investigada la demora con API, navegador y Supabase reales. La autenticacion leia perfil completo y sesion consecutivamente; los cinco contadores ocupaban todo el pool, y la ficha serializaba verificaciones e historial. Ahora se usa un join minimo para autenticar, una consulta para contadores y lecturas paralelas para perfil/permisos y ficha. Permisos se recargan si cambia el rol durante `auth/me`.
