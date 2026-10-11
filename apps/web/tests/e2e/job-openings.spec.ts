@@ -86,9 +86,9 @@ test("ejemplos sin postulaciones, búsqueda pública y estado vacío al retirar 
   await page.getByRole("combobox", { name: "Sede", exact: true }).selectOption("Maldonado");
   await expect(page.locator(".jobs-item")).toHaveCount(1);
   await page.getByRole("button", { name: "Ver puesto" }).click();
-  await expect(page.locator(".jobs-item").getByRole("link", { name: "Postularme" })).toHaveCount(0);
+  await expect(page.locator(".jobs-item").getByRole("link", { name: "Postularme", exact: true })).toHaveCount(0);
   await page.getByLabel("Puesto o palabra clave").fill("No existe");
-  await expect(page.getByText(/No hay puestos con esos filtros/)).toBeVisible();
+  await expect(page.getByText(/No hay puestos que coincidan/)).toBeVisible();
   await admin(page);
   await page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
@@ -97,7 +97,7 @@ test("ejemplos sin postulaciones, búsqueda pública y estado vacío al retirar 
   });
   await page.goto("/trabajo");
   await expect(page.getByRole("heading", { name: "No hay búsquedas abiertas en este momento." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Enviar mi CV" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Enviar CV por correo" })).toBeVisible();
 });
 
 test("ofertas laborales aparece en Roles y sólo puede editarse con permiso", async ({ page }) => {

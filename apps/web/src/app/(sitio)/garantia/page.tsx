@@ -4,7 +4,7 @@ import { ArrowUpRight, ChevronDown } from "lucide-react";
 const range = "400 g a 20 kg";
 const brands = ["Biofresh", "Gran Plus", "Guabi Natural", "Three Cats", "Three Dogs"];
 const steps = [
-  ["Guardá el envase", "Con al menos el 80 % del contenido, cerrado de fábrica y sin vencer."],
+  ["Guardá el envase original", "Puede estar abierto. Conservá al menos el 80 % del alimento y verificá que no esté vencido."],
   ["Volvé al comercio", "Dentro de los 5 días corridos de la compra, con el ticket original."],
   ["Elegí el reemplazo", "El comercio lo coordina con DISTRICO en hasta 5 días hábiles."],
 ] as const;
@@ -63,7 +63,7 @@ export default function Page() {
             <h3>Condiciones</h3>
             <ul>
               <li>El producto debe estar dentro de su fecha de vencimiento.</li>
-              <li>Debe conservar al menos el 80 % de su contenido original, en su envase original cerrado de fábrica y sin traspasar a otro recipiente.</li>
+              <li>Debe conservar al menos el 80 % de su contenido original en su envase original, que puede estar abierto, sin traspasar el alimento a otro recipiente.</li>
               <li>El reclamo debe hacerse dentro de los 5 días corridos posteriores a la compra.</li>
               <li>Debe presentarse el ticket o comprobante original de compra con la fecha visible.</li>
             </ul>

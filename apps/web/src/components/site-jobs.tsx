@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BriefcaseBusiness, ChevronDown, Clock, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { BriefcaseBusiness, Clock, MapPin, Search } from "lucide-react";
 import { jobAreas as areas, jobLocations, jobPage, jobSchedules as schedules, type JobOpening } from "@/data/job-openings";
 import { usePublicApi } from "./providers";
 import { ErrorBox, Loading } from "./ui";
@@ -73,9 +73,11 @@ export function SiteJobs() {
       </form>
 
       <div ref={resultsRef} className="jobs-body">
-        <aside className={`jobs-filters${filtersOpen ? " is-expanded" : ""}`} aria-label="Filtros">
-          <button className="jobs-mobile-filters button secondary" type="button" aria-expanded={filtersOpen} aria-controls="jobs-filter-options" onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={17} /> Filtros ({pickedAreas.length + pickedSchedules.length})<ChevronDown size={17} /></button>
-          <div id="jobs-filter-options" className="jobs-filter-options">
+        <div className="jobs-filter-wrap">
+        <button className="public-filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls="job-filter-panel" onClick={() => setFiltersOpen(!filtersOpen)}>
+          Filtros de área y jornada{pickedAreas.length + pickedSchedules.length ? ` (${pickedAreas.length + pickedSchedules.length})` : ""}
+        </button>
+        <aside id="job-filter-panel" className={`jobs-filters public-filter-panel${filtersOpen ? " is-open" : ""}`} aria-label="Filtros">
           <fieldset>
             <legend>Área</legend>
             {areas.map((area) => (
@@ -99,15 +101,15 @@ export function SiteJobs() {
           <button className="button" type="button" onClick={() => { setQuery(""); setLocation(""); setPickedAreas([]); setPickedSchedules([]); }}>
             Limpiar filtros
           </button>
-          </div>
         </aside>
+        </div>
 
         <section aria-labelledby="jobs-result">
           {jobOpenings.some((job) => job.isExample) && (
             <p className="jobs-note">Los puestos de ejemplo son demostrativos: no son búsquedas reales ni reciben postulaciones.</p>
           )}
           <div className="jobs-result-head">
-            <h2 id="jobs-result" aria-live="polite">{shown.length === 1 ? "1 puesto disponible" : `${shown.length} puestos disponibles`}</h2>
+            <h2 id="jobs-result" aria-live="polite">{shown.length === 0 ? "Sin resultados" : shown.length === 1 ? "1 puesto disponible" : `${shown.length} puestos disponibles`}</h2>
             <label>
               Ordenar
               <select value={sort} onChange={(event) => setSort(event.target.value as "recent" | "az")}>
@@ -159,7 +161,7 @@ export function SiteJobs() {
               );
             })}
           </ul>
-          {shown.length === 0 && <p className="site-empty">No hay puestos con esos filtros. Probá con otra sede o área.</p>}
+          {shown.length === 0 && <p className="site-empty">No hay puestos que coincidan con tu búsqueda y filtros. Probá otra palabra clave, sede, área o jornada.</p>}
         </section>
       </div>
     </>

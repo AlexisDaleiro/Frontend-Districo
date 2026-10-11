@@ -194,8 +194,8 @@ export function Apply() {
         <Empty title="Recibimos tu solicitud">
           <CheckCircle size={40} />
           <p>
-            DISTRICO revisará los datos de tu comercio antes de habilitar el
-            acceso.
+            Tu solicitud está pendiente de revisión por DISTRICO. Podrás ingresar
+            y comprar cuando tu cuenta esté aprobada.
           </p>
           {DEMO && (
             <p>
@@ -220,12 +220,39 @@ export function Apply() {
     ["city", "Ciudad", "text"],
     ["password", "Contraseña", "password"],
   ];
+  const autocomplete: Partial<Record<keyof ApplicationInput, string>> = {
+    businessName: "organization", contactName: "name", email: "email", phone: "tel",
+    address: "street-address", department: "address-level1", city: "address-level2", password: "new-password",
+  };
+  const renderFields = (keys: readonly (keyof ApplicationInput)[]) => keys.map((key) => {
+    const [, title, type] = fields.find(([name]) => name === key)!;
+    const hint = key === "rut" ? "12 dígitos. Podés ingresar espacios, puntos o guiones." : key === "password" ? "Usá al menos 8 caracteres." : undefined;
+    return (
+      <label className="field" key={key}>
+        {title} *
+        <input type={type} autoComplete={autocomplete[key]} inputMode={key === "rut" ? "numeric" : undefined}
+          {...form.register(key)} aria-required="true" aria-invalid={!!form.formState.errors[key]}
+          aria-describedby={`${hint ? `${key}-hint ` : ""}${key}-error`} />
+        {hint && <span id={`${key}-hint`} className="small-copy muted">{hint}</span>}
+        <span className="field-error" id={`${key}-error`}>{form.formState.errors[key]?.message}</span>
+      </label>
+    );
+  });
   return (
     <div className="container section" style={{ maxWidth: 920 }}>
       <PageHeading title="Solicitá tu cuenta mayorista.">
         Contanos sobre tu comercio. Nuestro equipo revisará tu solicitud y los
         permisos correspondientes.
       </PageHeading>
+      <section className="application-preparation" aria-labelledby="application-preparation-title">
+        <h2 id="application-preparation-title">Antes de empezar</h2>
+        <ul>
+          <li>Tené a mano la razón social, el RUT y la dirección de tu comercio.</li>
+          <li>Usá un correo y un teléfono de contacto.</li>
+          <li>Prepará al menos un permiso o habilitación del negocio: hasta 3 archivos PDF, PNG o JPG, de hasta 5 MB cada uno.</li>
+        </ul>
+        <p>Si no sabés qué habilitación corresponde a tu comercio, <Link href="/contacto">consultanos antes de completar la solicitud</Link>.</p>
+      </section>
       {DEMO && (
         <p className="panel small-copy" style={{ marginBottom: 25 }}>
           Este es un escenario simulado: usá datos ficticios. La contraseña que
@@ -233,22 +260,11 @@ export function Apply() {
           envían correos.
         </p>
       )}
-      <form onSubmit={form.handleSubmit(submit)} className="form-grid">
-        {fields.map(([key, title, type]) => (
-          <label className="field" key={key}>
-            {title} *
-            <input
-              type={type}
-              autoComplete={key === "password" ? "new-password" : undefined}
-              {...form.register(key)}
-              aria-invalid={!!form.formState.errors[key]}
-              aria-describedby={`${key}-error`}
-            />
-            <span className="field-error" id={`${key}-error`}>
-              {form.formState.errors[key]?.message}
-            </span>
-          </label>
-        ))}
+      <form onSubmit={form.handleSubmit(submit)} className="application-form">
+        <fieldset className="application-group">
+          <legend>Comercio</legend>
+          <div className="form-grid">
+          {renderFields(["businessName", "legalName", "rut", "address", "department", "city"])}
         <label className="field">
           Tipo de comercio *
           <select
@@ -272,14 +288,26 @@ export function Apply() {
             {form.formState.errors.businessType?.message}
           </span>
         </label>
+          </div>
+        </fieldset>
+        <fieldset className="application-group">
+          <legend>Contacto</legend>
+          <div className="form-grid">{renderFields(["contactName", "email", "phone"])}</div>
+        </fieldset>
+        <fieldset className="application-group">
+          <legend>Acceso y documentación</legend>
+          <div className="form-grid">
+          {renderFields(["password"])}
         <label className="field span-2">
           Permisos o habilitaciones del negocio *
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple aria-required="true" onChange={(event) => {
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple aria-required="true" aria-describedby="application-documents-help" onChange={(event) => {
             setPermits(Array.from(event.target.files ?? []));
             setError(undefined);
           }} />
-          <span className="small-copy muted">Hasta 3 archivos PDF, PNG o JPG. Máximo 5 MB por archivo.</span>
+          <span id="application-documents-help" className="small-copy muted">Adjuntá los permisos o habilitaciones de tu negocio para la revisión de la solicitud. Hasta 3 archivos PDF, PNG o JPG. Máximo 5 MB por archivo.</span>
         </label>
+          </div>
+        </fieldset>
         <div className="span-2">
           {error !== undefined && <ErrorBox error={error} />}
           <button className="button" disabled={form.formState.isSubmitting}>
