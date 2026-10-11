@@ -24,7 +24,6 @@ export function SiteHome() {
       <HomeLines />
       <HomeFeaturedBrands />
       <HomeExplore />
-      <HomeAbout />
       <HomeJobs />
       {(loading || user) && (
         <div className="site-session-check" role="status">
@@ -357,32 +356,6 @@ function HomeExplore() {
             ))}
           </span>
         </Link>
-      </div>
-    </section>
-  );
-}
-
-function HomeAbout() {
-  return (
-    <section className="home-section home-section--paper" id="nosotros" aria-labelledby="home-about-title">
-      <div className="container home-about">
-        <div>
-          <h2 id="home-about-title">Una empresa uruguaya con 30 años de ruta</h2>
-          <p className="home-about-text">
-            DISTRICO nace en 1995 como Distribuidora Colón. Hoy abastece de alimento para mascotas, arenas, cuidado animal y snacks a todo el país desde su Casa Matriz en Montevideo y su sucursal en Maldonado.
-          </p>
-          <dl className="home-facts">
-            <div><dt>10.000 m²</dt><dd>Casa Matriz con 1.600 m² de depósito, certificada ISO 9001 desde 2019.</dd></div>
-            <div><dt>700 m²</dt><dd>Sucursal propia en Maldonado, que atiende el este del país.</dd></div>
-            <div><dt>120 kWh</dt><dd>Tres plantas fotovoltaicas propias y flota eléctrica desde 2021.</dd></div>
-          </dl>
-          <Link className="home-button home-button--ink" href="/nosotros">Conocé nuestra historia</Link>
-        </div>
-        <div className="home-mosaic">
-          <Picture className="home-mosaic-big" src="/images/casa-matriz-fachada.webp" alt="Fachada de la Casa Matriz de DISTRICO" sizes="(max-width: 1023px) 100vw, 50vw" loading="lazy" />
-          <Picture src="/images/deposito-estanterias.webp" alt="Estanterías del depósito" sizes="(max-width: 1023px) 50vw, 25vw" loading="lazy" />
-          <Picture src="/images/vehiculo-electrico-carga.webp" alt="Vehículo eléctrico de reparto cargando" sizes="(max-width: 1023px) 50vw, 25vw" loading="lazy" />
-        </div>
       </div>
     </section>
   );
