@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, Permission, Prisma, Role } from '@prisma/client';
+import { CustomerDiscountMode, OrderStatus, Permission, Prisma, Role } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as bcrypt from 'bcryptjs';
@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { UpdateCustomerDiscountDto } from './dto/update-customer-discount.dto';
 import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto } from './dto/admin-list-query.dto';
 import { customerDebtPredicate, customerListWhere } from './customer-list-filter';
 import { pendingInvitation, staffListWhere } from './staff-list-filter';
@@ -188,14 +189,19 @@ export class AdminService {
   }
 
   async dashboard() {
-    const [products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries] = await Promise.all([
-      this.prisma.product.count({ where: { deletedAt: null } }),
-      this.prisma.customerApplication.count({ where: { status: 'PENDING' } }),
-      this.prisma.order.count({ where: { status: 'PENDING_REVIEW' } }),
-      this.prisma.promotion.count({ where: { active: true, deletedAt: null } }),
-      this.prisma.contactInquiry.count({ where: { status: 'NEW' } }),
-    ]);
-    return { products, pendingApplications, pendingReviewOrders, activePromotions, newContactInquiries };
+    // Avoid occupying five pool connections for the sidebar's counters.
+    const [counts] = await this.prisma.$queryRaw<{
+      products: number; pendingApplications: number; pendingReviewOrders: number;
+      activePromotions: number; newContactInquiries: number;
+    }[]>`
+      SELECT
+        (SELECT count(*)::integer FROM "Product" WHERE "deletedAt" IS NULL) AS products,
+        (SELECT count(*)::integer FROM "CustomerApplication" WHERE "status" = 'PENDING') AS "pendingApplications",
+        (SELECT count(*)::integer FROM "Order" WHERE "status" = 'PENDING_REVIEW') AS "pendingReviewOrders",
+        (SELECT count(*)::integer FROM "Promotion" WHERE "active" = true AND "deletedAt" IS NULL) AS "activePromotions",
+        (SELECT count(*)::integer FROM "ContactInquiry" WHERE "status" = 'NEW') AS "newContactInquiries"
+    `;
+    return counts;
   }
 
   customers(user?: JwtUser) {
@@ -303,7 +309,8 @@ export class AdminService {
   }
 
   async customerDetail(id: string, user: JwtUser) {
-    const customer = await this.prisma.customerAccount.findUnique({
+    const [customer, billing, discountAccess] = await Promise.all([
+      this.prisma.customerAccount.findUnique({
       where: { id },
       include: {
         users: { select: { id: true, email: true, active: true } },
@@ -311,11 +318,13 @@ export class AdminService {
         documents: { select: { id: true, type: true, originalName: true, mimeType: true, status: true, uploadedAt: true } },
         salesperson: { select: { id: true, name: true, userId: true, user: { select: { email: true } } } },
       },
-    });
+      }),
+      this.canViewBilling(user),
+      this.customerDiscountAccess(user, this.prisma),
+    ]);
     if (!customer) throw new NotFoundException('Cliente no encontrado.');
-    const billing = await this.canViewBilling(user);
     const openStatuses = [OrderStatus.SUBMITTED, OrderStatus.PENDING_REVIEW, OrderStatus.APPROVED, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED];
-    const [recentOrders, orderCount, openOrders, audit] = await Promise.all([
+    const [recentOrders, orderCount, openOrders, audit, discountChanges] = await Promise.all([
       this.prisma.order.findMany({ where: { customerAccountId: id }, orderBy: { createdAt: 'desc' }, take: 10,
         select: { id: true, orderNumber: true, createdAt: true, status: true, total: true, currency: true } }),
       this.prisma.order.count({ where: { customerAccountId: id } }),
@@ -323,6 +332,11 @@ export class AdminService {
         select: { total: true, creditedTotal: true, paidTotal: true, refundedTotal: true } }) : Promise.resolve([]),
       billing ? this.prisma.auditLog.findMany({ where: { entityType: 'CustomerAccount', entityId: id, action: { in: ['CUSTOMER_CREDIT_UPDATED', 'CUSTOMER_UPDATED', 'CUSTOMER_PAYMENT_STATUS_AUTOMATIC'] } },
         orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, action: true, createdAt: true, metadata: true, user: { select: { email: true } } } }) : Promise.resolve([]),
+      discountAccess.canView ? this.prisma.auditLog.findMany({
+        where: { entityType: 'CustomerAccount', entityId: id, action: 'CUSTOMER_DISCOUNT_UPDATED' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 100,
+        select: { id: true, action: true, createdAt: true, metadata: true, user: { select: { email: true } } },
+      }) : Promise.resolve(undefined),
     ]);
     const debt = openOrders.reduce((sum, order) => sum.plus(Prisma.Decimal.max(0, order.total.minus(order.creditedTotal).minus(order.paidTotal).plus(order.refundedTotal))), new Prisma.Decimal(0));
     const creditChanges = audit.filter((entry) => {
@@ -331,9 +345,10 @@ export class AdminService {
       return metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata) &&
         ['creditLimit', 'creditStatus', 'internalCreditNote'].some((key) => key in metadata);
     });
-    const { creditLimit, internalCreditNote, ...basic } = customer;
+    const { creditLimit, internalCreditNote, discountPercentage, discountMode, ...basic } = customer;
     return {
       ...basic,
+      ...(discountAccess.canView ? { discountPercentage, discountMode, discountChanges } : {}),
       ...(billing ? { creditLimit, internalCreditNote, debt: Number(debt), availableCredit: creditLimit === null ? null : Math.max(0, Number(creditLimit.minus(debt))), creditChanges } : {}),
       recentOrders: recentOrders.map((order) => billing ? order : { id: order.id, orderNumber: order.orderNumber, createdAt: order.createdAt, status: order.status }),
       orderCount,
@@ -418,6 +433,51 @@ export class AdminService {
       creditChanged ? { before: { creditStatus: customer.creditStatus, creditLimit: customer.creditLimit?.toString() ?? null, internalCreditNote: customer.internalCreditNote },
         after: { creditStatus: updated.creditStatus, creditLimit: updated.creditLimit?.toString() ?? null, internalCreditNote: updated.internalCreditNote } } : { ...dto } as Prisma.InputJsonObject);
     return updated;
+  }
+
+  private async customerDiscountAccess(user: JwtUser, db: Prisma.TransactionClient) {
+    if (user.role === Role.ADMIN) return { canView: true, canEdit: true };
+    if (user.role === Role.CLIENT) return { canView: false, canEdit: false };
+    if (user.role === Role.CUSTOM) {
+      return user.customRoleId ? await db.customStaffRoleAccess.findUnique({
+        where: { roleId_feature: { roleId: user.customRoleId, feature: 'descuentos-clientes' } },
+      }) ?? { canView: false, canEdit: false } : { canView: false, canEdit: false };
+    }
+    return await db.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature: 'descuentos-clientes' } } })
+      ?? defaultStaffAccess(user.role, 'descuentos-clientes');
+  }
+
+  async updateCustomerDiscount(id: string, dto: UpdateCustomerDiscountDto, user: JwtUser) {
+    const percentage = dto.discountPercentage;
+    if (typeof percentage !== 'number' || !Number.isFinite(percentage) || percentage < 0 || percentage > 100 ||
+        new Prisma.Decimal(percentage).decimalPlaces() > 2 || !Object.values(CustomerDiscountMode).includes(dto.discountMode)) {
+      throw new BadRequestException('Ingresá un porcentaje de 0 a 100 con hasta dos decimales y una modalidad válida.');
+    }
+    const result = (customer: { id: string; discountPercentage: Prisma.Decimal; discountMode: CustomerDiscountMode; updatedAt: Date }) => ({
+      id: customer.id, discountPercentage: customer.discountPercentage, discountMode: customer.discountMode, updatedAt: customer.updatedAt,
+    });
+    return this.prisma.$transaction(async (tx) => {
+      if (!(await this.customerDiscountAccess(user, tx)).canEdit) throw new ForbiddenException('No tenés permiso para editar descuentos de clientes.');
+      if (user.role !== Role.ADMIN) {
+        const access = user.role === Role.CUSTOM && user.customRoleId
+          ? await tx.customStaffRoleAccess.findUnique({ where: { roleId_feature: { roleId: user.customRoleId, feature: 'clientes' } } })
+          : await tx.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature: 'clientes' } } }) ?? defaultStaffAccess(user.role, 'clientes');
+        if (!access?.canView) throw new ForbiddenException('No tenés acceso a clientes.');
+      }
+      // Serialize changes with checkout and recheck ownership after any reassignment.
+      await tx.$queryRaw`SELECT "id" FROM "CustomerAccount" WHERE "id" = ${id} FOR UPDATE`;
+      const customer = await tx.customerAccount.findUnique({ where: { id }, include: { salesperson: { select: { userId: true } } } });
+      if (!customer) throw new NotFoundException('Cliente no encontrado.');
+      if (user.role === Role.SALES && customer.salesperson?.userId !== user.sub) throw new ForbiddenException('El cliente no está asignado a este vendedor.');
+      const before = { discountPercentage: Number(customer.discountPercentage), discountMode: customer.discountMode };
+      if (before.discountPercentage === dto.discountPercentage && before.discountMode === dto.discountMode) return result(customer);
+      const updated = await tx.customerAccount.update({ where: { id }, data: {
+        discountPercentage: dto.discountPercentage, discountMode: dto.discountMode,
+      } });
+      await tx.auditLog.create({ data: { action: 'CUSTOMER_DISCOUNT_UPDATED', entityType: 'CustomerAccount', entityId: id,
+        userId: user.sub, metadata: { before, after: { discountPercentage: Number(updated.discountPercentage), discountMode: updated.discountMode } } } });
+      return result(updated);
+    });
   }
 
   async ordersAdmin(user: JwtUser | Role) {
@@ -531,6 +591,8 @@ export class AdminService {
       if (user.active === active) return { id: user.id, email: user.email, role: user.role, active: user.active };
       const updated = await tx.user.update({ where: { id }, data: { active }, select: { id: true, email: true, role: true, active: true } });
       if (!active) {
+        await tx.authSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date(), pendingMfaSecret: null, pendingMfaExpiresAt: null } });
+        await tx.mfaChallenge.updateMany({ where: { userId: id, consumedAt: null }, data: { consumedAt: new Date() } });
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
         await tx.staffInvitation.updateMany({ where: { userId: id, acceptedAt: null, revokedAt: null }, data: { revokedAt: new Date() } });
       }

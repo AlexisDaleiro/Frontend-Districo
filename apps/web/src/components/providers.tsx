@@ -1,4 +1,5 @@
 "use client";
+import { UnsavedChangesGuard } from "@/lib/unsaved-changes";
 import {
   createContext,
   useContext,
@@ -19,6 +20,7 @@ import { http, ApiError } from "@/lib/http";
 import { DEMO } from "@/lib/data-mode";
 import type { User } from "@/lib/types";
 export { DEMO } from "@/lib/data-mode";
+export const API_STALE_TIME = 20000;
 export const apiQueryKey = (path: string, userId?: string) => [
   DEMO ? "demo" : "real",
   userId ?? "public",
@@ -65,7 +67,8 @@ type Session = {
   loading: boolean;
   ready: boolean;
   error: Error | null;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User | { mfaRequired: true }>;
+  verifyMfa: (code: string) => Promise<User>;
   logout: () => Promise<void>;
   reset: () => Promise<void>;
   notify: (text: string) => void;
@@ -121,7 +124,15 @@ function SessionProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [notice]);
   async function login(email: string, password: string) {
-    await request("auth/login", "POST", { email, password });
+    const result = await request<{ mfaRequired?: boolean }>("auth/login", "POST", { email, password });
+    if (result.mfaRequired) { await setSessionUser(client, null); sessionChannel.current?.postMessage("changed"); return { mfaRequired: true } as const; }
+    return finishLogin();
+  }
+  async function verifyMfa(code: string) {
+    await request("auth/mfa/verify", "POST", { code });
+    return finishLogin();
+  }
+  async function finishLogin() {
     const user = normalizeUser(await request("auth/me"));
     await setSessionUser(client, user);
     sessionChannel.current?.postMessage("changed");
@@ -149,6 +160,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
         ready,
         error: session.error,
         login,
+        verifyMfa,
         logout,
         reset,
         notify: setNotice,
@@ -170,14 +182,14 @@ export function Providers({ children }: { children: ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 20000 },
+          queries: { retry: 1, refetchOnWindowFocus: false, staleTime: API_STALE_TIME },
           mutations: { retry: false },
         },
       }),
   );
   return (
     <QueryClientProvider client={client}>
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider><UnsavedChangesGuard />{children}</SessionProvider>
     </QueryClientProvider>
   );
 }

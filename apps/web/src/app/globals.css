@@ -1849,6 +1849,20 @@ td .button {
 .admin-main {
   min-width: 0;
 }
+.admin-route-loading { min-height: 320px; }
+.admin-page dialog.modal[open],
+.admin-page dialog.modal[open]::backdrop { animation: none; }
+.admin-page .admin-nav a,
+.admin-page .admin-nav-indicator[data-ready="true"] { transition: none; }
+.admin-link-pending {
+  position: absolute;
+  inset: 3px auto 3px 0;
+  width: 3px;
+  background: var(--lime);
+  opacity: 0;
+  pointer-events: none;
+}
+.admin-link-pending[data-pending="true"] { opacity: 1; }
 .admin-integration-name, .admin-integration-status {
   display: inline-flex;
   align-items: center;
@@ -2066,6 +2080,9 @@ td .button {
   .admin-sidebar[data-collapsed="true"] .admin-nav a span,
   .admin-sidebar[data-collapsed="true"] .admin-nav-count {
     display: none;
+  }
+  .admin-sidebar[data-collapsed="true"] .admin-nav a .admin-link-pending:not([hidden]) {
+    display: block;
   }
   .admin-sidebar[data-collapsed="true"] .admin-nav {
     display: flex;
@@ -2673,6 +2690,10 @@ td .button {
 }
 .admin-record-section .admin-toolbar h2 {
   margin: 0;
+}
+.admin-record-section[aria-labelledby="customer-discount-title"] h3 {
+  font-size: 15px;
+  margin: 24px 0 12px;
 }
 .admin-record-list {
   list-style: none;
@@ -5578,3 +5599,7 @@ td .button {
     box-shadow: 0 14px 30px rgb(22 61 74 / 0.12);
   }
 }
+.security-form { max-width: 460px; }
+.security-agent, .security-key { overflow-wrap: anywhere; }
+.recovery-codes { border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin: 16px 0; }
+.recovery-codes code { font-size: 13px; overflow-wrap: anywhere; }

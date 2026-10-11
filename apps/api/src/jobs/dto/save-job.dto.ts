@@ -43,8 +43,8 @@ export class JobListQueryDto {
   @IsOptional() @Transform(trimmed) @IsString() @MaxLength(150)
   search?: string;
 
-  @IsOptional() @IsIn(['active', 'inactive'])
-  status?: 'active' | 'inactive';
+  @IsOptional() @IsIn(['active', 'inactive', 'retired'])
+  status?: 'active' | 'inactive' | 'retired';
 
   @Type(() => Number) @IsInt() @Min(1)
   page = 1;

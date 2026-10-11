@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { request, useSession } from "./providers";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { ErrorBox } from "./ui";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/lib/unsaved-changes";
 export type Field = {
   key: string;
   label: string;
@@ -28,6 +29,7 @@ export type Editor = {
   initial?: Record<string, unknown>;
   transform?: (data: Record<string, unknown>) => unknown;
   description?: string;
+  submitLabel?: string;
   // Mensaje de confirmación a partir de la respuesta de la API.
   success?: (result: unknown) => string;
 };
@@ -41,9 +43,15 @@ export function AdminForm({
   onCancel?: () => void;
 }) {
   const form = useForm<Record<string, unknown>>({
-    defaultValues: editor.initial,
+    defaultValues: {
+      ...editor.initial,
+      ...Object.fromEntries(editor.fields.map((field) => [field.key,
+        field.type === "checkbox" ? !!editor.initial?.[field.key] : editor.initial?.[field.key] ?? "",
+      ])),
+    },
   });
   const values = useWatch({ control: form.control });
+  useUnsavedChanges(form.formState.isDirty);
   const [error, setError] = useState<unknown>();
   const client = useQueryClient();
   const { notify } = useSession();
@@ -115,6 +123,7 @@ export function AdminForm({
       );
       await invalidateAdminMutation(client, editor.path);
       notify(editor.success?.(result) ?? "Cambios guardados.");
+      form.reset(raw);
       onDone(result);
     } catch (e) {
       setError(e);
@@ -123,7 +132,7 @@ export function AdminForm({
     }
   }
   return (
-    <form data-admin-save="true" aria-busy={form.formState.isSubmitting} onSubmit={form.handleSubmit(submit)} noValidate>
+    <form data-admin-save="true" data-unsaved-changes={form.formState.isDirty} aria-busy={form.formState.isSubmitting} onSubmit={form.handleSubmit(submit)} noValidate>
       {editor.description && (
         <p className="muted small-copy" style={{ marginBottom: 20 }}>
           {editor.description}
@@ -133,7 +142,7 @@ export function AdminForm({
         {editor.fields.filter((field) => !field.showWhen || values[field.showWhen.key] === field.showWhen.value).map((field) =>
           field.type === "checkbox" ? (
             <label key={field.key} className="check-field span-2">
-              <input type="checkbox" {...form.register(field.key)} />
+              <input type="checkbox" disabled={form.formState.isSubmitting} {...form.register(field.key)} />
               {field.label}
             </label>
           ) : (
@@ -144,7 +153,7 @@ export function AdminForm({
               {field.label}
               {field.required ? " *" : ""}
               {field.type === "select" ? (
-                <select {...form.register(field.key)}>
+                <select disabled={form.formState.isSubmitting} {...form.register(field.key)}>
                   <option value="">Seleccionar</option>
                   {field.options?.map((o) => (
                     <option value={o.value} key={o.value}>
@@ -153,13 +162,14 @@ export function AdminForm({
                   ))}
                 </select>
               ) : field.type === "textarea" ? (
-                <textarea {...form.register(field.key)} />
+                <textarea disabled={form.formState.isSubmitting} {...form.register(field.key)} />
               ) : (
                 <input
                   type={field.type ?? "text"}
                   min={field.min}
                   max={field.max}
                   step={field.step ?? 1}
+                  disabled={form.formState.isSubmitting}
                   {...form.register(field.key)}
                 />
               )}{" "}
@@ -174,13 +184,13 @@ export function AdminForm({
       {error !== undefined && <ErrorBox error={error} />}
       <div className="actions">
         <button className="button" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Guardando…" : "Guardar cambios"}
+          {form.formState.isSubmitting ? "Guardando…" : editor.submitLabel ?? "Guardar cambios"}
         </button>
         <button
           type="button"
           className="button secondary"
           disabled={form.formState.isSubmitting}
-          onClick={() => (onCancel ?? onDone)()}
+          onClick={() => { if (!form.formState.isDirty || confirmDiscardChanges()) (onCancel ?? onDone)(); }}
         >
           Cancelar
         </button>

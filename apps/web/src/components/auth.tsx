@@ -15,16 +15,18 @@ const loginSchema = z.object({
   password: z.string().min(8, "Usá al menos 8 caracteres."),
 });
 export function Login() {
-  const { login, user } = useSession();
+  const { login, verifyMfa, user } = useSession();
   const router = useRouter();
   const [error, setError] = useState<unknown>();
+  const [mfa, setMfa] = useState(false), [code, setCode] = useState(""), [verifying, setVerifying] = useState(false);
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
   });
   async function submit(data: z.infer<typeof loginSchema>) {
     setError(undefined);
     try {
-      await login(data.email, data.password);
+      const result = await login(data.email, data.password);
+      if ('mfaRequired' in result) { form.reset({ email: data.email, password: '' }); setMfa(true); return; }
       router.push(storeRoutes.home);
     } catch (e) {
       setError(e);
@@ -46,7 +48,15 @@ export function Login() {
           <PageHeading title="Ingresá a tu cuenta">
             Para comercios con cuenta mayorista aprobada.
           </PageHeading>
-          <form className="stack" onSubmit={form.handleSubmit(submit)}>
+          {mfa ? <form className="stack" onSubmit={async (event) => {
+            event.preventDefault(); if (verifying) return; setVerifying(true); setError(undefined);
+            try { await verifyMfa(code); router.push(storeRoutes.home); } catch (cause) { setError(cause); } finally { setVerifying(false); }
+          }}>
+            <label className="field">Código de autenticación o recuperación<input autoComplete="one-time-code" autoFocus required minLength={6} maxLength={64} value={code} onChange={(event) => setCode(event.target.value)} /></label>
+            {error !== undefined && <ErrorBox error={error} />}
+            <button className="button" disabled={verifying}>Verificar acceso</button>
+            <button className="button secondary" type="button" disabled={verifying} onClick={() => { setMfa(false); setCode(''); setError(undefined); }}>Volver al ingreso</button>
+          </form> : <form className="stack" onSubmit={form.handleSubmit(submit)}>
             <label className="field">
               Correo electrónico
               <input
@@ -78,7 +88,7 @@ export function Login() {
             <button className="button" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Ingresando…" : "Ingresar"}
             </button>
-          </form>
+          </form>}
         </div>
         <aside className="auth-aside">
           <h2>¿Todavía no sos cliente?</h2>

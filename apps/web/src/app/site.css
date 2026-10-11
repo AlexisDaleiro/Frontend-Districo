@@ -531,3 +531,20 @@
   .site-locator .contact-list-toggle:focus-visible { outline: 2px solid white; outline-offset: -4px; }
   .site-locator .contact-store-list:not(.is-open) { display: none; }
 }
+.jobs-mobile-filters { display: none; }
+.job-detail { padding-top: 140px; }
+.job-detail h1 { font-size: 36px; margin: 24px 0 12px; overflow-wrap: anywhere; }
+.job-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; margin-top: 32px; }
+.job-detail-layout h2 { font-size: 22px; margin: 20px 0 12px; }
+.job-description { white-space: pre-line; }
+.job-detail-layout article { min-width: 0; overflow-wrap: anywhere; }
+.job-application-form { min-width: 0; border-top: 3px solid var(--lime, #b6db32); padding-top: 12px; }
+.job-application-form input[type="file"] { max-width: 100%; }
+@media (max-width: 760px) {
+  .jobs-mobile-filters { display: inline-flex; width: 100%; justify-content: space-between; }
+  .jobs-filter-options { display: none; }
+  .jobs-filters.is-expanded .jobs-filter-options { display: block; margin-top: 16px; }
+  .job-detail { padding-top: 100px; }
+  .job-detail h1 { font-size: 28px; overflow-wrap: anywhere; }
+  .job-detail-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+}

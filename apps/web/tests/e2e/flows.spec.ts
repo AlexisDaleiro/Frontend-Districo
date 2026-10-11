@@ -279,7 +279,7 @@ test("permisos y cierre de sesión eliminan precios privados", async ({
   await expect(page.getByRole('navigation', { name: 'Administración', exact: true })).toHaveCount(0);
   await page.goto("/tienda/producto/alizin-10ml");
   await expect(
-    page.getByText("Tu cuenta no está habilitada para comprar este producto."),
+    page.locator('#comprar').getByText("Tu cuenta no está habilitada para comprar este producto."),
   ).toBeVisible();
   await page.goto("/tienda/cuenta");
   await page.getByRole("button", { name: "Cerrar sesión" }).click();

@@ -1,6 +1,8 @@
 export type Permission =
   "CAN_VIEW_PRICES" | "CAN_PLACE_ORDERS" | "CAN_BUY_MEDICATIONS";
 export type SalesLine = "SPECIALIZED" | "COMMERCIAL" | "BOTH";
+export type CustomerDiscountMode = "BEST_PRICE" | "STACK";
+export type DiscountChange = { id: string; action: string; createdAt: string; metadata: unknown; user?: { email: string } | null };
 export type Entity = {
   id: string;
   name: string;
@@ -34,6 +36,8 @@ export type Customer = {
   addresses?: CustomerAddress[];
   creditLimit?: number;
   internalCreditNote?: string;
+  discountPercentage?: number | string;
+  discountMode?: CustomerDiscountMode;
   users?: { id: string; email: string }[];
   salespersonId?: string | null;
   salesperson?: { id: string; name: string; phone: string; userId: string; user: { email: string } } | null;
@@ -58,6 +62,7 @@ export type CustomerDetail = Customer & {
   recentOrders: (Pick<Order, "id" | "orderNumber" | "createdAt" | "status"> & Partial<Pick<Order, "total" | "currency">>)[];
   documents: { id: string; type: string; originalName: string; mimeType: string; status: string; uploadedAt: string }[];
   creditChanges?: { id: string; action: string; createdAt: string; metadata: unknown; user?: { email: string } | null }[];
+  discountChanges?: DiscountChange[];
 };
 export type User = {
   id: string;
@@ -155,7 +160,9 @@ export type CartItem = {
   currency: string;
   subtotal: number;
 };
-export type Cart = { id: string; items: CartItem[]; total: number };
+export type CartPricing = { subtotal: number; promotionDiscountTotal: number; customerDiscountTotal: number;
+  discountTotal: number; total: number; customerDiscountPercentage: number; customerDiscountMode: CustomerDiscountMode };
+export type Cart = { id: string; items: CartItem[]; total: number; pricing?: CartPricing };
 export type Order = {
   id: string;
   orderNumber: string;
@@ -174,6 +181,9 @@ export type Order = {
   refundedTotal?: number | string;
   subtotal: number;
   discountTotal: number;
+  customerDiscountPercentage?: number | string;
+  customerDiscountMode?: CustomerDiscountMode;
+  customerDiscountTotal?: number | string;
   currency: string;
   requiresManualReview?: boolean;
   acceptedManualReview?: boolean;

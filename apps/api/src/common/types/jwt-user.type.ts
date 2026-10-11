@@ -7,4 +7,6 @@ export interface JwtUser {
   customRoleId?: string | null;
   permissions: Permission[];
   customerAccountId?: string | null;
+  sid?: string;
+  purpose?: string;
 }

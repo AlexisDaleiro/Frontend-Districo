@@ -12,6 +12,7 @@ export const storeRoutes = {
   cart: `${root}/carrito`,
   checkout: `${root}/checkout`,
   account: `${root}/cuenta`,
+  security: `${root}/cuenta/seguridad`,
   orders: `${root}/cuenta/pedidos`,
   invoices: `${root}/cuenta/facturas`,
   favorites: `${root}/cuenta/favoritos`,
@@ -25,6 +26,7 @@ export const storeRoutes = {
   adminCustomer: (id: string) => `${root}/admin/clientes/${encodeURIComponent(id)}`,
   adminSalesperson: (id: string) => `${root}/admin/vendedores/${encodeURIComponent(id)}`,
   adminOrder: (id: string) => `${root}/admin/pedidos/${encodeURIComponent(id)}`,
+  adminJob: (id: string) => `${root}/admin/ofertas-laborales/${encodeURIComponent(id)}`,
   adminProduct: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}`,
   adminProductPreview: (slug: string) => `${root}/admin/productos/${encodeURIComponent(slug)}/vista-previa`,
 } as const;

@@ -112,6 +112,10 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
         next.resumen = { ...next.resumen, canView: true };
       if (feature === "resumen" && key === "canView" && !value)
         next.ventas = { ...next.ventas, canView: false };
+      if (feature === "descuentos-clientes" && value)
+        next.clientes = { ...next.clientes, canView: true };
+      if (feature === "clientes" && key === "canView" && !value)
+        next["descuentos-clientes"] = { canView: false, canEdit: false };
       return next;
     });
   }

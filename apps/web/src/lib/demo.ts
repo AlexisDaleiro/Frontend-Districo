@@ -3,7 +3,7 @@ import { normalizeProductSheet } from "./product-sheet";
 import { isSalesLine } from "./sales-line";
 import { demoPetStage } from "./pet-stage";
 import { inactiveIntegrations } from "./integrations";
-import { demoJobOpenings, jobDraftSchema, jobToday, type JobOpening } from "@/data/job-openings";
+import { candidateStatuses, demoJobOpenings, jobDraftSchema, jobToday, type JobCandidate, type JobOpening } from "@/data/job-openings";
 import { type BannerPlacement, type StoreBanner, validBannerDestination } from "./banners";
 import type {
   Application,
@@ -34,6 +34,7 @@ import { rulePage } from "./marketing-list";
 import { demoSalesReport } from "./demo-sales";
 import { salesReportCsv } from "./sales-report";
 import { staffListStatus } from "./admin-list-filters";
+import { customerDiscountSchema, demoCustomerPricing, omitCustomerDiscounts } from "./customer-discount";
 import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
@@ -66,11 +67,13 @@ type State = {
   laboratories: Entity[];
   banners?: StoreBanner[];
   jobs?: JobOpening[];
+  jobCandidates?: (JobCandidate & { submissionId: string; base64: string })[];
   staffInvitations?: { userId: string; tokenHash: string; expiresAt: string; accepted: boolean; revoked: boolean }[];
   staffRoleAccess?: Partial<Record<StaffRole, DemoRoleAccess>>;
   customRoles?: { id: string; name: string; key: string; access: DemoRoleAccess; retiredAt?: string }[];
   roleHistory?: { action: string; roleId: string; actorId: string; createdAt: string; name: string; previousName: string }[];
   creditChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
+  discountChanges?: Record<string, { id: string; action: string; createdAt: string; metadata: unknown; user: { email: string } }[]>;
   salespeople?: Record<string, { id: string; name: string; phone: string }>;
   consumedOrderIds?: string[];
   bulkHistory?: DemoToolsState["bulkHistory"];
@@ -256,11 +259,14 @@ function userCart(s: State, u: User): Cart {
       subtotal: (variant.price?.amount ?? 0) * item.quantity,
     };
   });
-  return {
+  const cart: Cart = {
     id: `cart-${u.id}`,
     items,
     total: items.reduce((a, b) => a + b.subtotal, 0),
   };
+  cart.pricing = demoCustomerPricing(items.map((item) => item.subtotal), discounts(s, cart),
+    Number(u.customerAccount?.discountPercentage ?? 0), u.customerAccount?.discountMode).pricing;
+  return cart;
 }
 function targetMatch(
   p: Product,
@@ -392,6 +398,7 @@ export async function demoRequest<T>(
       route.startsWith("admin/staff/access") || route.startsWith("admin/staff/roles") ? "roles" :
       route.startsWith("admin/staff") ? "personal" :
       route.startsWith("admin/salespeople") ? "vendedores" :
+      /^admin\/customers\/[^/]+\/discount$/.test(route) ? "descuentos-clientes" :
       route.startsWith("admin/customers") ? "clientes" :
       route.startsWith("admin/orders") ? "pedidos" :
       route === "admin/dashboard" ? "resumen" : /^admin\/sales(?:\/|$)/.test(route) ? "ventas" :
@@ -438,6 +445,17 @@ export async function demoRequest<T>(
       ? { ...current.customerAccount, salesperson: salespersonFor(current.customerAccount) } : undefined } : { ...current, staffAccess: current.role === "CUSTOM"
       ? s.customRoles?.find((item) => item.id === current.customRoleId)?.access ?? defaultDemoRoleAccess("CUSTOM")
       : s.staffRoleAccess?.[current.role] ?? defaultDemoRoleAccess(current.role) };
+  }
+  else if (route === 'auth/security' && method === 'GET') {
+    needUser(); result = { enabled: false, available: false, configured: false, recoveryCodesRemaining: 0 };
+  } else if (route === 'auth/sessions' && method === 'GET') {
+    needUser(); result = [{ id: 'demo-current', current: true, createdAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString(), userAgent: 'Sesión de demostración' }];
+  } else if (route.startsWith('auth/sessions/') && method === 'DELETE') {
+    needUser(); if (route.endsWith('/demo-current')) s.session = null;
+    else if (!route.endsWith('/others')) throw new ApiError('Sesión no encontrada.', 404);
+    result = { success: true };
+  } else if (route.startsWith('auth/mfa/')) {
+    throw new ApiError('Los autenticadores reales sólo se configuran en modo real.', 503);
   }
   else if (route === "auth/staff-invitations/accept" && method === "POST") {
     const tokenHash = await demoHash(String(b.token ?? ""));
@@ -744,18 +762,19 @@ export async function demoRequest<T>(
       )
         throw new ApiError("Hay un producto restringido en el carrito.", 403);
     }
-    const reductions = discounts(s, cart);
-    const discountTotal = reductions.reduce((a, b) => a + b, 0);
+    const { pricing, discounts: reductions, totals } = demoCustomerPricing(cart.items.map((item) => item.subtotal), discounts(s, cart),
+      Number(u.customerAccount?.discountPercentage ?? 0), u.customerAccount?.discountMode);
+    const discountTotal = pricing.discountTotal;
     if (u.customerAccount?.creditLimit != null) {
       const exposure = s.orders.filter((order) => (order.customerAccount?.id === u.customerAccount!.id || order.userId === u.id) && !["DRAFT", "REJECTED", "CANCELLED"].includes(order.status))
         .reduce((sum, order) => sum + Math.round(orderBalance(order).due * 100), 0);
-      if (exposure + Math.round((cart.total - discountTotal) * 100) > Math.round(Number(u.customerAccount.creditLimit) * 100)) {
+      if (exposure + Math.round(pricing.total * 100) > Math.round(Number(u.customerAccount.creditLimit) * 100)) {
         review = true;
         reviewReason = "CREDIT_LIMIT_EXCEEDED";
       }
     }
     const confirmedAt = new Date();
-    const schedule = paymentMethod === "INSTALLMENTS" ? paymentSchedulePreview(cart.total - discountTotal, Number(months), confirmedAt) : [];
+    const schedule = paymentMethod === "INSTALLMENTS" ? paymentSchedulePreview(pricing.total, Number(months), confirmedAt) : [];
     const order: Order = {
       id: id(),
       orderNumber: `DEMO-${Date.now()}`,
@@ -777,9 +796,12 @@ export async function demoRequest<T>(
       paymentSchedule: schedule,
       paymentDueAt: schedule.at(-1)?.dueAt ?? null,
       currency: "UYU",
-      subtotal: cart.total,
+      subtotal: pricing.subtotal,
       discountTotal,
-      total: cart.total - discountTotal,
+      total: pricing.total,
+      customerDiscountPercentage: pricing.customerDiscountPercentage,
+      customerDiscountMode: pricing.customerDiscountMode,
+      customerDiscountTotal: pricing.customerDiscountTotal,
       items: cart.items.map((i, index) => ({
         variantId: i.variant.id,
         productName: i.product.name,
@@ -787,7 +809,8 @@ export async function demoRequest<T>(
         sku: i.variant.sku,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
-        subtotal: i.subtotal - reductions[index],
+        discount: reductions[index],
+        subtotal: totals[index],
       })),
     };
     for (const item of cart.items) {
@@ -826,6 +849,25 @@ export async function demoRequest<T>(
     if (!result) throw new ApiError("Pedido no encontrado.", 404);
   } else if (route === "jobs" && method === "GET") {
     result = (s.jobs ?? []).filter((job) => job.active && job.published <= jobToday()).sort((a, b) => b.published.localeCompare(a.published) || a.id.localeCompare(b.id));
+  } else if (/^jobs\/[^/]+(?:\/applications)?$/.test(route)) {
+    const jobId = route.split('/')[1];
+    const job = s.jobs?.find((entry) => entry.id === jobId && entry.active && entry.published <= jobToday());
+    if (!job) throw new ApiError('Oferta laboral no encontrada.', 404);
+    if (method === 'GET' && !route.endsWith('/applications')) result = job;
+    else if (method === 'POST' && route.endsWith('/applications')) {
+      const file = b.cv;
+      if (job.isExample) throw new ApiError('Esta oferta no recibe postulaciones.', 400);
+      if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024 || file.type !== 'application/pdf' || b.consent !== 'true' || String(b.name ?? '').trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(b.email ?? '')) || !/^[+\d ()-]{6,30}$/.test(String(b.phone ?? '')) || !/^[a-f0-9-]{36}$/i.test(String(b.submissionId ?? ''))) throw new ApiError('Revisá tus datos y adjuntá un CV en PDF de hasta 5 MB.', 400);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      try { const { PDFDocument } = await import('pdf-lib'); const pdf = await PDFDocument.load(bytes); if (!pdf.getPageCount() || pdf.getPageCount() > 50) throw new Error(); }
+      catch { throw new ApiError('El CV debe ser un PDF válido, sin contraseña.', 400); }
+      const email = String(b.email).trim().toLowerCase();
+      if (!(s.jobCandidates ?? []).some((entry) => entry.jobId === jobId && (entry.email === email || entry.submissionId === b.submissionId))) {
+        let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
+        (s.jobCandidates ??= []).push({ id: id(), jobId, submissionId: String(b.submissionId), name: String(b.name).trim(), email, phone: String(b.phone).trim(), message: String(b.message ?? ''), status: 'NEW', cvFilename: file.name, cvSize: file.size, createdAt: new Date().toISOString(), base64: btoa(binary) });
+      }
+      result = { success: true };
+    } else throw new ApiError('Acción no válida.', 405);
   } else if (route === "banners" && method === "GET") {
     const now = new Date().toISOString();
     const placement = query.get("placement") ?? "ECOMMERCE";
@@ -878,15 +920,32 @@ export async function demoRequest<T>(
         const term = (query.get("search") ?? "").trim().toLowerCase();
         const status = query.get("status");
         const page = Number(query.get("page") ?? 1), limit = Number(query.get("limit") ?? 20);
-        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100 || term.length > 150 || status && !["active", "inactive"].includes(status)) throw new ApiError("Filtros de ofertas no válidos.", 400);
-        const jobs = [...(s.jobs ?? [])].filter((job) => (!term || [job.title, job.area, job.location].some((value) => value.toLowerCase().includes(term))) && (!status || job.active === (status === "active"))).sort((a, b) => b.published.localeCompare(a.published) || a.id.localeCompare(b.id));
+        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100 || term.length > 150 || status && !["active", "inactive", "retired"].includes(status)) throw new ApiError("Filtros de ofertas no válidos.", 400);
+        const jobs = [...(s.jobs ?? [])].filter((job) => (status === 'retired' ? !!job.retired : !job.retired) && (!term || [job.title, job.area, job.location].some((value) => value.toLowerCase().includes(term))) && (!status || status === 'retired' || job.active === (status === "active"))).sort((a, b) => b.published.localeCompare(a.published) || a.id.localeCompare(b.id));
         result = { items: jobs.slice((page - 1) * limit, page * limit), meta: { total: jobs.length, page, limit } };
       } else {
         const existing = s.jobs?.find((job) => job.id === parts[2]);
         if (parts[2] && !existing) throw new ApiError("Oferta laboral no encontrada.", 404);
-        if (method === "DELETE" && existing) {
-          s.jobs = s.jobs!.filter((job) => job.id !== existing.id); result = { success: true };
+        if (method === "GET" && existing && parts.length === 3) result = existing;
+        else if (existing && parts[3] === 'applications') {
+          const entries = (s.jobCandidates ?? []).filter((entry) => entry.jobId === existing.id);
+          const candidate = entries.find((entry) => entry.id === parts[4]);
+          const present = (entry: (typeof entries)[number]): JobCandidate => ({ id: entry.id, jobId: entry.jobId, name: entry.name, email: entry.email, phone: entry.phone, message: entry.message, status: entry.status, cvFilename: entry.cvFilename, cvSize: entry.cvSize, createdAt: entry.createdAt });
+          if (parts[5] === 'cv' && method === 'GET' && candidate) result = { base64: candidate.base64 };
+          else if (parts[4] && method === 'PATCH' && candidate) {
+            if (!Object.hasOwn(candidateStatuses, String(b.status))) throw new ApiError('Estado no válido.', 400);
+            candidate.status = b.status as JobCandidate['status']; result = present(candidate);
+          } else if (!parts[4] && method === 'GET') {
+            const term = (query.get('search') ?? '').toLowerCase(), status = query.get('candidateStatus');
+            const page = Math.max(1, Number(query.get('page')) || 1), limit = Math.min(100, Math.max(1, Number(query.get('limit')) || 20));
+            const filtered = entries.filter((entry) => (!status || entry.status === status) && (!term || [entry.name, entry.email, entry.phone].some((value) => value.toLowerCase().includes(term))));
+            result = { items: filtered.slice((page - 1) * limit, page * limit).map(present), meta: { total: filtered.length, page, limit } };
+          } else throw new ApiError('Candidato no encontrado.', 404);
+        } else if (method === "DELETE" && existing) {
+          if (existing.retired) throw new ApiError('Oferta laboral no encontrada.', 404);
+          existing.retired = true; existing.active = false; result = { success: true };
         } else if (method === "POST" && !parts[2] || method === "PATCH" && existing) {
+          if (existing?.retired) throw new ApiError('Oferta laboral no encontrada.', 404);
           const parsed = jobDraftSchema.safeParse(b);
           if (!parsed.success) throw new ApiError("Datos de la oferta no válidos.", 400);
           if (existing) { Object.assign(existing, parsed.data); result = existing; }
@@ -1215,13 +1274,30 @@ export async function demoRequest<T>(
     else if (route.startsWith("admin/customers/")) {
       const u = s.users.find((u) => u.customerAccount?.id === parts[2]);
       if (!u) throw new ApiError("Cliente no encontrado.", 404);
-      if (method === "GET") {
+      if (parts[3] === "discount" && method === "PATCH") {
+        const savedAccess = user!.role === "CUSTOM" ? s.customRoles?.find((role) => role.id === user!.customRoleId)?.access : user!.role === "CLIENT" ? undefined : s.staffRoleAccess?.[user!.role];
+        if (!canViewAdminFeature({ ...user!, staffAccess: savedAccess }, "clientes")) throw new ApiError("No tenés acceso a clientes.", 403);
+        const parsed = customerDiscountSchema.safeParse(b);
+        if (!parsed.success) throw new ApiError("Ingresá un porcentaje de 0 a 100 con hasta dos decimales y una modalidad válida.", 400);
+        const before = { discountPercentage: Number(u.customerAccount!.discountPercentage ?? 0), discountMode: u.customerAccount!.discountMode ?? "BEST_PRICE" };
+        if (before.discountPercentage !== parsed.data.discountPercentage || before.discountMode !== parsed.data.discountMode) {
+          Object.assign(u.customerAccount!, parsed.data);
+          (s.discountChanges ??= {})[u.customerAccount!.id] ??= [];
+          s.discountChanges[u.customerAccount!.id].unshift({ id: id(), action: "CUSTOMER_DISCOUNT_UPDATED", createdAt: new Date().toISOString(),
+            metadata: { before, after: parsed.data }, user: { email: user!.email } });
+        }
+        result = { id: u.customerAccount!.id, ...parsed.data };
+      } else if (method === "GET") {
         const account = u.customerAccount!;
         const orders = s.orders.filter((o) => o.customerAccount?.id === account.id || o.userId === u.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const debt = orders.filter((o) => !["CANCELLED", "REJECTED"].includes(o.status)).reduce((sum, o) => sum + orderBalance(o).due, 0);
         const application = s.applications.find((a) => a.email.toLowerCase() === u.email.toLowerCase() && a.status === "APPROVED");
-        result = { ...account, users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(account), addresses: account.addresses ?? [], documents: (application?.documents ?? []).map((d) => ({ ...d, mimeType: "application/pdf", status: "ACTIVE", uploadedAt: new Date().toISOString() })), orderCount: orders.length, recentOrders: orders.slice(0, 10).map(({ id, orderNumber, createdAt, status, total, currency }) => ({ id, orderNumber, createdAt, status, total, currency })), debt, availableCredit: account.creditLimit == null ? null : Math.max(0, Number(account.creditLimit) - debt), creditChanges: s.creditChanges?.[account.id] ?? [] };
+        const savedAccess = user!.role === "CUSTOM" ? s.customRoles?.find((role) => role.id === user!.customRoleId)?.access : user!.role === "CLIENT" ? undefined : s.staffRoleAccess?.[user!.role];
+        const showDiscount = canViewAdminFeature({ ...user!, staffAccess: savedAccess }, "descuentos-clientes");
+        const { discountPercentage, discountMode, ...basic } = account;
+        result = { ...basic, ...(showDiscount ? { discountPercentage: discountPercentage ?? 0, discountMode: discountMode ?? "BEST_PRICE", discountChanges: s.discountChanges?.[account.id] ?? [] } : {}), users: [{ id: u.id, email: u.email }], salesperson: salespersonFor(account), addresses: account.addresses ?? [], documents: (application?.documents ?? []).map((d) => ({ ...d, mimeType: "application/pdf", status: "ACTIVE", uploadedAt: new Date().toISOString() })), orderCount: orders.length, recentOrders: orders.slice(0, 10).map(({ id, orderNumber, createdAt, status, total, currency }) => ({ id, orderNumber, createdAt, status, total, currency })), debt, availableCredit: account.creditLimit == null ? null : Math.max(0, Number(account.creditLimit) - debt), creditChanges: s.creditChanges?.[account.id] ?? [] };
       } else {
+      if ("discountPercentage" in b || "discountMode" in b) throw new ApiError("Usá la gestión de descuentos del cliente.", 400);
       const previousCredit = { creditLimit: u.customerAccount?.creditLimit ?? null, creditStatus: u.customerAccount?.creditStatus, internalCreditNote: u.customerAccount?.internalCreditNote };
       Object.assign(u.customerAccount!, b);
       if (b.creditStatus !== undefined && b.creditStatus !== previousCredit.creditStatus) u.customerAccount!.creditStatusAutomatic = false;
@@ -1584,6 +1660,10 @@ export async function demoRequest<T>(
     throw new ApiError("Esta operación no está disponible en la demo.", 404);
   const paymentStatusesChanged = refreshDemoPaymentStatuses(s);
   if (method !== "GET" || paymentStatusesChanged) write(s);
+  if (user && user.role !== "CLIENT" && /^admin\/(customers|orders)(?:\/|$)/.test(route)) {
+    const access = user.role === "CUSTOM" ? s.customRoles?.find((role) => role.id === user.customRoleId)?.access : s.staffRoleAccess?.[user.role];
+    if (!canViewAdminFeature({ ...user, staffAccess: access }, "descuentos-clientes")) result = omitCustomerDiscounts(result);
+  }
   return structuredClone(result) as T;
 }
 

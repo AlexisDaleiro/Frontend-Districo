@@ -175,6 +175,12 @@ model User {
   emailVerified     Boolean          @default(false)
   permissions       UserPermission[]
   refreshTokens     RefreshToken[]
+  authSessions      AuthSession[]
+  mfaChallenges     MfaChallenge[]
+  recoveryCodes     MfaRecoveryCode[]
+  mfaSecretEncrypted String?
+  mfaEnabledAt      DateTime?
+  mfaLastStep       Int?
   staffInvitations  StaffInvitation[]
   salesperson       Salesperson?
   carts             Cart[]
@@ -236,10 +242,53 @@ model RefreshToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?
+  session   AuthSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   tokenHash String
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
+  @@index([sessionId, revokedAt])
+}
+
+model AuthSession {
+  id           String @id @default(uuid())
+  userId       String
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  userAgent    String?
+  mfaVerifiedAt DateTime?
+  pendingMfaSecret String?
+  pendingMfaExpiresAt DateTime?
+  refreshTokens RefreshToken[]
+  @@index([userId, revokedAt, expiresAt])
+}
+
+model MfaChallenge {
+  id        String @id @default(uuid())
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  consumedAt DateTime?
+  attempts  Int @default(0)
+  @@index([userId, expiresAt])
+}
+
+model MfaRecoveryCode {
+  id        String @id @default(cuid())
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String @unique
+  usedAt    DateTime?
+  @@index([userId, usedAt])
+}
+
+enum CustomerDiscountMode {
+  BEST_PRICE
+  STACK
 }
 
 model CustomerAccount {
@@ -255,6 +304,8 @@ model CustomerAccount {
   creditStatusAutomatic Boolean     @default(false)
   creditLimit          Decimal?     @db.Decimal(12, 2)
   internalCreditNote   String?
+  discountPercentage   Decimal      @default(0) @db.Decimal(5, 2)
+  discountMode         CustomerDiscountMode @default(BEST_PRICE)
   accountStatus        AccountStatus @default(PENDING)
   medicationPermission Boolean      @default(false)
   salespersonId        String?
@@ -549,6 +600,9 @@ model Order {
   acceptedManualReview Boolean            @default(false)
   subtotal             Decimal            @db.Decimal(12, 2)
   discountTotal        Decimal            @db.Decimal(12, 2)
+  customerDiscountPercentage Decimal      @default(0) @db.Decimal(5, 2)
+  customerDiscountMode CustomerDiscountMode @default(BEST_PRICE)
+  customerDiscountTotal Decimal           @default(0) @db.Decimal(12, 2)
   total                Decimal            @db.Decimal(12, 2)
   paidTotal            Decimal            @default(0) @db.Decimal(12, 2)
   paymentMethod        String?
@@ -847,8 +901,38 @@ model JobOpening {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
+  applications JobApplication[]
 
   @@index([active, deletedAt, published])
+}
+
+enum JobApplicationStatus {
+  NEW
+  IN_REVIEW
+  INTERVIEW
+  HIRED
+  REJECTED
+}
+
+model JobApplication {
+  id           String @id @default(cuid())
+  jobId        String
+  job          JobOpening @relation(fields: [jobId], references: [id])
+  submissionId String @unique
+  name         String
+  email        String
+  phone        String
+  message      String?
+  status       JobApplicationStatus @default(NEW)
+  cvPath       String
+  cvFilename   String
+  cvSize       Int
+  consentAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([jobId, email])
+  @@index([jobId, status, createdAt])
 }
 
 model AuditLog {

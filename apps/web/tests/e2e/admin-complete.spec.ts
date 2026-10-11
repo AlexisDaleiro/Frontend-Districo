@@ -87,6 +87,7 @@ test("personal, categorías y clientes tienen flujos administrables", async ({ p
   await expect(page.getByRole("heading", { name: "Marcas y laboratorios" })).toBeVisible();
   await page.getByRole("button", { name: "Crear" }).first().click();
   await page.getByRole("textbox", { name: "Nombre *", exact: true }).fill("Marca descartable");
+  await page.getByRole('combobox', { name: 'Línea de venta *', exact: true }).selectOption('SPECIALIZED');
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(page.getByText("Marca descartable")).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());

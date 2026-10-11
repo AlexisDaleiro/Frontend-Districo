@@ -8,6 +8,7 @@ export const staffRoles: BuiltInStaffRole[] = ["ADMIN", "SALES", "CATALOG", "FIN
 export const staffFeatures = [
   ["resumen", "Resumen"], ["ventas", "Ventas"], ["consultas", "Consultas"],
   ["solicitudes", "Solicitudes"], ["clientes", "Clientes"], ["pedidos", "Pedidos"],
+  ["descuentos-clientes", "Descuentos de clientes"],
   ["facturacion", "Pagos y facturas"], ["catalogo", "Catálogo"],
   ["marcas", "Marcas y laboratorios"], ["categorias", "Categorías"],
   ["promociones", "Promociones"], ["banners", "Banners"],
@@ -41,7 +42,7 @@ export function canViewAdminFeature(user: User | null | undefined, feature: Staf
   if (!user || !isStaff(user)) return false;
   if (user.role === "ADMIN") return true;
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canView ?? false;
-  const fallback = feature === "ventas" || feature === "facturacion"
+  const fallback = feature === "ventas" || feature === "facturacion" || feature === "descuentos-clientes"
     ? ["SALES", "FINANCE"].includes(user.role)
     : defaultSections[user.role as BuiltInStaffRole].includes(feature === "resumen" ? "" : feature);
   return user.staffAccess?.[feature]?.canView ?? fallback;
@@ -64,7 +65,7 @@ export function canEditAdminFeature(user: User | null | undefined, feature: Staf
   if (user.role === "ADMIN") return true;
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canEdit ?? false;
   return user.staffAccess?.[feature]?.canEdit ?? (
-    (user.role === "SALES" && ["consultas", "pedidos"].includes(feature)) ||
+    (user.role === "SALES" && ["consultas", "pedidos", "descuentos-clientes"].includes(feature)) ||
     (user.role === "CATALOG" && ["catalogo", "marcas", "categorias", "promociones", "banners", "recomendaciones"].includes(feature)) ||
     (user.role === "FINANCE" && feature === "facturacion")
   );

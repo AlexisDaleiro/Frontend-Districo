@@ -1,3 +1,5 @@
+import { browserOperationTimeout } from "./operation-timeout";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -7,6 +9,15 @@ export class ApiError extends Error {
   }
 }
 let refreshFlight: Promise<boolean> | undefined;
+async function refreshSession() {
+  const renew = () => fetch("/api/backend/auth/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", signal: AbortSignal.timeout(browserOperationTimeout("auth/refresh")) }).then((response) => response.ok);
+  if (typeof navigator !== "undefined" && navigator.locks) return navigator.locks.request("districo-session-refresh", async () => {
+    // Another tab may have already rotated the shared HttpOnly cookie.
+    const current = await fetch("/api/backend/auth/me", { cache: "no-store", signal: AbortSignal.timeout(browserOperationTimeout("auth/me")) });
+    return current.ok || await renew();
+  });
+  return renew();
+}
 export async function http<T>(
   path: string,
   method = "GET",
@@ -19,7 +30,7 @@ export async function http<T>(
       headers: multipart ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(multipart ? 95000 : 25000),
+      signal: AbortSignal.timeout(browserOperationTimeout(path, multipart)),
     });
   let response: Response;
   try {
@@ -28,13 +39,7 @@ export async function http<T>(
       response.status === 401 &&
       (!path.startsWith("auth/") || path === "auth/me")
     ) {
-      refreshFlight ??= fetch("/api/backend/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-        signal: AbortSignal.timeout(15000),
-      })
-        .then((r) => r.ok)
+      refreshFlight ??= refreshSession()
         .catch(() => false)
         .finally(() => {
           refreshFlight = undefined;
@@ -53,7 +58,7 @@ export async function http<T>(
     if (
       response.status === 401 &&
       path !== "auth/me" &&
-      !path.includes("login")
+      !path.startsWith("auth/mfa/") && !path.includes("login")
     )
       window.dispatchEvent(new Event("session-expired"));
     throw new ApiError(
@@ -68,7 +73,7 @@ export async function http<T>(
 
 export async function downloadPrivateFile(path: string, filename: string) {
   await http("auth/me");
-  const response = await fetch(`/api/backend/${path}`, { cache: "no-store" });
+  const response = await fetch(`/api/backend/${path}`, { cache: "no-store", signal: AbortSignal.timeout(browserOperationTimeout(path)) });
   if (!response.ok) throw new ApiError("No se pudo descargar el archivo.", response.status);
   const url = URL.createObjectURL(await response.blob());
   const anchor = document.createElement("a");

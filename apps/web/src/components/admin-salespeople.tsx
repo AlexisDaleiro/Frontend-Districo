@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, Plus, Save, UserMinus } from "lucide-react";
-import { AdminNav } from "./admin";
-import { AccessGate } from "./auth";
 import { request, useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal, PageHeading } from "./ui";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
@@ -194,9 +192,7 @@ export function AdminSalespersonPage({ id }: { id: string }) {
     finally { setBusy(false); }
   }
   const seller = q.data;
-  return <div className="container admin-page section"><AccessGate admin><div className="admin-shell">
-    <AdminNav section="vendedores" email={user?.email} />
-    <main className="admin-main admin-record-page">
+  return <div className="admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : seller ? <>
         <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a vendedores</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={seller.profile?.name || "Ficha del vendedor"}>{seller.email}</PageHeading>
@@ -220,6 +216,5 @@ export function AdminSalespersonPage({ id }: { id: string }) {
         <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Asignar cliente">{pickerOpen && seller.profile && <CustomerPicker seller={seller} onClose={() => setPickerOpen(false)} onSaved={refresh} />}</Modal>
         <Modal open={!!removing} onClose={() => setRemoving(null)} title="Quitar asignación"><p>¿Dejar a {removing?.businessName} sin vendedor responsable?</p><div className="actions"><button className="button small" disabled={busy} onClick={() => void unassign()}>{busy ? "Quitando…" : "Quitar asignación"}</button><button className="button small secondary" onClick={() => setRemoving(null)}>Cancelar</button></div>{error !== undefined && <ErrorBox error={error} />}</Modal>
       </> : <Empty title="Vendedor no encontrado" />}
-    </main>
-  </div></AccessGate></div>;
+  </div>;
 }

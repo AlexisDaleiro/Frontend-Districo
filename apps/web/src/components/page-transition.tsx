@@ -6,16 +6,16 @@ import { storeRoutes } from "@/lib/store-routes";
 
 // Cada ruta es un bloque que sale con fundido y entra subiendo (motion.css).
 // El key por ruta cubre también producto → producto o cuenta → pedidos, que
-// un template.tsx no vuelve a montar. Las secciones de administración
-// comparten la barra lateral y cambian con su propia transición (admin.tsx).
+// un template.tsx no vuelve a montar. Administración conserva su layout sin
+// transiciones que retrasen la interacción entre secciones.
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const key = pathname.startsWith(storeRoutes.admin)
-    ? storeRoutes.admin
-    : pathname;
+  if (pathname === storeRoutes.admin || pathname.startsWith(`${storeRoutes.admin}/`)) {
+    return <div className="page-view">{children}</div>;
+  }
   return (
     <ViewTransition
-      key={key}
+      key={pathname}
       enter="page-enter"
       exit="page-exit"
       default="none"

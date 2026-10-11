@@ -4,6 +4,10 @@ Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b3382
 
 **Verificación del 26/09/2026:** `git diff eacea83:backend HEAD:apps/api` solo muestra cambios de la migración a monorepo (`Dockerfile`, `README.md`, `.dockerignore` y lockfile propio eliminados). `src/` y `prisma/` son idénticos a la referencia, y `origin/backend` sigue en `eacea83`. Cada ruta que admite `src/lib/proxy-policy.ts` existe en los controladores. Los contratos consumidos no cambiaron.
 
+## Descuentos por cliente (11/10/2026)
+
+Porcentaje fijo y modalidad `BEST_PRICE | STACK`, gestionados desde la ficha del cliente con permiso independiente Descuentos de clientes. `PATCH admin/customers/:id/discount`, historial transaccional, estimacion de descuentos en `cart.pricing` y snapshot definitivo en el pedido. Vendedores limitados a clientes asignados; credito y cuotas usan el neto. Contratos, migracion aditiva y despliegue coordinado en `CUSTOMER-DISCOUNTS.md`.
+
 ## Integraciones (9/10/2026)
 
 - `GET admin/integrations`: listado protegido con `{id,name,status}` de WhatsApp, Mailing y Mercarea. Los tres devuelven `INACTIVE`: no hay adaptadores conectados ni comprobaciones en vivo de proveedores. No devuelve credenciales ni admite escrituras.
@@ -11,6 +15,14 @@ Referencia inspeccionada: backend del socio, commit `eacea83ef05e834c423c22b3382
 - Requiere desplegar frontend/API coordinados por la nueva entrada de permisos; no requiere migración de base de datos.
 
 ## Ofertas laborales (9/10/2026)
+
+Actualización 11/10/2026: fichas públicas/administrativas individuales, postulaciones con CV privado y bandeja de candidatos; contratos y despliegue en `SECURITY-AND-JOBS.md`. Sustituye el envío por correo indicado en el registro original de abajo. `GET admin/jobs` admite además `status=retired` para conservar el acceso a candidatos de ofertas retiradas.
+
+## Sesiones y doble factor (11/10/2026)
+
+Autenticación con sesiones persistidas/revocables y MFA opcional para administradores. Logout invalida refresh y access de la sesión, y refresh consume cada token de forma atómica. Nuevas rutas privadas de seguridad y sesiones, y desafío de login para autenticadores configurados. Migración y contratos en `SECURITY-AND-JOBS.md`; requiere volver a ingresar tras desplegar. Las notas originales de autenticación de este documento son históricas.
+
+## Contratos originales de empleos (9/10/2026)
 
 - `GET jobs`: listado público de ofertas activas, no eliminadas y con fecha de publicación alcanzada en America/Montevideo. Cada oferta incluye puesto, área, sede, jornada, fecha `published` (AAAA-MM-DD), descripción, requisitos, beneficios, correo de postulaciones e `isExample`.
 - `GET admin/jobs`: búsqueda por puesto/área/sede (`search`), `status=active|inactive`, `page` y `limit` (máximo 100); `{items,meta:{total,page,limit}}` con filtros previos a la paginación.

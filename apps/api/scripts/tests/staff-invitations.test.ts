@@ -33,6 +33,8 @@ function fixture() {
       },
     },
     refreshToken: { updateMany: async () => { revokedTokens++; return { count: 1 }; } },
+    authSession: { updateMany: async () => ({ count: 1 }) },
+    mfaChallenge: { updateMany: async () => ({ count: 0 }) },
     userPermission: { deleteMany: async () => ({ count: 0 }) },
     auditLog: { create: async ({ data }: any) => { audits.push(data.action); return data; } },
   };

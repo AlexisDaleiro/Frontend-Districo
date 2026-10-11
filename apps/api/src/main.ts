@@ -4,12 +4,14 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { SensitiveFieldsInterceptor } from './common/interceptors/sensitive-fields.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');
+  app.useGlobalInterceptors(new SensitiveFieldsInterceptor());
   app.use(cookieParser());
   const allowedOrigins = (config.get<string>('CORS_ORIGIN') ?? '')
     .split(',')

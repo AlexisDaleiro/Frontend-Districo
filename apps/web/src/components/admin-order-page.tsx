@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AccessGate } from "./auth";
-import { AdminNav, OrderProgressControl } from "./admin";
+import { OrderProgressControl } from "./admin";
 import { OrderBilling } from "./order-billing";
 import { OrderProductReturns } from "./order-product-returns";
 import { OrderItems } from "./orders";
@@ -26,9 +25,7 @@ export function AdminOrderPage({ id }: { id: string }) {
   const canView = canSeeAdminSection(user, "pedidos");
   const canViewBilling = canViewAdminFeature(user, "facturacion");
   const order = q.data;
-  return <div className="container admin-page section"><AccessGate admin><div className="admin-shell">
-    <AdminNav section="pedidos" email={user?.email} />
-    <main className="admin-main admin-record-page">
+  return <div className="admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : order ? <>
         <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "pedidos asignados" : "pedidos"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={`Pedido ${order.orderNumber}`}>
@@ -47,6 +44,5 @@ export function AdminOrderPage({ id }: { id: string }) {
         <section className="admin-record-section"><OrderProductReturns key={order.id} order={order} readOnly={!canEditAdminFeature(user, "pedidos")} onUpdated={refreshOrder} /></section>
         {canViewBilling && <section className="admin-record-section"><OrderBilling key={order.id} order={order} readOnly={!canEditAdminFeature(user, "facturacion")} onUpdated={refreshOrder} /></section>}
       </> : <Empty title="Pedido no encontrado" />}
-    </main>
-  </div></AccessGate></div>;
+  </div>;
 }

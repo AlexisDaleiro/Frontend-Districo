@@ -47,7 +47,7 @@ test("Gatitos y Cachorros filtran por especie y etapa; las tarjetas cuentan toda
   await kittens.click();
   await expect(page.locator(".product-card")).toHaveCount(1);
   await expect(page.locator(".product-card")).toContainText("Biofresh gatos Cachorros");
-  await expect(page.locator(".product-card")).toContainText("4 presentaciones");
+  await expect(page.locator(".product-card").getByRole("group", { name: "Presentaciones de Biofresh gatos Cachorros" }).getByRole("button")).toHaveCount(4);
   await page.goto(storeRoutes.home);
   await shortcuts.getByRole("link", { name: "Cachorros", exact: true }).click();
   await expect(page.locator(".product-card")).toHaveCount(1);

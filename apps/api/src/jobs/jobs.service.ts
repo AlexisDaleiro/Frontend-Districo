@@ -9,13 +9,13 @@ export const jobPublicWhere = (now = new Date()): Prisma.JobOpeningWhereInput =>
 });
 
 export const jobListWhere = (query: JobListQueryDto): Prisma.JobOpeningWhereInput => ({
-  deletedAt: null,
-  ...(query.status ? { active: query.status === 'active' } : {}),
+  deletedAt: query.status === 'retired' ? { not: null } : null,
+  ...(query.status && query.status !== 'retired' ? { active: query.status === 'active' } : {}),
   ...(query.search ? { OR: ['title', 'area', 'location'].map((field) => ({ [field]: { contains: query.search, mode: 'insensitive' } })) } : {}),
 });
 
 export const presentJob = ({ deletedAt: _deletedAt, createdAt: _createdAt, updatedAt: _updatedAt, ...job }: JobOpening) => ({
-  ...job, published: job.published.toISOString().slice(0, 10),
+  ...job, published: job.published.toISOString().slice(0, 10), ...(_deletedAt ? { retired: true } : {}),
 });
 
 @Injectable()
@@ -25,6 +25,12 @@ export class JobsService {
   async publicList() {
     const jobs = await this.prisma.jobOpening.findMany({ where: jobPublicWhere(), orderBy: [{ published: 'desc' }, { id: 'asc' }] });
     return jobs.map(presentJob);
+  }
+
+  async detail(id: string, publicOnly = false) {
+    const job = await this.prisma.jobOpening.findFirst({ where: { id, ...(publicOnly ? jobPublicWhere() : {}) } });
+    if (!job) throw new NotFoundException('Oferta laboral no encontrada.');
+    return presentJob(job);
   }
 
   async adminList(query: JobListQueryDto) {

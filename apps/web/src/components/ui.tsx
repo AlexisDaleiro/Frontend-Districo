@@ -145,6 +145,11 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const requestClose = () => {
+    if (ref.current?.querySelector('form[aria-busy="true"]')) return;
+    if (ref.current?.querySelector('[data-unsaved-changes="true"]') && !window.confirm("Tenés cambios sin guardar. ¿Querés descartarlos?")) return;
+    onClose();
+  };
   const titleId = useId();
   // Mientras corre la animación de cierre se muestra el último contenido y
   // título: varios diálogos quitan su contenido en el mismo cambio que los
@@ -165,6 +170,11 @@ export function Modal({
       return;
     }
     if (!dialog.open) return;
+    if (dialog.closest(".admin-page")) {
+      dialog.close();
+      setShown(false);
+      return;
+    }
     // Se cierra al terminar la animación de salida de motion.css; el tiempo
     // de respaldo cubre navegadores que no disparan animationend. Mientras
     // sale queda oculto a la accesibilidad: puede convivir con el diálogo que
@@ -193,12 +203,12 @@ export function Modal({
       className={`${sheet ? "modal modal-sheet" : "modal"}${className ? ` ${className}` : ""}`}
       aria-labelledby={titleId}
       onCancel={(e) => {
-        // Escape también pasa por la animación de cierre.
+        // Escape conserva los mismos controles de cierre que el botón.
         e.preventDefault();
-        onClose();
+        requestClose();
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) requestClose();
       }}
     >
       <div className="modal-head">
@@ -207,7 +217,7 @@ export function Modal({
           type="button"
           className="icon-button"
           aria-label="Cerrar"
-          onClick={onClose}
+          onClick={requestClose}
         >
           <X />
         </button>

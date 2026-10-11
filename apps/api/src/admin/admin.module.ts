@@ -12,10 +12,11 @@ import { SalespeopleService } from './salespeople.service';
 import { AdminToolsController } from './admin-tools.controller';
 import { AdminToolsService } from './admin-tools.service';
 import { SalesReportsService } from './sales-reports.service';
+import { CustomerDiscountVisibilityInterceptor } from './customer-discount-visibility.interceptor';
 
 @Module({
   imports: [PrismaModule, AuditModule, OrdersModule, ApplicationsModule, PromotionsModule, RecommendationsModule],
   controllers: [AdminController, SalespeopleController, AdminToolsController],
-  providers: [AdminService, SalespeopleService, AdminToolsService, SalesReportsService],
+  providers: [AdminService, SalespeopleService, AdminToolsService, SalesReportsService, CustomerDiscountVisibilityInterceptor],
 })
 export class AdminModule {}

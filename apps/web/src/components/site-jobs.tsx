@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BriefcaseBusiness, Clock, MapPin, Search } from "lucide-react";
-import { jobAreas as areas, jobLocations, jobSchedules as schedules, type JobOpening } from "@/data/job-openings";
+import Link from "next/link";
+import { BriefcaseBusiness, ChevronDown, Clock, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { jobAreas as areas, jobLocations, jobPage, jobSchedules as schedules, type JobOpening } from "@/data/job-openings";
 import { usePublicApi } from "./providers";
 import { ErrorBox, Loading } from "./ui";
 
@@ -10,7 +11,7 @@ const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").t
 const publishedLabel = (date: string) =>
   `Publicada el ${new Date(`${date}T12:00:00Z`).toLocaleDateString("es-UY", { day: "numeric", month: "long", timeZone: "UTC" })}`;
 const applyHref = (job: JobOpening) =>
-  `mailto:${job.contactEmail}?subject=${encodeURIComponent(`Postulación: ${job.title} (${job.location})`)}`;
+  jobPage(job.id);
 const toggle = <T,>(list: readonly T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
 
 export function SiteJobs() {
@@ -21,6 +22,7 @@ export function SiteJobs() {
   const [pickedSchedules, setPickedSchedules] = useState<readonly string[]>([]);
   const [sort, setSort] = useState<"recent" | "az">("recent");
   const [open, setOpen] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   if (jobs.isPending) return <Loading />;
@@ -71,7 +73,9 @@ export function SiteJobs() {
       </form>
 
       <div ref={resultsRef} className="jobs-body">
-        <aside className="jobs-filters" aria-label="Filtros">
+        <aside className={`jobs-filters${filtersOpen ? " is-expanded" : ""}`} aria-label="Filtros">
+          <button className="jobs-mobile-filters button secondary" type="button" aria-expanded={filtersOpen} aria-controls="jobs-filter-options" onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={17} /> Filtros ({pickedAreas.length + pickedSchedules.length})<ChevronDown size={17} /></button>
+          <div id="jobs-filter-options" className="jobs-filter-options">
           <fieldset>
             <legend>Área</legend>
             {areas.map((area) => (
@@ -95,6 +99,7 @@ export function SiteJobs() {
           <button className="button" type="button" onClick={() => { setQuery(""); setLocation(""); setPickedAreas([]); setPickedSchedules([]); }}>
             Limpiar filtros
           </button>
+          </div>
         </aside>
 
         <section aria-labelledby="jobs-result">
@@ -147,7 +152,7 @@ export function SiteJobs() {
                         <h4>Qué ofrecemos</h4>
                         <ul>{job.benefits.map((item, index) => <li key={index}>{item}</li>)}</ul>
                       </div>}
-                      {!job.isExample && <a className="button lime" href={applyHref(job)}>Postularme</a>}
+                      <Link className="button lime" href={applyHref(job)}>{job.isExample ? "Ver ficha" : "Postularme"}</Link>
                     </div>
                   )}
                 </li>

@@ -22,6 +22,10 @@ const relatedPaths: Record<string, string[]> = {
 };
 
 export function affectedAdminQueries(mutationPath: string, queryPath: string): boolean {
+  if (/^admin\/customers\/[^/]+\/discount$/.test(mutationPath)) {
+    return ["admin/customers", "cart", "auth/me", "account/me"].some((path) =>
+      queryPath === path || queryPath.startsWith(`${path}/`) || queryPath.startsWith(`${path}?`));
+  }
   if (mutationPath.startsWith("admin/bulk/")) {
     const affected = mutationPath.startsWith("admin/bulk/products/")
       ? ["products", "pricing", "cart", "admin/dashboard", "admin/search", "admin/bulk/history"]

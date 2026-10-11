@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { Permission, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'node:crypto';
@@ -13,6 +13,9 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { effectivePermissions } from '../common/business/account-access';
 import { staffAccessMatrix } from '../common/staff-role-access';
+import { AuthSessionsService } from './auth-sessions.service';
+import { MfaService } from './mfa.service';
+import { JwtUser } from '../common/types/jwt-user.type';
 
 export interface TokenPayload {
   sub: string;
@@ -29,9 +32,11 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly sessions: AuthSessionsService = new AuthSessionsService(config, jwtService, prisma),
+    private readonly mfa: MfaService = new MfaService(config, prisma),
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, userAgent?: string) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || !user.active) {
       throw new UnauthorizedException('Credenciales invalidas.');
@@ -42,67 +47,42 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales invalidas.');
     }
 
-    return this.issueTokenPair({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      permissions: effectivePermissions(user.role, user.customerAccount?.accountStatus, user.permissions.map((permission) => permission.permission)),
-      customerAccountId: user.customerAccountId,
-    });
+    if (user.mfaEnabledAt) {
+      const challenge = await this.prisma.mfaChallenge.create({ data: { userId: user.id, expiresAt: new Date(Date.now() + 5 * 60000) } });
+      const challengeToken = await this.jwtService.signAsync({ sub: user.id, jti: challenge.id, purpose: 'mfa' }, { secret: this.config.get<string>('JWT_ACCESS_SECRET') ?? 'dev-access-secret', expiresIn: '5m' });
+      return { mfaRequired: true, challengeToken };
+    }
+    return this.sessions.create(this.payload(user), userAgent);
   }
 
   async refresh(refreshToken: string) {
-    let payload: TokenPayload;
-    try {
-      payload = await this.jwtService.verifyAsync<TokenPayload>(refreshToken, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'dev-refresh-secret',
-      });
-    } catch {
-      throw new UnauthorizedException('Refresh token invalido.');
-    }
-
-    const tokens = await this.prisma.refreshToken.findMany({
-      where: {
-        userId: payload.sub,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    const stored = await this.findMatchingRefreshToken(tokens, refreshToken);
-    if (!stored) {
-      throw new ForbiddenException('Refresh token revocado o vencido.');
-    }
-
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
-
-    const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.active) {
-      throw new UnauthorizedException('Usuario inactivo.');
-    }
-
-    return this.issueTokenPair({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      permissions: effectivePermissions(user.role, user.customerAccount?.accountStatus, user.permissions.map((permission) => permission.permission)),
-      customerAccountId: user.customerAccountId,
+    return this.sessions.refresh(refreshToken, async (id) => {
+      const user = await this.usersService.findById(id);
+      if (!user?.active) throw new UnauthorizedException('Usuario inactivo.');
+      return this.payload(user);
     });
   }
 
   async logout(refreshToken: string) {
-    const tokens = await this.prisma.refreshToken.findMany({ where: { revokedAt: null } });
-    const stored = await this.findMatchingRefreshToken(tokens, refreshToken);
-    if (stored) {
-      await this.prisma.refreshToken.update({
-        where: { id: stored.id },
-        data: { revokedAt: new Date() },
-      });
-    }
-    return { success: true };
+    return this.sessions.logout(refreshToken);
+  }
+
+  async verifyMfa(challengeToken: string, code: string, userAgent?: string) {
+    let payload: { sub: string; jti: string; purpose: string };
+    try {
+      payload = await this.jwtService.verifyAsync(challengeToken, { secret: this.config.get<string>('JWT_ACCESS_SECRET') ?? 'dev-access-secret' });
+      if (!payload.sub || !payload.jti || payload.purpose !== 'mfa') throw new Error();
+    } catch { throw new UnauthorizedException('El acceso venció. Ingresá nuevamente.'); }
+    const attempted = await this.prisma.mfaChallenge.updateMany({ where: { id: payload.jti, userId: payload.sub, consumedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: 5 } }, data: { attempts: { increment: 1 } } });
+    if (!attempted.count) throw new UnauthorizedException('El acceso venció. Ingresá nuevamente.');
+    return this.prisma.$transaction(async (tx) => {
+      await this.mfa.verifyCode(tx, payload.sub, code);
+      const consumed = await tx.mfaChallenge.updateMany({ where: { id: payload.jti, userId: payload.sub, consumedAt: null, expiresAt: { gt: new Date() } }, data: { consumedAt: new Date() } });
+      if (!consumed.count) throw new UnauthorizedException('Acceso ya utilizado.');
+      const user = await this.usersService.findById(payload.sub);
+      if (!user?.active) throw new UnauthorizedException();
+      return this.sessions.create(this.payload(user), userAgent, true, tx);
+    });
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
@@ -142,17 +122,30 @@ export class AuthService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
-  async me(userId: string) {
-    const user = await this.usersService.findById(userId);
-    if (!user) {
+  private profileOverrides(user: Pick<JwtUser, 'role' | 'customRoleId'>) {
+    return user.role === Role.CLIENT ? Promise.resolve([]) : user.role === Role.CUSTOM && user.customRoleId
+      ? this.prisma.customStaffRoleAccess.findMany({ where: { roleId: user.customRoleId } })
+      : this.prisma.staffRoleAccess.findMany({ where: { role: user.role } });
+  }
+
+  async me(input: string | JwtUser) {
+    const actor = typeof input === 'string' ? undefined : input;
+    const userId = typeof input === 'string' ? input : input.sub;
+    const [user, prepared] = await Promise.all([
+      this.usersService.findById(userId),
+      actor ? this.profileOverrides(actor) : Promise.resolve(undefined),
+    ]);
+    if (!user || !user.active) {
       throw new UnauthorizedException();
     }
-    const { passwordHash: _passwordHash, ...safeUser } = user;
-    const staffOverrides = user.role === Role.CLIENT ? [] : user.role === Role.CUSTOM && user.customRoleId
-      ? await this.prisma.customStaffRoleAccess.findMany({ where: { roleId: user.customRoleId } })
-      : await this.prisma.staffRoleAccess.findMany({ where: { role: user.role } });
+    const { passwordHash: _passwordHash, mfaSecretEncrypted: _mfaSecret, mfaLastStep: _step, ...safeUser } = user;
+    const { internalCreditNote: _note, ...account } = user.customerAccount ?? {};
+    // If the assignment changed during this request, reload the matching rights.
+    const staffOverrides = prepared && user.role === actor?.role && user.customRoleId === actor.customRoleId
+      ? prepared : await this.profileOverrides(user);
     return {
       ...safeUser,
+      customerAccount: user.customerAccount ? account : null,
       staffAccess: user.role === Role.CLIENT ? undefined : staffAccessMatrix(user.role, staffOverrides),
       permissions: safeUser.permissions.filter((permission) =>
         effectivePermissions(user.role, user.customerAccount?.accountStatus, [permission.permission]).length > 0,
@@ -160,34 +153,9 @@ export class AuthService {
     };
   }
 
-  private async issueTokenPair(payload: TokenPayload) {
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.config.get<string>('JWT_ACCESS_SECRET') ?? 'dev-access-secret',
-      expiresIn: (this.config.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m') as JwtSignOptions['expiresIn'],
-    });
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'dev-refresh-secret',
-      expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as JwtSignOptions['expiresIn'],
-    });
-
-    const tokenHash = await bcrypt.hash(refreshToken, Number(this.config.get<string>('BCRYPT_SALT_ROUNDS') ?? 10));
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: payload.sub,
-        tokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    return { accessToken, refreshToken, user: payload };
-  }
-
-  private async findMatchingRefreshToken(tokens: { id: string; tokenHash: string }[], refreshToken: string) {
-    for (const token of tokens) {
-      if (await bcrypt.compare(refreshToken, token.tokenHash)) {
-        return token;
-      }
-    }
-    return null;
+  private payload(user: NonNullable<Awaited<ReturnType<UsersService['findById']>>>): TokenPayload {
+    return { sub: user.id, email: user.email, role: user.role, customerAccountId: user.customerAccountId,
+      permissions: effectivePermissions(user.role, user.customerAccount?.accountStatus, user.permissions.map((entry) => entry.permission)),
+    };
   }
 }

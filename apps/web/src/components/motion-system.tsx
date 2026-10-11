@@ -207,6 +207,10 @@ export function MotionSystem() {
       if (element.closest("[contenteditable]")) return;
       if (seen.has(element)) return;
       seen.add(element);
+      if (element.closest(".admin-page")) {
+        reveal(element, false);
+        return;
+      }
       const parent = element.parentElement;
       const staggered = !!parent?.matches(staggerSelector);
       if (staggered) {

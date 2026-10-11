@@ -2,7 +2,7 @@ import { Role } from '@prisma/client';
 
 export const staffFeatures = [
   'resumen', 'ventas', 'consultas', 'solicitudes', 'clientes', 'pedidos',
-  'facturacion', 'catalogo', 'marcas', 'categorias', 'promociones',
+  'descuentos-clientes', 'facturacion', 'catalogo', 'marcas', 'categorias', 'promociones',
   'banners', 'recomendaciones', 'personal', 'roles', 'vendedores', 'ofertas-laborales', 'integraciones',
 ] as const;
 
@@ -15,6 +15,7 @@ const defaults: Record<StaffFeature, Partial<Record<Role, StaffAccess>>> = {
   consultas: { SALES: { canView: true, canEdit: true } },
   solicitudes: { SALES: { canView: true, canEdit: false } },
   clientes: { SALES: { canView: true, canEdit: false }, FINANCE: { canView: true, canEdit: false } },
+  'descuentos-clientes': { SALES: { canView: true, canEdit: true }, FINANCE: { canView: true, canEdit: false } },
   pedidos: { SALES: { canView: true, canEdit: true }, FINANCE: { canView: true, canEdit: false } },
   facturacion: { SALES: { canView: true, canEdit: false }, FINANCE: { canView: true, canEdit: true } },
   catalogo: { CATALOG: { canView: true, canEdit: true } },
@@ -54,6 +55,7 @@ export function staffFeatureForPath(path: string): StaffFeature | undefined {
   if (/^\/admin\/sales(?:\/|$)/.test(clean)) return 'ventas';
   if (/^\/admin\/contact-inquiries(?:\/|$)/.test(clean)) return 'consultas';
   if (/^\/(?:admin\/)?applications(?:\/|$)/.test(clean)) return 'solicitudes';
+  if (/^\/admin\/customers\/[^/]+\/discount$/.test(clean)) return 'descuentos-clientes';
   if (/^\/admin\/customers(?:\/|$)/.test(clean)) return 'clientes';
   if (/^\/admin\/orders\/[^/]+\/(?:payments|invoices|credit-notes|refunds)(?:\/|$)/.test(clean)) return 'facturacion';
   if (/^\/admin\/orders(?:\/|$)/.test(clean)) return 'pedidos';

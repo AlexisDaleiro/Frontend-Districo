@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { AccountStatus, CreditStatus, OrderStatus, Permission, Prisma, Role, StockReservationStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PromotionLine } from '../common/business/promotion-rules';
+import { calculateCustomerDiscounts } from '../common/business/customer-discounts';
 import { requiresManualReview, submittedStatusForCredit } from '../common/business/commerce-rules';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { InventoryService } from '../inventory/inventory.service';
@@ -97,25 +98,24 @@ export class OrdersService {
 
     const promotionLines = this.toPromotionLines(cart);
     const discounts = await this.promotions.calculateDiscounts(promotionLines);
-    const discountByLine = new Map<number, number>();
-    for (const discount of discounts) {
-      discountByLine.set(discount.lineIndex, (discountByLine.get(discount.lineIndex) ?? 0) + discount.amount);
-    }
+    let pricing = calculateCustomerDiscounts(promotionLines, discounts);
 
     let manualReview = creditStatusReview;
     const order = await this.prisma.$transaction(async (tx) => {
       await this.releaseActiveCartReservations(cart.id, tx, StockReservationStatus.RELEASED);
 
-      const subtotal = cart.items.reduce((sum, item) => sum + this.lineGross(item), 0);
-      const discountTotal = [...discountByLine.values()].reduce((sum, amount) => sum + amount, 0);
-      const total = new Prisma.Decimal(Math.max(0, subtotal - discountTotal));
+      let total = new Prisma.Decimal(pricing.total);
       let reviewReason = creditStatusReview ? String(creditStatus) : undefined;
       if (user.role === Role.CLIENT && user.customerAccountId) {
         // Checkout requests for the same customer must evaluate exposure serially.
         await tx.$queryRaw`SELECT "id" FROM "CustomerAccount" WHERE "id" = ${user.customerAccountId} FOR UPDATE`;
         await tx.$queryRaw`SELECT public.refresh_customer_payment_status(${user.customerAccountId})::text`;
-        const currentAccount = await tx.customerAccount.findUniqueOrThrow({ where: { id: user.customerAccountId }, select: { accountStatus: true, creditLimit: true, creditStatus: true } });
+        const currentAccount = await tx.customerAccount.findUniqueOrThrow({ where: { id: user.customerAccountId }, select: {
+          accountStatus: true, creditLimit: true, creditStatus: true, discountPercentage: true, discountMode: true,
+        } });
         if (currentAccount.accountStatus !== AccountStatus.APPROVED) throw new ForbiddenException('La cuenta no esta habilitada para comprar.');
+        pricing = calculateCustomerDiscounts(promotionLines, discounts, currentAccount);
+        total = new Prisma.Decimal(pricing.total);
         if (requiresManualReview(currentAccount.creditStatus)) {
           if (!acceptManualReview) throw new BadRequestException('Este pedido quedará sujeto a revisión manual. Debe aceptar la condición.');
           manualReview = true;
@@ -144,8 +144,11 @@ export class OrdersService {
           requiresManualReview: manualReview,
           reviewReason,
           acceptedManualReview: acceptManualReview,
-          subtotal,
-          discountTotal,
+          subtotal: pricing.subtotal,
+          discountTotal: pricing.discountTotal,
+          customerDiscountPercentage: pricing.customerDiscountPercentage,
+          customerDiscountMode: pricing.customerDiscountMode,
+          customerDiscountTotal: pricing.customerDiscountTotal,
           total,
           ...terms,
           createdAt: confirmedAt,
@@ -169,8 +172,7 @@ export class OrdersService {
         if (!variant.prices[0]) throw new BadRequestException('La variante no tiene precio vigente.');
         this.inventory.validateAvailableStock(variant, item.quantity);
 
-        const gross = this.lineGross(item);
-        const discount = discountByLine.get(index) ?? 0;
+        const line = pricing.lines[index];
         await tx.orderItem.create({
           data: {
             orderId: createdOrder.id,
@@ -181,8 +183,8 @@ export class OrdersService {
             sku: variant.sku,
             quantity: item.quantity,
             unitPrice: Number(variant.prices[0].amount),
-            discount,
-            subtotal: Math.max(0, gross - discount),
+            discount: line.discount,
+            subtotal: line.total,
           },
         });
 
@@ -215,7 +217,8 @@ export class OrdersService {
       paymentMethod: order?.paymentMethod,
       paymentTermMonths: order?.paymentTermMonths,
       paymentSchedule: order?.paymentSchedule,
-      discounts: discounts.map((discount) => ({
+      appliedPricing: pricing,
+      eligiblePromotions: discounts.map((discount) => ({
         lineIndex: discount.lineIndex,
         promotionId: discount.promotionId,
         promotionName: discount.promotionName,
@@ -442,10 +445,6 @@ export class OrdersService {
 
   private canBuyMedication(user: JwtUser) {
     return user.role === Role.ADMIN || user.permissions.includes(Permission.CAN_BUY_MEDICATIONS);
-  }
-
-  private lineGross(item: CheckoutCart['items'][number]) {
-    return item.quantity * Number(item.productVariant.prices[0]?.amount ?? 0);
   }
 
   private toPromotionLines(cart: CheckoutCart): PromotionLine[] {

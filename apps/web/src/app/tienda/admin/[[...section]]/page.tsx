@@ -1,7 +1,12 @@
 import { Admin } from "@/components/admin";
 import { notFound, redirect } from "next/navigation";
 import { storeRoutes } from "@/lib/store-routes";
+import { adminSectionPaths } from "@/lib/admin-navigation";
 export const metadata = { title: "Administración" };
+export function generateStaticParams() {
+  // Only the empty UI is prerendered; private data stays behind session/API guards.
+  return adminSectionPaths.map((section) => ({ section: section ? [section] : [] }));
+}
 export default async function Page({
   params,
 }: {

@@ -21,6 +21,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import { repeatOrderItems, type RepeatOrderResult } from "@/lib/repeat-order";
 import { paymentDate, paymentSchedulePreview } from "@/lib/payment-terms";
 import { OrderPaymentPlan } from "./order-payment-plan";
+import { discountModeLabel } from "@/lib/customer-discount";
 function CartLine({
   item,
   busy,
@@ -289,6 +290,14 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
           <strong>Subtotal estimado</strong>
           <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
         </SubtotalRow>
+        {q.data.pricing && <>
+          {q.data.pricing.promotionDiscountTotal > 0 && <div className="row between"><span>Promociones</span><strong>−{money(q.data.pricing.promotionDiscountTotal, q.data.items[0]?.currency)}</strong></div>}
+          {q.data.pricing.customerDiscountPercentage > 0 && <>
+            <div className="row between"><span>Descuento de tu cuenta ({q.data.pricing.customerDiscountPercentage}%)</span><strong>−{money(q.data.pricing.customerDiscountTotal, q.data.items[0]?.currency)}</strong></div>
+            <p className="small-copy muted">{discountModeLabel(q.data.pricing.customerDiscountMode)}</p>
+          </>}
+          <SubtotalRow value={q.data.pricing.total}><strong>Total estimado</strong><strong>{money(q.data.pricing.total, q.data.items[0]?.currency)}</strong></SubtotalRow>
+        </>}
         <div className="cart-summary-note"><ShieldCheck size={18} aria-hidden="true" /><p>Sin cobro en línea. Los descuentos se confirman al enviar el pedido y la entrega se coordina con DISTRICO.</p></div>
         {checkoutMode && user?.role === "CLIENT" && (
           <div className="checkout-address">
@@ -322,10 +331,10 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
             <label className="field">Cuotas y plazo<select aria-label="Cuotas y plazo" value={paymentTermMonths} onChange={(event) => setPaymentTermMonths(Number(event.target.value))} disabled={checkout.isPending}>
               <option value={1}>1 cuota · 1 mes</option><option value={3}>3 cuotas · 3 meses</option><option value={6}>6 cuotas · 6 meses</option>
             </select></label>
-            <ul className="payment-preview">{paymentSchedulePreview(q.data?.total ?? 0, paymentTermMonths).map((item) => <li key={item.number}>
+            <ul className="payment-preview">{paymentSchedulePreview(q.data.pricing?.total ?? q.data.total, paymentTermMonths).map((item) => <li key={item.number}>
               <span>Cuota {item.number} · {paymentDate(item.dueAt)}</span><strong>{money(item.amountCents / 100)}</strong>
             </li>)}</ul>
-            <p className="small-copy muted">Estimación antes de descuentos, desde la confirmación. Sin recargo.</p>
+            <p className="small-copy muted">Estimación desde la confirmación, sujeta al total definitivo del pedido. Sin recargo.</p>
           </>}
         </fieldset>}
         {checkoutMode && manual && (
@@ -511,6 +520,9 @@ export function OrderItems({ order }: { order: Order }) {
         </span>
         <h3>Total: {money(order.total, order.currency)}</h3>
       </div>
+      {Number(order.customerDiscountPercentage ?? 0) > 0 && <p className="small-copy muted">
+        Descuento de cuenta: {Number(order.customerDiscountPercentage)}% · {discountModeLabel(order.customerDiscountMode)} · Aplicado: {money(Number(order.customerDiscountTotal ?? 0), order.currency)}
+      </p>}
     </>
   );
 }

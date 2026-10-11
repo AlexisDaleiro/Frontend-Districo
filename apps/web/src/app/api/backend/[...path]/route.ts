@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { allowedPath, sanitize } from "@/lib/proxy-policy";
 import { backendApiUrl } from "@/lib/backend-url";
 import { isDemoMode } from "@/lib/data-mode";
+import { operationTimeout } from "@/lib/operation-timeout";
 export const dynamic = "force-dynamic";
 const cookieOptions = {
   httpOnly: true,
@@ -52,8 +53,10 @@ async function handle(
   const applicationUpload = request.method === "POST" && (
     path === "applications" || /^admin\/applications\/[a-zA-Z0-9_-]+\/documents$/.test(path)
   ) && request.headers.get("content-type")?.startsWith("multipart/form-data;");
-  const multipartUpload = invoiceUpload || bannerUpload || catalogUpload || applicationUpload;
+  const cvUpload = request.method === "POST" && /^jobs\/[^/]+\/applications$/.test(path);
+  const multipartUpload = invoiceUpload || bannerUpload || catalogUpload || applicationUpload || cvUpload;
   const privateDownload = request.method === "GET" && (
+    /^admin\/jobs\/[^/]+\/applications\/[^/]+\/cv$/.test(path) ||
     /^orders\/me\/invoices\/[a-zA-Z0-9_-]+\/pdf$/.test(path) ||
     /^admin\/orders\/[a-zA-Z0-9_-]+\/(invoices|credit-notes)\/[a-zA-Z0-9_-]+$/.test(path) ||
     /^admin\/(applications|customers)\/[a-zA-Z0-9_-]+\/documents\/[a-zA-Z0-9_-]+$/.test(path)
@@ -83,6 +86,10 @@ async function handle(
     body = JSON.stringify({
       refreshToken: request.cookies.get("districo-refresh")?.value ?? "",
     });
+  if (path === "auth/mfa/verify") {
+    const input = JSON.parse(String(body ?? '{}'));
+    body = JSON.stringify({ code: input.code, challengeToken: request.cookies.get("districo-mfa-challenge")?.value ?? "" });
+  }
   // Backend currently returns a password-reset token to any caller. Do not expose it publicly.
   if (path === "auth/forgot-password")
     return reply(
@@ -101,11 +108,12 @@ async function handle(
         headers: {
           "Content-Type": multipartUpload ? request.headers.get("content-type")! : "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "User-Agent": (request.headers.get("user-agent") ?? "").slice(0, 300),
         },
         body,
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(catalogUpload || applicationUpload || csvDownload || path.startsWith("admin/bulk/") || /^admin\/orders\/[^/]+\/returns(?:\/preview)?$/.test(path) ? 90000 : 20000),
+        signal: AbortSignal.timeout(operationTimeout(path, !!multipartUpload)),
       },
     );
     if ((privateDownload || csvDownload) && upstream.ok) {
@@ -133,7 +141,7 @@ async function handle(
     );
     if (
       upstream.ok &&
-      (path === "auth/login" || path === "auth/refresh") &&
+      (path === "auth/login" || path === "auth/refresh" || path === "auth/mfa/verify") &&
       typeof data.accessToken === "string" &&
       typeof data.refreshToken === "string"
     ) {
@@ -145,8 +153,14 @@ async function handle(
         ...cookieOptions,
         maxAge: 60 * 60 * 24 * 7,
       });
+      response.cookies.set("districo-mfa-challenge", "", { ...cookieOptions, maxAge: 0 });
+    }
+    if (upstream.ok && path === "auth/login" && data.mfaRequired === true && typeof data.challengeToken === "string") {
+      response.cookies.set("districo-mfa-challenge", data.challengeToken, { ...cookieOptions, maxAge: 300 });
+      for (const name of ["districo-access", "districo-refresh"]) response.cookies.set(name, "", { ...cookieOptions, maxAge: 0 });
     }
     if (path === "auth/logout" || (path === "auth/refresh" && !upstream.ok)) {
+      if (path === "auth/logout") response.cookies.set("districo-mfa-challenge", "", { ...cookieOptions, maxAge: 0 });
       response.cookies.set("districo-access", "", {
         ...cookieOptions,
         maxAge: 0,
@@ -166,7 +180,7 @@ async function handle(
       502,
     );
     if (path === "auth/logout")
-      for (const key of ["districo-access", "districo-refresh"])
+      for (const key of ["districo-access", "districo-refresh", "districo-mfa-challenge"])
         response.cookies.set(key, "", { ...cookieOptions, maxAge: 0 });
     return response;
   }

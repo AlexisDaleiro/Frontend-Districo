@@ -4,6 +4,10 @@ export const jobAreas = ["Logística y depósito", "Ventas", "Administración", 
 export const jobLocations = ["Montevideo", "Maldonado"] as const;
 export const jobSchedules = ["Jornada completa", "Medio tiempo"] as const;
 export const jobsPage = "/trabajo";
+export const jobPage = (id: string) => `${jobsPage}/${encodeURIComponent(id)}`;
+export const candidateStatuses = { NEW: "Nuevo", IN_REVIEW: "En revisión", INTERVIEW: "Entrevista", HIRED: "Contratado", REJECTED: "Descartado" } as const;
+export type JobCandidate = { id: string; jobId: string; name: string; email: string; phone: string; message?: string; status: keyof typeof candidateStatuses; cvFilename: string; cvSize: number; createdAt: string };
+export type CandidateList = { items: JobCandidate[]; meta: { total: number; page: number; limit: number } };
 const line = z.string().trim().min(1).max(300);
 export const jobDraftSchema = z.object({
   title: z.string().trim().min(2).max(120),
@@ -13,7 +17,7 @@ export const jobDraftSchema = z.object({
   contactEmail: z.email().max(254), active: z.boolean(), isExample: z.boolean(),
 });
 export type JobDraft = z.infer<typeof jobDraftSchema>;
-export type JobOpening = JobDraft & { id: string };
+export type JobOpening = JobDraft & { id: string; retired?: boolean };
 export type JobList = { items: JobOpening[]; meta: { total: number; page: number; limit: number } };
 export const jobToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Montevideo" });
 

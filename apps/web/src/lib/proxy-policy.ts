@@ -3,6 +3,7 @@ export function allowedPath(path: string, method: string) {
   const rules: Record<string, string[]> = {
     GET: [
       "auth/me",
+      "auth/(security|sessions)",
       "account/me/favorites(/ids)?",
       "products",
       "products/cards",
@@ -24,6 +25,10 @@ export function allowedPath(path: string, method: string) {
       `orders/me/invoices/${id}/pdf`,
       "banners",
       "jobs",
+      `jobs/${id}`,
+      `admin/jobs/${id}`,
+      `admin/jobs/${id}/applications`,
+      `admin/jobs/${id}/applications/${id}/cv`,
       "admin/jobs",
       "admin/integrations",
       `orders/me/${id}`,
@@ -57,8 +62,10 @@ export function allowedPath(path: string, method: string) {
       // forgot-password se admite solo para responder 501 en el proxy; el flujo de
       // restablecimiento del backend expone el token y no se transporta.
       "auth/(login|refresh|logout|forgot-password)",
+      "auth/mfa/(verify|setup|enable|disable|recovery-codes)",
       "auth/staff-invitations/accept",
       "applications",
+      `jobs/${id}/applications`,
       "cart/items",
       `account/me/favorites/${id}`,
       "checkout",
@@ -99,6 +106,7 @@ export function allowedPath(path: string, method: string) {
       `inventory/variants/${id}/stock`,
       `admin/customers/${id}`,
       `admin/staff/${id}/role`,
+      `admin/customers/${id}/discount`,
       "admin/staff/access/(SALES|CATALOG|FINANCE)",
       `admin/staff/roles/${id}/access`,
       `admin/staff/roles/${id}`,
@@ -108,6 +116,7 @@ export function allowedPath(path: string, method: string) {
       `admin/orders/${id}/status`,
       `admin/banners/${id}`,
       `admin/jobs/${id}`,
+      `admin/jobs/${id}/applications/${id}`,
       `promotions/${id}`,
       `promotions/${id}/(activate|deactivate)`,
       `promotions/expiration/${id}`,
@@ -117,6 +126,7 @@ export function allowedPath(path: string, method: string) {
     ],
     DELETE: [`admin/jobs/${id}`, `account/me/favorites/${id}`, `admin/staff/roles/${id}`, `cart/items/${id}`, `products/media/${id}`, `categories/${id}/products/${id}`, `admin/banners/${id}`, `admin/salespeople/${id}/customers/${id}`, `(brands|laboratories)/${id}`, `brands/${id}/logo`, `laboratories/${id}/logo`, `promotions/${id}`, `promotions/expiration/${id}`, `recommendations/${id}`],
   };
+  rules.DELETE.push(`auth/sessions/${id}`);
   return (rules[method] ?? []).some((pattern) =>
     new RegExp(`^${pattern}$`).test(path),
   );
@@ -135,6 +145,11 @@ export function sanitize(value: unknown): unknown {
               "resetToken",
               "accessToken",
               "refreshToken",
+              "challengeToken",
+              "mfaSecretEncrypted",
+              "pendingMfaSecret",
+              "mfaLastStep",
+              "codeHash",
             ].includes(key),
         )
         .map(([key, item]) => [key, sanitize(item)]),

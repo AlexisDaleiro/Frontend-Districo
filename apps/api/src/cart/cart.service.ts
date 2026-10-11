@@ -3,6 +3,8 @@ import { Permission, Prisma, Role, StockReservationStatus } from '@prisma/client
 import { InventoryService } from '../inventory/inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtUser } from '../common/types/jwt-user.type';
+import { PromotionsService } from '../promotions/promotions.service';
+import { calculateCustomerDiscounts } from '../common/business/customer-discounts';
 
 const RESERVATION_TTL_MS = 48 * 60 * 60 * 1000;
 
@@ -12,6 +14,7 @@ const variantInclude = () =>
       include: {
         brand: true,
         laboratory: true,
+        categories: true,
         media: {
           where: { type: 'IMAGE' },
           orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
@@ -41,6 +44,7 @@ const cartInclude = () =>
       where: { status: StockReservationStatus.ACTIVE },
       orderBy: { createdAt: 'asc' },
     },
+    user: { select: { customerAccount: { select: { discountPercentage: true, discountMode: true } } } },
   }) satisfies Prisma.CartInclude;
 
 type CartWithItems = Prisma.CartGetPayload<{ include: ReturnType<typeof cartInclude> }>;
@@ -53,6 +57,7 @@ export class CartService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inventoryService: InventoryService,
+    private readonly promotions: PromotionsService,
   ) {}
 
   onModuleInit() {
@@ -67,7 +72,13 @@ export class CartService implements OnModuleInit, OnModuleDestroy {
 
   async getCart(user: JwtUser) {
     const cart = await this.ensureCart(user.sub);
-    return this.toCartResponse(cart);
+    const lines = cart.items.map((item) => ({ productId: item.productVariant.productId, variantId: item.productVariantId,
+      brandId: item.productVariant.product.brandId, laboratoryId: item.productVariant.product.laboratoryId,
+      categoryIds: item.productVariant.product.categories.map((category) => category.categoryId),
+      unitPrice: Number(item.productVariant.prices[0]?.amount ?? 0), quantity: item.quantity }));
+    const { lines: _lines, ...pricing } = calculateCustomerDiscounts(lines,
+      cart.items.length ? await this.promotions.calculateDiscounts(lines) : [], cart.user.customerAccount);
+    return { ...this.toCartResponse(cart), pricing };
   }
 
   async addItem(user: JwtUser, variantId: string, quantity: number) {

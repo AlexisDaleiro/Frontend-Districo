@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, Pencil, Layers3, Images, FileText } from "lucide-react";
-import { AccessGate } from "./auth";
-import { AdminNav, VariantManagement } from "./admin";
+import { VariantManagement } from "./admin";
 import { AdminProductImages } from "./admin-product-images";
 import { AdminTechnicalSheet } from "./admin-technical-sheet";
 import { AdminForm, type Editor } from "./admin-form";
@@ -40,11 +39,8 @@ export function AdminProductPage({ slug }: { slug: string }) {
   const item = product.data;
 
   return (
-    <div className="container admin-page section">
-      <AccessGate admin>
-        <div className="admin-shell">
-          <AdminNav section="catalogo" email={user?.email} />
-          <div className="admin-main admin-product-page">
+    <>
+          <div className="admin-product-page">
             {!canSeeAdminSection(user, "catalogo") ? (
               <Empty title="No tenés acceso a esta sección" />
             ) : product.isPending ? (
@@ -96,11 +92,9 @@ export function AdminProductPage({ slug }: { slug: string }) {
               </>
             ) : <Empty title="Producto no encontrado" />}
           </div>
-        </div>
         <Modal open={!!editor} onClose={() => setEditor(null)} title={editor?.title ?? ""}>
           {editor && <AdminForm editor={editor} onDone={() => setEditor(null)} />}
         </Modal>
-      </AccessGate>
-    </div>
+    </>
   );
 }

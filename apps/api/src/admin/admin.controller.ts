@@ -24,6 +24,7 @@ import { AdminService } from './admin.service';
 import { integrationConnections } from './integration-status';
 import { SalesReportsService } from './sales-reports.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { UpdateCustomerDiscountDto } from './dto/update-customer-discount.dto';
 import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto, SearchListQueryDto } from './dto/admin-list-query.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
 import { RuleListQueryDto } from './dto/rule-list-query.dto';
@@ -37,11 +38,13 @@ import { UpdateStaffAccessDto } from './dto/update-staff-access.dto';
 import { CreateStaffRoleDto } from './dto/create-staff-role.dto';
 import { ProductReturnsService } from '../orders/product-returns.service';
 import { RecordProductReturnDto } from '../orders/dto/record-product-return.dto';
+import { CustomerDiscountVisibilityInterceptor } from './customer-discount-visibility.interceptor';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(CustomerDiscountVisibilityInterceptor)
 @Roles(Role.ADMIN)
 export class AdminController {
   constructor(
@@ -129,6 +132,12 @@ export class AdminController {
   @Patch('customers/:id')
   updateCustomer(@Param('id') id: string, @Body() dto: UpdateCustomerDto, @CurrentUser() user: JwtUser) {
     return this.admin.updateCustomer(id, dto, user.sub);
+  }
+
+  @Patch('customers/:id/discount')
+  @Roles(Role.ADMIN, Role.SALES)
+  updateCustomerDiscount(@Param('id') id: string, @Body() dto: UpdateCustomerDiscountDto, @CurrentUser() user: JwtUser) {
+    return this.admin.updateCustomerDiscount(id, dto, user);
   }
 
   @Get('applications')

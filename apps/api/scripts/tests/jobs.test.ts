@@ -38,6 +38,8 @@ test('admin filters exclude removed records and search title/area/location', () 
   assert.equal(where.active, false);
   assert.equal(where.deletedAt, null);
   assert.equal(where.OR?.length, 3);
+  assert.deepEqual(jobListWhere(Object.assign(new JobListQueryDto(), { status: 'retired' })).deletedAt, { not: null });
+  assert.equal(presentJob({ ...job, deletedAt: new Date() }).retired, true);
 });
 
 test('job permissions are independent, deny other default roles, and map every write route', () => {

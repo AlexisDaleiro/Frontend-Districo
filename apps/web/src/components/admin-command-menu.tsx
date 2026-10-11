@@ -2,17 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, UserRound, Package, ShoppingBag, ArrowRight } from "lucide-react";
-import { useApi, useSession } from "./providers";
+import { API_STALE_TIME, apiQueryKey, request, useApi, useSession } from "./providers";
 import { Modal } from "./ui";
 import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature, isStaff } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import { label } from "@/lib/commerce";
 import { shortcutForm, submitShortcutForm, type AdminSearchResult } from "@/lib/admin-tools";
+import { adminNavigationTarget } from "@/lib/admin-navigation";
+import { confirmNavigation } from "@/lib/unsaved-changes";
 
 export function AdminCommandMenu() {
   const { user, notify } = useSession();
   const router = useRouter();
+  const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
@@ -69,11 +73,19 @@ export function AdminCommandMenu() {
   ];
   const activeIndex = Math.min(active, Math.max(0, results.length - 1));
   const activeResultId = results[activeIndex]?.id;
+  const activeHref = results[activeIndex]?.href;
   useEffect(() => {
-    if (open && activeResultId) document.getElementById(`command-${activeResultId}`)?.scrollIntoView({ block: "nearest" });
-  }, [open, activeResultId]);
+    if (!open || !activeResultId || !activeHref) return;
+    document.getElementById(`command-${activeResultId}`)?.scrollIntoView({ block: "nearest" });
+    const target = adminNavigationTarget(activeHref, user);
+    if (!target || !user) return;
+    router.prefetch(target.href);
+    for (const path of target.queries) void client.prefetchQuery({
+      queryKey: apiQueryKey(path, user.id), queryFn: () => request(path), staleTime: API_STALE_TIME,
+    });
+  }, [open, activeResultId, activeHref, user, router, client]);
   function close() { setOpen(false); setSearch(""); setTerm(""); setActive(0); }
-  function navigate(href: string) { close(); router.push(href); }
+  function navigate(href: string) { if (confirmNavigation()) { close(); router.push(href); } }
   if (!visible) return null;
   return <>
     <button className="admin-command-trigger" type="button" title="Buscar en administración (Ctrl+K)" aria-label="Buscar en administración" onClick={() => setOpen(true)}>

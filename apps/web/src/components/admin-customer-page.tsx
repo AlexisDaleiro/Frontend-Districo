@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { AccessGate } from "./auth";
-import { AdminNav, customerEditor } from "./admin";
+import { customerEditor } from "./admin";
 import { AdminForm } from "./admin-form";
 import { useApi, useSession, DEMO } from "./providers";
 import { Empty, ErrorBox, Loading, PageHeading } from "./ui";
@@ -12,6 +12,18 @@ import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/
 import { storeRoutes } from "@/lib/store-routes";
 import type { CustomerDetail } from "@/lib/types";
 import { useAdminReturnHref } from "./admin-list-navigation";
+import { customerDiscountSchema, discountModeLabel, discountModes } from "@/lib/customer-discount";
+
+function discountDescription(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "Descuento actualizado";
+  const data = metadata as Record<string, unknown>;
+  const describe = (value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return "Sin registro";
+    const discount = value as Record<string, unknown>;
+    return `${Number(discount.discountPercentage ?? 0)}% · ${discountModeLabel(String(discount.discountMode))}`;
+  };
+  return `Antes: ${describe(data.before)}. Ahora: ${describe(data.after)}.`;
+}
 
 function creditDescription(metadata: unknown) {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "Datos de crédito actualizados";
@@ -31,10 +43,11 @@ export function AdminCustomerPage({ id }: { id: string }) {
   const canView = canSeeAdminSection(user, "clientes");
   const canEdit = canEditAdminFeature(user, "clientes");
   const canViewBilling = canViewAdminFeature(user, "facturacion");
+  const canViewDiscount = canViewAdminFeature(user, "descuentos-clientes");
+  const canEditDiscount = canEditAdminFeature(user, "descuentos-clientes");
+  const [discountRevision, setDiscountRevision] = useState(0);
   const customer = q.data;
-  return <div className="container admin-page section"><AccessGate admin><div className="admin-shell">
-    <AdminNav section="clientes" email={user?.email} />
-    <main className="admin-main admin-record-page">
+  return <div className="admin-record-page">
       {!canView ? <Empty title="No tenés acceso a esta sección" /> : q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : customer ? <>
         <Link className="text-link admin-product-back" href={back}><ArrowLeft size={17} /> Volver a {user?.role === "SALES" ? "clientes asignados" : "clientes"}</Link>
         <PageHeading eyebrow="DISTRICO · Administración" title={customer.businessName}>{customer.legalName} · RUT {customer.rut}</PageHeading>
@@ -46,12 +59,37 @@ export function AdminCustomerPage({ id }: { id: string }) {
           <div><span>Vendedor responsable</span><strong>{customer.salesperson ? canSeeAdminSection(user, "vendedores") ? <Link className="text-link" href={storeRoutes.adminSalesperson(customer.salesperson.userId)}>{customer.salesperson.name}</Link> : customer.salesperson.name : "Sin asignar"}</strong></div>
           {canViewBilling && customer.debt !== undefined && <div><span>Deuda pendiente</span><strong>{money(customer.debt)}</strong></div>}
           {canViewBilling && customer.creditLimit != null && <div><span>Crédito disponible</span><strong>{money(Number(customer.availableCredit ?? 0))}</strong></div>}
+          {canViewDiscount && <div><span>Descuento fijo</span><strong>{Number(customer.discountPercentage ?? 0)}%</strong></div>}
         </div>
         <section className="admin-record-section"><h2>Contacto y direcciones</h2>
           <p>{customer.users?.map((account) => account.email).join(", ") || "Sin correo"} · {customer.phone || "Sin teléfono"}</p>
           {customer.addresses?.length ? <ul className="admin-record-list">{customer.addresses.map((address) => <li key={address.id}><strong>{address.label}</strong><span>{[address.address, address.city, address.department].filter(Boolean).join(", ")}</span></li>)}</ul> :
             <p className="muted">Sin direcciones cargadas.</p>}
         </section>
+        {canViewDiscount && <section className="admin-record-section" aria-labelledby="customer-discount-title">
+          <h2 id="customer-discount-title">Descuento fijo del cliente</h2>
+          {canEditDiscount ? <AdminForm
+            key={`${customer.id}-${customer.discountPercentage ?? 0}-${customer.discountMode ?? "BEST_PRICE"}-${discountRevision}`}
+            editor={{ title: "Descuento fijo del cliente", path: `admin/customers/${id}/discount`, method: "PATCH", submitLabel: "Guardar descuento",
+              initial: { discountPercentage: Number(customer.discountPercentage ?? 0), discountMode: customer.discountMode ?? "BEST_PRICE" },
+              fields: [
+                { key: "discountPercentage", label: "Descuento (%)", type: "number", required: true, min: 0, max: 100, step: "any", hint: "0% desactiva el descuento. Hasta dos decimales." },
+                { key: "discountMode", label: "Con promociones", type: "select", required: true, options: discountModes,
+                  hint: "Al acumular, el porcentaje se aplica después de la promoción." },
+              ], transform: (data) => {
+                const result = customerDiscountSchema.safeParse(data);
+                if (!result.success) throw new Error("Ingresá un porcentaje de 0 a 100 con hasta dos decimales y elegí una modalidad.");
+                return result.data;
+              },
+              success: () => "Descuento del cliente guardado.",
+            }} onDone={() => {}} onCancel={() => setDiscountRevision((revision) => revision + 1)} />
+            : <p>{Number(customer.discountPercentage ?? 0)}% · {discountModeLabel(customer.discountMode)}</p>}
+          <h3>Historial de descuentos</h3>
+          {customer.discountChanges?.length ? <ul className="admin-record-list">{customer.discountChanges.map((change) => <li key={change.id}>
+            <span><strong>{new Date(change.createdAt).toLocaleString("es-UY")}</strong> · {change.user?.email ?? "Sistema"}</span>
+            <span>{discountDescription(change.metadata)}</span>
+          </li>)}</ul> : <p className="muted">Sin cambios de descuento registrados.</p>}
+        </section>}
         <section className="admin-record-section"><h2>Permisos y habilitaciones</h2>
           {customer.documents?.length ? <ul className="admin-record-list">{customer.documents.map((document) => <li key={document.id}>
             <span>{document.originalName}</span>{DEMO ? null : <a className="text-link" href={`/api/backend/admin/customers/${id}/documents/${document.id}?preview=1`} target="_blank" rel="noopener noreferrer">Abrir <ExternalLink size={15} /></a>}
@@ -72,6 +110,5 @@ export function AdminCustomerPage({ id }: { id: string }) {
           <AdminForm key={`${customer.id}-${customer.updatedAt ?? ""}`} editor={customerEditor(customer)} onDone={() => {}} />
         </section>}
       </> : <Empty title="Cliente no encontrado" />}
-    </main>
-  </div></AccessGate></div>;
+  </div>;
 }

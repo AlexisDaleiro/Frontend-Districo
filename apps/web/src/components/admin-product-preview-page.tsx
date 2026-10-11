@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { AccessGate } from "./auth";
-import { AdminNav } from "./admin";
 import { useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, PageHeading, Picture } from "./ui";
 import { money } from "@/lib/commerce";
@@ -23,11 +21,7 @@ export function AdminProductPreviewPage({ slug }: { slug: string }) {
   const activeVariants = item?.variants.filter((variant) => variant.active !== false) ?? [];
   const availableStock = activeVariants.reduce((total, variant) => total + variant.availableStock, 0);
 
-  return <div className="container admin-page section">
-    <AccessGate admin>
-      <div className="admin-shell">
-          <AdminNav section="catalogo" email={user?.email} />
-        <main className="admin-main admin-product-page">
+  return <div className="admin-product-page">
           {!canSeeAdminSection(user, "catalogo") ? <Empty title="No tenés acceso a esta sección" /> :
             product.isPending ? <Loading /> : product.error ? <ErrorBox error={product.error} retry={() => void product.refetch()} /> : item ? <>
               <Link className="text-link admin-product-back" href={canEditAdminFeature(user, "catalogo") ? adminRecordHref(storeRoutes.adminProduct(item.slug), catalog) : catalog}><ArrowLeft size={17} /> {canEditAdminFeature(user, "catalogo") ? "Volver a editar producto" : "Volver al catálogo"}</Link>
@@ -67,8 +61,5 @@ export function AdminProductPreviewPage({ slug }: { slug: string }) {
                 </div>}
               </section>
             </> : <Empty title="Producto no encontrado" />}
-        </main>
-      </div>
-    </AccessGate>
   </div>;
 }

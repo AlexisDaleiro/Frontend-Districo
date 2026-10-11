@@ -4,40 +4,23 @@ import { useRouter } from "next/navigation";
 import {
   Fragment,
   useEffect,
-  useLayoutEffect,
-  useRef,
   useState,
-  ViewTransition,
 } from "react";
 import {
   BadgePercent,
-  BriefcaseBusiness,
-  Cable,
-  Images,
   ClipboardList,
   Download,
   Inbox,
-  LayoutDashboard,
-  LogOut,
-  Menu,
   Package,
   Pencil,
   Plus,
   Save,
-  Sparkles,
-  Tags,
-  FolderTree,
   Trash2,
   UserPlus,
-  Users,
-  ShieldCheck,
-  ListChecks,
-  type LucideIcon,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AccessGate } from "./auth";
 import { DEMO, request, useApi, useSession } from "./providers";
-import { AdminCommandMenu } from "./admin-command-menu";
+import { adminSections as sections } from "./admin-navigation";
 import { AdminBulkActions, BulkHistory, PageSelection, RowSelection, useAdminSelection } from "./admin-bulk-actions";
 import { AdminForm, type Editor, type Field } from "./admin-form";
 import { Empty, ErrorBox, Loading, Modal, PageHeading, Picture } from "./ui";
@@ -83,26 +66,6 @@ import type {
   Rule,
   Variant,
 } from "@/lib/types";
-// Grupo, ruta, título, icono y contador de admin/dashboard que se muestra al lado.
-const sections: [string, string, string, LucideIcon, string?][] = [
-  ["Operación", "", "Resumen", LayoutDashboard],
-  ["Operación", "consultas", "Consultas", Inbox, "newContactInquiries"],
-  ["Operación", "solicitudes", "Solicitudes", UserPlus, "pendingApplications"],
-  ["Operación", "clientes", "Clientes", Users],
-  ["Operación", "vendedores", "Vendedores", BriefcaseBusiness],
-  ["Operación", "pedidos", "Pedidos", ClipboardList, "pendingReviewOrders"],
-  ["Catálogo", "catalogo", "Catálogo", Package],
-  ["Catálogo", "marcas", "Marcas y laboratorios", Tags],
-  ["Catálogo", "categorias", "Categorías", FolderTree],
-  ["Marketing", "promociones", "Promociones", BadgePercent],
-  ["Marketing", "banners", "Banners", Images],
-  ["Marketing", "recomendaciones", "Recomendaciones", Sparkles],
-  ["Institucional", "ofertas-laborales", "Ofertas laborales", BriefcaseBusiness],
-  ["Acceso", "personal", "Personal", ShieldCheck],
-  ["Acceso", "roles", "Roles", ListChecks],
-  ["Configuración", "integraciones", "Integraciones", Cable],
-];
-const groups = [...new Set(sections.map(([group]) => group))];
 const options = (values: string[]) =>
   values.map((value) => ({ value, label: label(value) }));
 const number = (key: string, title: string, min = 0, step = "1"): Field => ({
@@ -1393,146 +1356,6 @@ function Marketing({
     </>
   );
 }
-export function AdminNav({ section, email }: { section: string; email?: string }) {
-  // Misma consulta que el Resumen: los contadores no suman pedidos a la API.
-  const { logout, user } = useSession();
-  const counts = useApi<Record<string, number>>("admin/dashboard", canSeeAdminSection(user, ""));
-  const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState<unknown>();
-  const nav = useRef<HTMLElement>(null);
-  const indicator = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      try { setCollapsed(window.localStorage.getItem("districo-admin-nav-collapsed") === "true"); }
-      catch { /* El menú sigue funcionando si el almacenamiento está deshabilitado. */ }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
-  const toggleCollapsed = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    try { window.localStorage.setItem("districo-admin-nav-collapsed", String(next)); }
-    catch { /* La preferencia es opcional. */ }
-  };
-  // En móvil la navegación es una franja con scroll: centra la sección activa
-  // moviendo solo la franja, no la página.
-  useEffect(() => {
-    const strip = nav.current;
-    const active = strip?.querySelector<HTMLElement>("a.active");
-    if (!strip || !active || strip.scrollWidth <= strip.clientWidth) return;
-    strip.scrollLeft =
-      active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
-  }, [section]);
-  // El fondo lima de la sección activa es un solo indicador que se desliza
-  // (motion.css). La primera ubicación no anima; las siguientes sí.
-  useLayoutEffect(() => {
-    const strip = nav.current;
-    const mark = indicator.current;
-    if (!strip || !mark) return;
-    const place = () => {
-      const active = strip.querySelector<HTMLElement>("a.active");
-      mark.hidden = !active;
-      if (!active) return;
-      mark.style.setProperty("--indicator-x", `${active.offsetLeft}px`);
-      mark.style.setProperty("--indicator-y", `${active.offsetTop}px`);
-      mark.style.setProperty("--indicator-width", `${active.offsetWidth}px`);
-      mark.style.setProperty("--indicator-height", `${active.offsetHeight}px`);
-    };
-    place();
-    const ready = requestAnimationFrame(() => {
-      mark.dataset.ready = "true";
-    });
-    const resize = new ResizeObserver(place);
-    resize.observe(strip);
-    return () => {
-      cancelAnimationFrame(ready);
-      resize.disconnect();
-    };
-  }, [section, counts.data, collapsed]);
-  return (
-    <aside className="admin-sidebar" data-collapsed={collapsed}>
-      <div className="admin-sidebar-head">
-        <div className="admin-sidebar-identity">
-          <strong>Administración</strong>
-          {email && <span>{email}</span>}
-        </div>
-        <button
-          type="button"
-          className="admin-sidebar-toggle"
-          aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-          title={collapsed ? "Expandir menú" : "Contraer menú"}
-          aria-expanded={!collapsed}
-          aria-controls="admin-navigation"
-          onClick={toggleCollapsed}
-        ><Menu size={20} /></button>
-      </div>
-      <AdminCommandMenu />
-      <nav className="admin-nav" aria-label="Administración" id="admin-navigation" ref={nav}>
-        <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
-        {groups.filter((group) => sections.some(([g, path]) => g === group && canSeeAdminSection(user, path))).map((group) => (
-          <div className="admin-nav-group" key={group}>
-            <p>{group}</p>
-            {sections
-              .filter(([g, path]) => g === group && canSeeAdminSection(user, path))
-              .map(([, path, title, Icon, countKey]) => {
-                const visibleTitle = user?.role === "SALES" && path === "clientes" ? "Clientes asignados" :
-                  user?.role === "SALES" && path === "pedidos" ? "Pedidos asignados" : title;
-                const count = countKey && !(user?.role === "SALES" && path === "pedidos") ? (counts.data?.[countKey] ?? 0) : 0;
-                return (
-                  <Link
-                    className={section === path ? "active" : ""}
-                    aria-current={section === path ? "page" : undefined}
-                    aria-label={visibleTitle}
-                    title={collapsed ? visibleTitle : undefined}
-                    href={path ? storeRoutes.adminSection(path) : storeRoutes.admin}
-                    key={path}
-                  >
-                    <Icon size={17} aria-hidden="true" />
-                    <span>{visibleTitle}</span>
-                    {count > 0 && (
-                      <em
-                        className="admin-nav-count"
-                        aria-label={`${count} pendientes`}
-                      >
-                        {count}
-                      </em>
-                    )}
-                  </Link>
-                );
-              })}
-          </div>
-        ))}
-      </nav>
-      <div className="admin-sidebar-footer">
-        <button
-          type="button"
-          className="admin-logout"
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-          disabled={loggingOut}
-          onClick={async () => {
-            setLoggingOut(true);
-            setLogoutError(undefined);
-            try {
-              await logout();
-              router.replace(storeRoutes.login);
-            } catch (error) {
-              setLogoutError(error);
-            } finally {
-              setLoggingOut(false);
-            }
-          }}
-        >
-          <LogOut size={17} aria-hidden="true" />
-          <span>{loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}</span>
-        </button>
-        {logoutError !== undefined && <ErrorBox error={logoutError} />}
-      </div>
-    </aside>
-  );
-}
 function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) {
   return section === "" ? (
     <Dashboard />
@@ -1581,43 +1404,14 @@ export function Admin({ section = "" }: { section?: string }) {
     if (first) router.replace(storeRoutes.adminSection(first[1]));
   }, [section, user, router]);
   return (
-    <div className="container admin-page section">
-      <AccessGate admin>
-        <div className="admin-shell">
-          <AdminNav section={section} email={user?.email} />
-          <div className="admin-main">
-            {/* Cada sección entra con su propia transición (motion.css); la
-                barra lateral queda fija. */}
-            <ViewTransition
-              key={section}
-              enter="section-enter"
-              exit="section-exit"
-              default="none"
-            >
-              <div className="admin-section">
-                <PageHeading
-                  eyebrow="Administración"
-                  title={
-                    section && current
-                      ? current[2]
-                      : "Resumen"
-                  }
-                />
-                {canSeeAdminSection(user, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
-              </div>
-            </ViewTransition>
-          </div>
-        </div>
-        <Modal
-          open={!!editor}
-          onClose={() => setEditor(null)}
-          title={editor?.title ?? ""}
-        >
-          {editor && (
-            <AdminForm editor={editor} onDone={() => setEditor(null)} />
-          )}
-        </Modal>
-      </AccessGate>
-    </div>
+    <>
+      <div className="admin-section" key={section}>
+        <PageHeading eyebrow="Administración" title={section && current ? current[2] : "Resumen"} />
+        {canSeeAdminSection(user, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
+      </div>
+      <Modal open={!!editor} onClose={() => setEditor(null)} title={editor?.title ?? ""}>
+        {editor && <AdminForm editor={editor} onDone={() => setEditor(null)} />}
+      </Modal>
+    </>
   );
 }
