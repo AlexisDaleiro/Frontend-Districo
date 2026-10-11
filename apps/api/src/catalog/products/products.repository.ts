@@ -86,10 +86,15 @@ export class ProductsRepository {
           variants: {
             where: { deletedAt: null, active: true },
             orderBy: [{ weight: 'asc' }, { name: 'asc' }],
-            take: 1,
+            take: filters.includeVariants ? undefined : 1,
             select: {
               id: true,
               active: true,
+              ...(filters.includeVariants ? {
+                name: true, sku: true, presentation: true,
+                physicalStock: true, reservedStock: true,
+                saleMultiple: true, minimumOrderQuantity: true,
+              } as const : {}),
               prices: {
                 where: {
                   priceList: { active: true },

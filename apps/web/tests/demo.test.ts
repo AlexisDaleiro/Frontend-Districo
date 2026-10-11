@@ -36,6 +36,10 @@ describe("Demo B2B: permisos y aislamiento", () => {
     expect(cards.items[0].variantCount).toBe(4);
     expect(cards.items[0].variants).toHaveLength(1);
     expect(cards.items[0].variants[0].price).toBeUndefined();
+    const complete = await api<ProductCardList>("products/cards?includeVariants=true");
+    expect(complete.items[0].variants).toHaveLength(4);
+    expect(complete.items[0].variants.every((variant) => variant.name && variant.minimumOrderQuantity && variant.saleMultiple)).toBe(true);
+    expect(complete.items[0].variants.every((variant) => variant.price === undefined)).toBe(true);
     product.variants.forEach((variant: { active: boolean }) => { variant.active = false; });
     localStorage.setItem("districo-demo-v1", JSON.stringify(state));
     const empty = await api<ProductCardList>("products/cards");

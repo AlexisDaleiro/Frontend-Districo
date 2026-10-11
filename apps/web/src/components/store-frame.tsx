@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header, Footer } from "./shell";
@@ -8,6 +8,9 @@ import { PublicHeader, PublicFooter } from "./site-shell";
 import { PageTransition } from "./page-transition";
 import { useSession } from "./providers";
 import { storeRoutes } from "@/lib/store-routes";
+import { StorePreload } from "./store-preload";
+import { StoreBrowse } from "./store-browse";
+import { storeBrowseTarget } from "@/lib/store-prefetch";
 
 const publicAccessPaths = new Set<string>([
   storeRoutes.login,
@@ -30,15 +33,17 @@ export function StoreFrame({ children }: { children: React.ReactNode }) {
   const gated = !publicAccess && (loading || error || !user);
   const frame = (
     <>
+      {!publicAccess && !gated && !pathname.startsWith(storeRoutes.admin) && <Suspense fallback={null}><StorePreload /></Suspense>}
       {publicAccess ? <PublicHeader solid /> : !gated ? <Header /> : null}
       <main
         id="contenido"
+        tabIndex={-1}
         className={
           publicAccess ? "site-auth-main" : gated ? "session-gate" : undefined
         }
       >
         {publicAccess || !gated ? (
-          <PageTransition>{children}</PageTransition>
+          <PageTransition>{storeBrowseTarget(pathname) ? <Suspense fallback={null}><StoreBrowse /></Suspense> : children}</PageTransition>
         ) : error ? (
           <div role="alert">
             <p>No se pudo comprobar tu sesión.</p>

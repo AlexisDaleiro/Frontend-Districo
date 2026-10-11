@@ -210,7 +210,7 @@ function publicProduct(p: Product, user?: User): Product {
     })),
   };
 }
-function publicCard(p: Product, user?: User): ProductCardData {
+function publicCard(p: Product, user?: User, includeVariants = false): ProductCardData {
   const product = publicProduct(p, user);
   const variants = product.variants.filter((variant) => variant.active !== false);
   return {
@@ -219,7 +219,9 @@ function publicCard(p: Product, user?: User): ProductCardData {
     brand: product.brand, laboratory: product.laboratory,
     media: product.media.filter((media) => media.type === "IMAGE").slice(0, 1),
     variantCount: variants.length,
-    variants: variants.slice(0, 1).map(({ id, active, price }) => ({ id, active, price })),
+    variants: includeVariants ? variants.map(({ id, active, price, name, sku, presentation, availableStock, saleMultiple, minimumOrderQuantity }) =>
+      ({ id, active, price, name, sku, presentation, availableStock, saleMultiple, minimumOrderQuantity }))
+      : variants.slice(0, 1).map(({ id, active, price }) => ({ id, active, price })),
   };
 }
 function productAttributes(s: State, ids: string[]): NonNullable<Product["attributes"]> {
@@ -653,7 +655,7 @@ export async function demoRequest<T>(
     result = {
       items: items
         .slice((page - 1) * limit, page * limit)
-        .map((p) => route === "products/cards" ? publicCard(p, user) : publicProduct(p, user)),
+        .map((p) => route === "products/cards" ? publicCard(p, user, query.get("includeVariants") === "true") : publicProduct(p, user)),
       meta: { total: items.length, page, limit },
     };
   } else if (

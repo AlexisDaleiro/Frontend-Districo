@@ -5,6 +5,11 @@ import { PaginationQueryDto } from '../../dto/pagination-query.dto';
 
 export class ProductFilterDto extends PaginationQueryDto {
   @IsOptional()
+  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @IsBoolean()
+  includeVariants?: boolean;
+
+  @IsOptional()
   @IsString()
   search?: string;
 

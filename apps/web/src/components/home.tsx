@@ -62,7 +62,7 @@ export function Home() {
     });
   };
   const categories = usePublicApi<Entity[]>("categories/catalog"),
-    featured = useApi<ProductCardList>("products/cards?featured=true&limit=10"),
+    featured = useApi<ProductCardList>("products/cards?featured=true&limit=10&includeVariants=true"),
     brands = usePublicApi<Entity[]>("brands"),
     attributes = usePublicApi<Attribute[]>("attributes");
   // Mismas categorías raíz activas que la navegación del catálogo.

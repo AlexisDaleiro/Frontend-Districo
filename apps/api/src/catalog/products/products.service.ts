@@ -49,8 +49,6 @@ export class ProductsService {
     return {
       ...result,
       items: result.items.map((product) => {
-        const variant = product.variants[0];
-        const currentPrice = variant?.prices[0];
         return {
           id: product.id,
           slug: product.slug,
@@ -61,15 +59,21 @@ export class ProductsService {
           laboratory: product.laboratory,
           media: product.media,
           variantCount: product._count.variants,
-          variants: variant
-            ? [{
-                id: variant.id,
-                active: variant.active,
-                price: this.canViewPrice(product.requiresMedicationPermission, user) && currentPrice
-                  ? { amount: Number(currentPrice.amount), currency: currentPrice.currency }
-                  : undefined,
-              }]
-            : [],
+          variants: product.variants.map((variant) => {
+            const currentPrice = variant.prices[0];
+            return {
+              id: variant.id,
+              active: variant.active,
+              ...(filters.includeVariants ? {
+                name: variant.name, sku: variant.sku, presentation: variant.presentation,
+                availableStock: Math.max(0, variant.physicalStock - variant.reservedStock),
+                saleMultiple: variant.saleMultiple, minimumOrderQuantity: variant.minimumOrderQuantity,
+              } : {}),
+              price: this.canViewPrice(product.requiresMedicationPermission, user) && currentPrice
+                ? { amount: Number(currentPrice.amount), currency: currentPrice.currency }
+                : undefined,
+            };
+          }),
         };
       }),
     };

@@ -6,10 +6,12 @@ export function CatalogPagination({
   page,
   totalPages,
   onPageChange,
+  onPagePreview,
 }: {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  onPagePreview?: (page: number) => void;
 }) {
   if (totalPages <= 1) return null;
 
@@ -28,6 +30,8 @@ export function CatalogPagination({
           className="pagination-page"
           aria-label={`Ir a la página ${previous + 1}`}
           onClick={() => onPageChange(previous + 1)}
+          onMouseEnter={() => onPagePreview?.(previous + 1)}
+          onFocus={() => onPagePreview?.(previous + 1)}
         >
           {previous + 1}
         </button>,
@@ -44,6 +48,8 @@ export function CatalogPagination({
           className="pagination-gap"
           aria-label={`Saltar a la página ${jumpTarget}`}
           onClick={() => onPageChange(jumpTarget)}
+          onMouseEnter={() => onPagePreview?.(jumpTarget)}
+          onFocus={() => onPagePreview?.(jumpTarget)}
         >
           …
         </button>,
@@ -67,6 +73,8 @@ export function CatalogPagination({
           className="pagination-page"
           aria-label={`Ir a la página ${target}`}
           onClick={() => onPageChange(target)}
+          onMouseEnter={() => onPagePreview?.(target)}
+          onFocus={() => onPagePreview?.(target)}
         >
           {target}
         </button>
@@ -84,6 +92,8 @@ export function CatalogPagination({
         className="catalog-pagination-direction"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
+        onMouseEnter={() => onPagePreview?.(page - 1)}
+        onFocus={() => onPagePreview?.(page - 1)}
       >
         ← Anterior
       </button>
@@ -93,6 +103,8 @@ export function CatalogPagination({
         className="catalog-pagination-direction"
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
+        onMouseEnter={() => onPagePreview?.(page + 1)}
+        onFocus={() => onPagePreview?.(page + 1)}
       >
         Siguiente →
       </button>

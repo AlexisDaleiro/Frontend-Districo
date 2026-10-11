@@ -207,7 +207,7 @@ export function MotionSystem() {
       if (element.closest("[contenteditable]")) return;
       if (seen.has(element)) return;
       seen.add(element);
-      if (element.closest(".admin-page")) {
+      if (element.closest(".admin-page, .product-card, .catalog-page, .detail-page")) {
         reveal(element, false);
         return;
       }

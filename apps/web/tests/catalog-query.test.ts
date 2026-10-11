@@ -10,13 +10,19 @@ describe("ruta del listado", () => {
       ignored: "x",
     });
     expect(catalogCardsPath(params)).toBe(
-      "products/cards?search=alimento&categoryId=cat1%2Ccat2&page=2&limit=12",
+      "products/cards?search=alimento&categoryId=cat1%2Ccat2&page=2&limit=12&includeVariants=true",
     );
   });
 
   it("descarta páginas inválidas", () => {
     expect(catalogCardsPath(new URLSearchParams({ page: "0" }))).toBe(
-      "products/cards?limit=12",
+      "products/cards?limit=12&includeVariants=true",
+    );
+  });
+
+  it("reutiliza resultados para página uno y selecciones equivalentes", () => {
+    expect(catalogCardsPath(new URLSearchParams({ page: "1", categoryId: "b,a,b", attributeValueIds: "z,x" }))).toBe(
+      catalogCardsPath(new URLSearchParams({ categoryId: "a,b", attributeValueIds: "x,z" })),
     );
   });
 

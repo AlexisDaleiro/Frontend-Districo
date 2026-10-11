@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
   LockKeyhole,
@@ -16,7 +16,9 @@ import {
   ShoppingBag,
   Pencil,
 } from "lucide-react";
-import { apiQueryKey, request, useApi, usePublicApi, useSession, DEMO } from "./providers";
+import { API_STALE_TIME, apiQueryKey, request, useApi, usePublicApi, useSession, DEMO } from "./providers";
+import { hasPurchaseVariants, previousCatalogData } from "@/lib/store-prefetch";
+import { automaticStorePreloadAllowed, warmStoreImages } from "./store-preload";
 import { brandLogoSrc } from "@/lib/brand-logos";
 import { CatalogPagination } from "./catalog-pagination";
 import { FavoriteButton } from "./favorite-button";
@@ -53,16 +55,19 @@ import {
   purchasable,
   quantityError,
 } from "@/lib/commerce";
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({ product, eager = false }: { product: ProductCardData; eager?: boolean }) {
   const { user, notify } = useSession();
   const client = useQueryClient();
-  const detail = useApi<Product>(`products/${encodeURIComponent(product.slug)}`);
-  const active = detail.data?.variants.filter((item) => item.active !== false) ?? [];
+  const complete = hasPurchaseVariants(product);
+  const detail = useApi<Product>(`products/${encodeURIComponent(product.slug)}`, !complete);
+  const source = complete ? product : detail.data;
+  const active: Variant[] = source?.variants.filter((item) => item.active !== false) ?? [];
+  const pending = !complete && detail.isPending;
   const [selection, setSelection] = useState<{ id: string; quantity: number }>();
   const variant = active.find((item) => item.id === selection?.id) ?? active[0];
   const quantity = variant ? (selection?.id === variant.id ? selection.quantity : firstQuantity(variant)) : 1;
-  const price = variant?.price ?? (!detail.data ? product.variants[0]?.price : undefined);
-  const allowed = canBuy(user, detail.data ?? product);
+  const price = variant?.price ?? (!source ? product.variants[0]?.price : undefined);
+  const allowed = canBuy(user, product);
   const cart = useApi<Cart>("cart", allowed);
   const saved = cart.data?.items.find((item) => item.variant.id === variant?.id);
   const validation = variant ? quantityError(variant, quantity) : null;
@@ -85,11 +90,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     <article className="product-card" onMouseEnter={prefetchDetail} onFocus={prefetchDetail}>
       <FavoriteButton productId={product.id} name={product.name} className="product-card-favorite" />
       <div className="product-card-media">
-      <Link href={storeRoutes.product(product.slug)} className="product-image" aria-label={`Ver ${product.name}`}>
+      <Link href={storeRoutes.product(product.slug)} prefetch={false} className="product-image" aria-label={`Ver ${product.name}`}>
         {product.requiresMedicationPermission && <span className="tag">Uso profesional</span>}
-        <Picture src={product.media.find((item) => item.type === "IMAGE")?.url ?? "/images/placeholder.svg"} alt={product.name} loading="lazy" sizes="(max-width: 767px) 50vw, 300px" />
+        <Picture src={product.media.find((item) => item.type === "IMAGE")?.url ?? "/images/placeholder.svg"} alt={product.name} loading={eager ? "eager" : "lazy"} sizes="(max-width: 767px) 50vw, 300px" />
       </Link>
-      <div className="product-variants" role="group" aria-label={`Presentaciones de ${product.name}`} aria-busy={detail.isPending}>
+      <div className="product-variants" role="group" aria-label={`Presentaciones de ${product.name}`} aria-busy={pending}>
         {active.map((item) => (
           <button key={item.id} type="button" className="product-variant-pill" aria-pressed={variant?.id === item.id} disabled={mutation.isPending}
             title={[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
@@ -109,22 +114,22 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {[...new Set([item.name, item.presentation].filter(Boolean))].join(" · ") || item.sku}
           </button>
         ))}
-        {detail.isPending && <span className="muted">Cargando presentaciones…</span>}
-        {detail.data && !active.length && <span className="muted">Sin presentaciones disponibles</span>}
+        {pending && <span className="muted">Cargando presentaciones…</span>}
+        {source && !active.length && <span className="muted">Sin presentaciones disponibles</span>}
       </div>
       </div>
       <p className="product-meta">{product.brand?.name ?? product.laboratory?.name ?? " "}</p>
-      <Link href={storeRoutes.product(product.slug)}><h3>{product.name}</h3></Link>
+      <Link href={storeRoutes.product(product.slug)} prefetch={false}><h3>{product.name}</h3></Link>
       <div className="product-price">
         <div className="product-price-row">
           <span>Precio</span>
           {price ? <strong>{money(price.amount, price.currency)}</strong> : (
-            <span className="product-price-locked"><LockKeyhole size={12} aria-hidden />{variant ? hiddenPriceText(user, detail.data ?? product) : detail.isPending ? "Cargando…" : "No disponible"}</span>
+            <span className="product-price-locked"><LockKeyhole size={12} aria-hidden />{variant ? hiddenPriceText(user, product) : pending ? "Cargando…" : "No disponible"}</span>
           )}
         </div>
       </div>
       <div className="product-card-buy">
-        {detail.error ? (
+        {!complete && detail.error ? (
           <ErrorBox error={detail.error} retry={() => void detail.refetch()} />
         ) : !allowed ? (
           <p className="product-card-note">{user ? "Tu cuenta no está habilitada para comprar este producto." : "Ingresá para comprar."}</p>
@@ -142,7 +147,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {mutation.error && <ErrorBox error={mutation.error} />}
           </>
         ) : (
-          <p className="product-card-note">{detail.isPending ? "Cargando…" : variant ? "Sin stock para el mínimo de compra" : "No disponible"}</p>
+          <p className="product-card-note">{pending ? "Cargando…" : variant ? "Sin stock para el mínimo de compra" : "No disponible"}</p>
         )}
       </div>
     </article>
@@ -151,8 +156,8 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 export function ProductGrid({ products }: { products: ProductCardData[] }) {
   return (
     <div className="product-grid">
-      {products.map((p) => (
-        <ProductCard product={p} key={p.id} />
+      {products.map((p, index) => (
+        <ProductCard product={p} eager={index < 4} key={p.id} />
       ))}
     </div>
   );
@@ -300,34 +305,57 @@ function CatalogPromoPacks({ brandId }: { brandId: string }) {
 }
 
 export function Catalog({ categoryId }: { categoryId?: string }) {
-  const params = useSearchParams(),
-    router = useRouter();
+  const params = useSearchParams();
   const filters = new URLSearchParams(params);
   if (categoryId) filters.set("categoryId", categoryId);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const searchPrefetch = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(searchPrefetch.current), []);
   const client = useQueryClient();
-  const { user, loading } = useSession();
-  const products = useApi<ProductCardList>(catalogCardsPath(filters)),
-    categories = useApi<Entity[]>("categories/catalog"),
-    brands = useApi<Entity[]>("brands"),
-    labs = useApi<Entity[]>("laboratories"),
-    attributes = useApi<Attribute[]>("attributes");
+  const { user, loading, ready } = useSession();
+  const path = catalogCardsPath(filters);
+  const products = useQuery<ProductCardList>({ queryKey: apiQueryKey(path, user?.id),
+    queryFn: () => request<ProductCardList>(path), enabled: ready && !loading,
+    placeholderData: (previous, query) => previousCatalogData(previous, query?.queryKey, user?.id) });
+  const categories = usePublicApi<Entity[]>("categories/catalog"),
+    brands = usePublicApi<Entity[]>("brands"),
+    labs = usePublicApi<Entity[]>("laboratories"),
+    attributes = usePublicApi<Attribute[]>("attributes");
+  useEffect(() => {
+    if (loading || products.isPlaceholderData || !products.data || !automaticStorePreloadAllowed()) return;
+    const { page, limit, total } = products.data.meta;
+    if (page * limit >= total) return;
+    const next = new URLSearchParams(path.split("?")[1]);
+    next.set("page", String(page + 1));
+    const nextPath = catalogCardsPath(next);
+    void client.prefetchQuery({ queryKey: apiQueryKey(nextPath, user?.id),
+      queryFn: () => request<ProductCardList>(nextPath), staleTime: API_STALE_TIME, retry: false })
+      .then(() => warmStoreImages(client.getQueryData<ProductCardList>(apiQueryKey(nextPath, user?.id))?.items.slice(0, 6)
+        .flatMap((product) => product.media.filter((media) => media.type === "IMAGE").map((media) => media.url)) ?? []));
+  }, [client, loading, path, products.data, products.isPlaceholderData, user?.id]);
   function prefetchCategory(next: URLSearchParams) {
     if (loading) return;
     const path = catalogCardsPath(next);
     void client.prefetchQuery({
       queryKey: apiQueryKey(path, user?.id),
       queryFn: () => request<ProductCardList>(path),
-      staleTime: 20_000,
+      staleTime: API_STALE_TIME,
     });
   }
-  function set(key: string, value: string) {
+  function nextFilters(key: string, value: string) {
     const next = new URLSearchParams(filters);
-    if (value) next.set(key, value);
-    else next.delete(key);
+    if (value) next.set(key, value); else next.delete(key);
     if (key !== "page") next.delete("page");
-    if (key === "categoryId") prefetchCategory(next);
-    router.push(withSearch(storeRoutes.products, next), { scroll: false });
+    return next;
+  }
+  function set(key: string, value: string) {
+    navigateFilters(nextFilters(key, value));
+  }
+  function navigateFilters(next: URLSearchParams) {
+    prefetchCategory(next);
+    const href = withSearch(storeRoutes.products, next);
+    // Query-only filters do not need another server-rendered route payload.
+    window.history.pushState(null, "", href);
   }
   const categoryIds = canonicalCategoryIds(
     categories.data ?? [],
@@ -421,7 +449,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
       <button
         className="text-link"
         style={{ marginTop: 20 }}
-        onClick={() => router.push(storeRoutes.products, { scroll: false })}
+        onClick={() => navigateFilters(new URLSearchParams())}
       >
         Limpiar filtros <X size={14} />
       </button>
@@ -430,6 +458,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
   const categoryName = categoryId
     ? categories.data?.find((c) => c.id === categoryId)?.name
     : undefined;
+  useEffect(() => { document.title = `${categoryName ?? "Catálogo"} | DISTRICO`; }, [categoryName]);
   const productType = filters.get("productType") ?? "";
   const promoBrandKeys = ["biofresh", "granplus", "guabi", "threedogs", "stack"];
   const brandKey = (value: string) => normalize(value).replace(/[^a-z0-9]/g, "");
@@ -509,6 +538,8 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
             className="catalog-type"
             key={t.type}
             aria-pressed={productType === t.type}
+            onMouseEnter={() => prefetchCategory(nextFilters("productType", productType === t.type ? "" : t.type))}
+            onFocus={() => prefetchCategory(nextFilters("productType", productType === t.type ? "" : t.type))}
             onClick={() =>
               set("productType", productType === t.type ? "" : t.type)
             }
@@ -553,6 +584,11 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
                 name="search"
                 placeholder="Nombre o código de producto"
                 defaultValue={filters.get("search") ?? ""}
+                onChange={(event) => {
+                  window.clearTimeout(searchPrefetch.current);
+                  const next = nextFilters("search", event.target.value.trim());
+                  searchPrefetch.current = window.setTimeout(() => prefetchCategory(next), 250);
+                }}
               />
               <button className="button small" type="submit">
                 Buscar
@@ -639,10 +675,10 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
             </Empty>
           ) : (
             <>
-              <ProductGrid
-                key={filters.toString()}
-                products={products.data.items}
-              />
+              {products.isPlaceholderData && <span className="sr-only" role="status">Actualizando productos</span>}
+              <div aria-busy={products.isPlaceholderData} inert={products.isPlaceholderData}>
+                <ProductGrid products={products.data.items} />
+              </div>
               <CatalogPagination
                 page={products.data.meta.page}
                 totalPages={Math.max(
@@ -652,6 +688,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
                   ),
                 )}
                 onPageChange={(nextPage) => set("page", String(nextPage))}
+                onPagePreview={(nextPage) => prefetchCategory(nextFilters("page", String(nextPage)))}
               />
             </>
           )}
@@ -1190,6 +1227,7 @@ function ProductDetailContent({ product }: { product: Product }) {
 }
 export function ProductDetail({ slug }: { slug: string }) {
   const q = useApi<Product>(`products/${encodeURIComponent(slug)}`);
+  useEffect(() => { if (q.data) document.title = `${q.data.name} | DISTRICO`; }, [q.data]);
   return (
     <div className="container section detail-page">
       <div className="breadcrumbs">

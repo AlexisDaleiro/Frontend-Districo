@@ -13,10 +13,12 @@ export function catalogCardsPath(params: Pick<URLSearchParams, "get">) {
   const filtered = new URLSearchParams();
   for (const key of filterKeys) {
     const value = params.get(key);
-    if (key === "page" && !/^[1-9]\d*$/.test(value ?? "")) continue;
-    if (value) filtered.set(key, value);
+    if (key === "page" && (!/^[1-9]\d*$/.test(value ?? "") || value === "1")) continue;
+    if (value) filtered.set(key, ["categoryId", "attributeValueIds"].includes(key)
+      ? [...new Set(value.split(",").filter(Boolean))].sort().join(",") : value);
   }
   filtered.set("limit", "12");
+  filtered.set("includeVariants", "true");
   return `products/cards?${filtered}`;
 }
 

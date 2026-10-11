@@ -141,7 +141,7 @@ export type ProductCardData = Pick<
 > & {
   variantCount?: number;
   media: Pick<Media, "id" | "url" | "alt" | "type">[];
-  variants: Pick<Variant, "id" | "active" | "price">[];
+  variants: (Pick<Variant, "id" | "active" | "price"> & Partial<Variant>)[];
 };
 export type ProductCardList = {
   items: ProductCardData[];

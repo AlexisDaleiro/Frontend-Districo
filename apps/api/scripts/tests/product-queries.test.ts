@@ -106,6 +106,11 @@ test('card listing selects only the fields used by product cards', async () => {
   assert.deepEqual(listArgs.select!.brand, { select: { id: true, name: true, salesLine: true } });
   assert.deepEqual(listArgs.select!._count, { select: { variants: { where: { deletedAt: null, active: true } } } });
   assert.equal((listArgs.select!.variants as Prisma.Product$variantsArgs).take, 1);
+  await repository.findCards({ page: 1, limit: 12, includeVariants: true });
+  const variants = listArgs!.select!.variants as Prisma.Product$variantsArgs;
+  assert.equal(variants.take, undefined);
+  assert.deepEqual(variants.where, { active: true, deletedAt: null });
+  for (const field of ['name', 'sku', 'presentation', 'physicalStock', 'reservedStock', 'saleMultiple', 'minimumOrderQuantity'] as const) assert.equal(variants.select![field], true);
 });
 
 test('card prices keep the same account and medication restrictions as detail', async () => {
@@ -232,6 +237,28 @@ test('category editor rejects duplicate siblings and names reserved for brands',
   const service = new CategoriesService(repository, new CategoryHierarchyService({} as PrismaService));
   await assert.rejects(service.create({ name: 'BIOLOGICOS' }), /Ya existe/);
   await assert.rejects(service.create({ name: 'Zoetis' }), /marca o laboratorio/);
+});
+
+test('purchase cards return every presentation without leaking stock internals or restricted prices', async () => {
+  const repository = { findCards: async () => ({ items: [{
+    id: 'p', slug: 'p', name: 'p', featured: true, requiresMedicationPermission: true,
+    brand: null, laboratory: null, media: [], _count: { variants: 2 },
+    variants: [0, 1].map((index) => ({ id: `v${index}`, name: `${index + 1} kg`, sku: `SKU${index}`,
+      presentation: 'Bolsa', active: true, physicalStock: 4, reservedStock: index ? 6 : 1,
+      minimumOrderQuantity: 2, saleMultiple: 2, prices: [{ amount: new Prisma.Decimal(100 + index), currency: 'UYU' }] })),
+  }], meta: { page: 1, limit: 12, total: 1 } }) } as unknown as ProductsRepository;
+  const service = new ProductsService(repository, {} as ConstructorParameters<typeof ProductsService>[1]);
+  const filters = { page: 1, limit: 12, includeVariants: true };
+  for (const user of [undefined, { sub: 'client', role: Role.CLIENT, permissions: [Permission.CAN_VIEW_PRICES] }]) {
+    const cards = await service.findCards(filters, user as Parameters<typeof service.findCards>[1]);
+    assert.equal(cards.items[0].variants.length, 2);
+    assert.deepEqual(cards.items[0].variants.map((variant) => variant.availableStock), [3, 0]);
+    assert.equal(cards.items[0].variants.every((variant) => !variant.price), true);
+    assert.equal('physicalStock' in cards.items[0].variants[0], false);
+    assert.equal('reservedStock' in cards.items[0].variants[0], false);
+  }
+  const cards = await service.findCards(filters, { sub: 'admin', email: 'fixture@example.test', role: Role.ADMIN, permissions: [] });
+  assert.deepEqual(cards.items[0].variants.map((variant) => variant.price?.amount), [100, 101]);
 });
 
 test('category product lists use exact membership and retain independent categories', async () => {

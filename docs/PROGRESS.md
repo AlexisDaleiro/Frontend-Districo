@@ -2,6 +2,15 @@
 
 Última actualización: 11 de octubre de 2026. Rama de trabajo: `main`.
 
+## Navegacion inmediata de productos (11/10/2026)
+
+- Ecommerce prepara datos e imagenes antes del clic, y mantiene sus vistas de compra en el layout autorizado: Inicio, catalogo, categorias y ficha navegan localmente sin esperar RSC. Las rutas directas, URLs compartidas, carrito, checkout, cuenta, dashboard e institucional mantienen sus contratos y guards. Titulos, filtros y Atrás/Adelante conservados; sin redisenar componentes del companero.
+- Tarjetas completas mediante `products/cards?includeVariants=true`, evitando una consulta de detalle por producto para sus presentaciones. Opcion aditiva con respuesta anterior conservada; mismas restricciones de precios y calculo de disponibilidad, sin exponer stock interno. Sin migraciones, dependencias ni escrituras comerciales.
+- Anticipacion acotada, cache en memoria por usuario/modo y frescura original de 20 segundos; logout elimina incluso lecturas pendientes. Siguiente y enlaces visibles preparan imagenes. Sin fundidos/escalonamiento de productos ni remontar grilla; filtros no preparados conservan la anterior sin permitir compras sobre datos viejos.
+- Verificacion final: 217 unidades frontend, 19 pruebas API de productos/filtros, lint/tipos y compilaciones correctos; 12 ensayos de produccion correctos en dos repeticiones. Biofresh real preparado 11/13 ms; paginacion controlada 16/17 ms, ficha 39/21 ms, categoria 13/22 ms. Ensayo real solo consulta catalogo publico y simula la identidad, no autentica un cliente real ni consulta sus precios. Detalles y limites en `STORE-NAVIGATION.md`; primera visita completamente fria no se presenta como instantanea.
+- Regresiones demo: 43 correctas, una opt-in real omitida y una falla por un margen de cinco segundos al ingresar despues de aprobar un cliente. Repetida esa alta completa dos veces correctamente; igualado solo el margen al helper de login (15 segundos en desarrollo) y otras dos repeticiones correctas. Los 44 casos demo quedan verificados: compras, variantes, favoritos, cuenta, permisos, categorias/etapa, flujo administrativo y responsive. Capturas desktop/movil revisadas. Teclado, busqueda y Atrás/Adelante tambien correctos en produccion.
+- Sin commit ni push. Frontend habitual en 3002 y API actualizada en 3001; servidor temporal de produccion retirado y configuraciones generadas restauradas a las del companero. No ejecutar simultaneamente baterias Playwright con el mismo directorio de resultados: invalida trazas ajenas, como ocurrio en una pasada anterior; esos recorridos se repitieron correctamente.
+
 ## Integracion verificada para main (11/10/2026)
 
 - Descargados los tres commits del companero hasta `b6a9c45`: ajustes responsive de las lineas institucionales, acceso movil con Ingresar y retirada del bloque Nosotros en portada. Cambios locales guardados en `8748020` antes del merge; integracion automatica sin conflictos. Sus componentes y estilos de portada, header y catalogo se conservan; `site.css` reune el acceso nuevo y los estilos de postulaciones de ambos trabajos.
