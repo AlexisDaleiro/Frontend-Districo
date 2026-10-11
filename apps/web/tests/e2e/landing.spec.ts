@@ -12,7 +12,7 @@ test("el contenido institucional sigue visible sin JavaScript", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Alimento, cuidado y bienestar/,
+      name: /Distribución mayorista/,
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Alimento para mascotas" })).toBeVisible();
@@ -57,27 +57,69 @@ test("el acceso institucional movil sigue visible y abre el ingreso", async ({ p
   await expect(page.getByRole("heading", { name: "Ingresá a tu cuenta", exact: true })).toBeVisible();
 });
 
-test("el hero rota, se pausa y se maneja con flechas y puntos", async ({ page }) => {
+test("el hero rota automáticamente sin controles visibles", async ({ page }) => {
   await page.goto("/");
   const hero = page.locator(".home-hero");
   const current = hero.locator(".home-slide.is-on").getByRole("heading");
-  await expect(current).toHaveText(/Alimento, cuidado y bienestar/);
+  await expect(current).toHaveText(/Marcas para mascotas, al por mayor/);
   await expect(current).toHaveText(/Hercosul/, { timeout: 9000 });
-  await hero.getByRole("button", { name: "Pausar destacados" }).click();
-  await hero.getByRole("button", { name: "Destacado siguiente" }).click();
-  await expect(current).toHaveText(/logística propia/);
-  await page.waitForTimeout(7500);
-  await expect(current).toHaveText(/logística propia/);
-  await hero.getByRole("button", { name: "Ver destacado 1" }).click();
-  await expect(current).toHaveText(/Alimento, cuidado y bienestar/);
+  await expect(hero.getByRole("button")).toHaveCount(0);
+  await expect(current).toHaveText(/logística propia/, { timeout: 9000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Distribución mayorista de marcas para mascotas en Uruguay");
+  await expect(current).toHaveText(/Marcas para mascotas, al por mayor/, { timeout: 9000 });
   await expect(hero.locator(".home-slide:not(.is-on)").first()).toHaveAttribute("aria-hidden", "true");
+});
+
+test("el hero permite arrastrar en ambos sentidos sin activar enlaces", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const hero = page.locator(".home-hero");
+  const current = hero.locator(".home-slide.is-on").getByRole("heading");
+  const drag = async (x: number, y: number, dx: number, dy = 0) => {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 12 });
+    await page.mouse.up();
+  };
+  await drag(900, 400, -180);
+  await expect(current).toHaveText(/Hercosul/);
+  await drag(900, 400, 180);
+  await expect(current).toHaveText(/Marcas para mascotas, al por mayor/);
+  await drag(900, 400, -20);
+  await expect(current).toHaveText(/Marcas para mascotas, al por mayor/);
+  await drag(900, 400, 5, 120);
+  await expect(current).toHaveText(/Marcas para mascotas, al por mayor/);
+  const link = hero.getByRole("link", { name: "Solicitar cuenta" });
+  const box = (await link.boundingBox())!;
+  await drag(box.x + box.width / 2, box.y + box.height / 2, -180);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(current).toHaveText(/Hercosul/);
+  await drag(900, 400, 180);
+  await link.click();
+  await expect(page).toHaveURL(/\/tienda\/solicitar-cuenta$/);
+});
+
+test("el hero cambia con deslizamiento táctil horizontal", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/");
+  const session = await context.newCDPSession(page);
+  await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 320, y: 300 }] });
+  for (const x of [290, 250, 210, 160, 100]) {
+    await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: 300 }] });
+  }
+  await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator(".home-slide.is-on").getByRole("heading")).toHaveText(/Hercosul/);
+  await expect(page.locator(".home-hero")).not.toHaveClass(/is-dragging/);
+  await context.close();
 });
 
 test("el hero no avanza solo con movimiento reducido", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await page.waitForTimeout(7500);
-  await expect(page.locator(".home-slide.is-on").getByRole("heading")).toHaveText(/Alimento, cuidado y bienestar/);
+  await expect(page.locator(".home-slide.is-on").getByRole("heading")).toHaveText(/Marcas para mascotas, al por mayor/);
 });
 
 test("marcas destacadas muestran las presentaciones de la marca elegida", async ({ page }) => {
@@ -91,8 +133,16 @@ test("marcas destacadas muestran las presentaciones de la marca elegida", async 
   await expect(section.getByRole("button", { name: "Pipicat" })).toHaveAttribute("aria-pressed", "true");
   await expect(section.locator(".home-shelf li")).toHaveText([/Classic/, /Campestre/, /Floral/]);
   await expect(section.getByRole("link", { name: /Ver productos de Pipicat/ })).toHaveAttribute("href", "/productos?search=Pipicat");
-  await page.locator(".home-explore").click();
-  await expect(page).toHaveURL(/\/marcas$/);
+});
+
+test("la portada cierra con los pasos para ser cliente", async ({ page }) => {
+  await page.goto("/");
+  const join = page.locator(".home-join");
+  await expect(join.getByRole("heading", { level: 2 })).toHaveText("Cómo ser cliente");
+  await expect(join.locator(".home-join-steps li")).toHaveCount(3);
+  await expect(page.locator(".site-session-check")).toHaveCount(0);
+  await join.getByRole("link", { name: "Solicitar cuenta" }).click();
+  await expect(page).toHaveURL(/\/tienda\/solicitar-cuenta$/);
 });
 
 test("navbar institucional y menú móvil con Escape y foco", async ({ page }) => {
@@ -213,6 +263,7 @@ test("marcas públicas: filtros por línea, búsqueda y detalle con presentacion
   await page.goto("/marcas?linea=arenas");
   const cards = page.locator(".brands-card");
   await expect(cards).toHaveCount(5);
+  await page.getByRole("button", { name: /^Líneas de producto/ }).click();
   await expect(page.getByRole("button", { name: /^Arenas sanitarias/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /^Todas/ }).click();
   await expect(cards).toHaveCount(28);
@@ -222,7 +273,7 @@ test("marcas públicas: filtros por línea, búsqueda y detalle con presentacion
   await cards.first().click();
   const detail = page.locator(".brands-detail");
   await expect(detail.getByRole("heading", { level: 2 })).toHaveText("Procão");
-  await expect(detail.locator(".home-shelf li")).toHaveCount(5);
+  await expect(detail.locator(".home-shelf li")).toHaveCount(1);
   await expect(detail.getByRole("link", { name: /Ver productos de Procão/ })).toHaveAttribute("href", "/productos?search=Proc%C3%A3o");
   await page.getByRole("searchbox", { name: "Buscar marca" }).fill("");
   await page.getByRole("combobox", { name: "Especie" }).selectOption("otras");
@@ -241,7 +292,7 @@ test("empleos: acceso desde la navegación y CV por correo", async ({ page }) =>
   await page.locator(".site-nav").getByRole("link", { name: "Empleos" }).click();
   await expect(page).toHaveURL(/\/trabajo$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Trabajá en DISTRICO");
-  await expect(page.getByRole("link", { name: "Enviar mi CV" })).toHaveAttribute("href", /^mailto:contacto@districo\.com\.uy/);
+  await expect(page.getByRole("link", { name: "Enviar CV por correo" })).toHaveAttribute("href", /^mailto:contacto@districo\.com\.uy/);
   const jobs = page.locator(".jobs-item");
   await expect(jobs).toHaveCount(2);
   await expect(page.getByText(/puestos de ejemplo/)).toBeVisible();
@@ -249,7 +300,7 @@ test("empleos: acceso desde la navegación y CV por correo", async ({ page }) =>
   await page.getByRole("checkbox", { name: /Ventas/ }).check();
   await expect.poll(() => jobs.count()).toBeLessThan(total);
   await jobs.first().getByRole("button", { name: "Ver puesto" }).click();
-  await expect(jobs.first().getByRole("link", { name: "Postularme" })).toHaveCount(0);
+  await expect(jobs.first().getByRole("link", { name: "Postularme", exact: true })).toHaveCount(0);
   await expect(jobs.first().getByText("Ejemplo", { exact: true })).toBeVisible();
 });
 
@@ -295,13 +346,13 @@ test("contacto: página propia arma el mensaje para WhatsApp sin enviar datos", 
   await expect(page.getByRole("note").filter({ hasText: "Vista de demostración" })).toBeVisible();
   await expect(page.locator(".leaflet-container")).toBeVisible();
 
-  await contact.getByRole("button", { name: /Enviar por WhatsApp/ }).click();
+  await contact.getByRole("button", { name: /Abrir WhatsApp/ }).click();
   expect(await page.evaluate(() => (window as unknown as { openedUrl?: string }).openedUrl)).toBeUndefined();
 
   await contact.getByLabel("Nombre y apellido").fill("Ana Pérez");
   await contact.getByLabel("Comercio").fill("Veterinaria Sur");
   await contact.getByRole("textbox", { name: "Consulta *" }).fill("Quiero abrir una cuenta.");
-  await contact.getByRole("button", { name: /Enviar por WhatsApp/ }).click();
+  await contact.getByRole("button", { name: /Abrir WhatsApp/ }).click();
   const opened = await page.evaluate(() => (window as unknown as { openedUrl: string }).openedUrl);
   expect(opened).toContain("https://wa.me/59895673109?text=");
   expect(decodeURIComponent(opened)).toContain("Hola, soy Ana Pérez de Veterinaria Sur.\n\nQuiero abrir una cuenta.");

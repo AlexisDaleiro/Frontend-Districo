@@ -45,7 +45,7 @@ test('oferta pública recibe CV, admin gestiona candidatos y descarga PDF en mó
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('postulacion-mobile.png'), fullPage: true });
   await page.goto('/trabajo');
-  const filters = page.getByRole('button', { name: /Filtros \(/ });
+  const filters = page.getByRole('button', { name: /^Filtros de área y jornada/ });
   await expect(filters).toHaveAttribute('aria-expanded', 'false');
   await expect(page.getByRole('checkbox', { name: /Ventas/ })).not.toBeVisible();
   await filters.click();

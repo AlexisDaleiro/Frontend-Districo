@@ -2,6 +2,12 @@
 
 Última actualización: 11 de octubre de 2026. Rama de trabajo: `main`.
 
+## Conflictos al recuperar cambios locales (11/10/2026)
+
+- El commit estaba bloqueado por cuatro archivos sin resolver tras aplicar el stash: `site-jobs.tsx`, `job-openings.spec.ts`, `landing.spec.ts` y este registro. Conservados los registros de ambos trabajos, el acceso móvil del pull y los ajustes locales del banner y panel de marcas.
+- Trabajo conserva `jobPage` y las postulaciones privadas dentro del sitio del pull; no vuelve al antiguo mailto de las ofertas. Se conserva la mejora local del desplegable móvil, búsqueda y estados sin resultados, eliminando la estructura duplicada/incompatible de filtros. CV espontáneo por correo permanece donde estaba.
+- Verificación: 209 pruebas unitarias frontend, tipos y ESLint correctos. Ocho recorridos de navegador correctos, incluido envío de CV, gestión/descarga de candidatos, ofertas, acceso móvil, banner y panel/productos de marcas. La prueba de CV se repitió tras actualizar sólo la expectativa del nombre del botón móvil. Sin abortar, resetear ni eliminar stash; sin commit ni push.
+
 ## Integracion verificada para main (11/10/2026)
 
 - Descargados los tres commits del companero hasta `b6a9c45`: ajustes responsive de las lineas institucionales, acceso movil con Ingresar y retirada del bloque Nosotros en portada. Cambios locales guardados en `8748020` antes del merge; integracion automatica sin conflictos. Sus componentes y estilos de portada, header y catalogo se conservan; `site.css` reune el acceso nuevo y los estilos de postulaciones de ambos trabajos.
@@ -46,6 +52,63 @@
 - Verificación: 197 pruebas frontend, batería API y pruebas finales de empleos/seguridad correctas; lint/tipos de ambas apps y compilaciones Nest/Next de producción correctos. Batería completa Playwright: 117 correctas inicialmente, 5 opt-in reales omitidas y 6 fallidas; corregidos avisos falsos de formularios y dos selectores desactualizados por las nuevas tarjetas, y repetidos los seis recorridos con éxito. El último de restauración se repitió tres veces seguidas y después pasó nuevamente la batería completa de seis filtros/navegación; nuevos recorridos de postulación y protección de marca también se repitieron con éxito. El fallo institucional de navegación no se reprodujo al repetirlo, sin cambiar su código/prueba. No se presenta como una auditoría exhaustiva en todos los navegadores.
 - API/Supabase y navegador real: CV privado, candidatos de ofertas retiradas, permisos, importes JSON, idempotencia, refresh concurrente (sólo uno aceptado), revocación inmediata, MFA/recuperación, dos pestañas y logout comprobados. Sin capturas, trazas ni logs de QR, contraseñas o códigos reales. Capturas demo de fichas/filtros a 1280 y 390 revisadas, sin desbordamiento horizontal.
 - Frontend local conservado en 3002 y API actualizada en 3001. Restaurados archivos de tipos/configuración reescritos automáticamente por los builds. Guía de despliegue y límites en `SECURITY-AND-JOBS.md`; actualizado `JOB-OPENINGS.md`. Sin commit ni push en este pedido.
+
+## Productos del catálogo en el panel de marcas (11/10/2026)
+
+- Sustituida la lista fija del directorio por consulta pública a `brands` y `products/cards?brandId=…&limit=4`. Coincidencia de nombre/slug normalizada para tildes, espacios y guiones; filtro de productos por ID real, sin usar coincidencias del nombre del producto. Con cuatro o más publicados se muestran cuatro; con menos se muestran todos los disponibles. Portada conserva sus imágenes editoriales.
+- Imágenes y nombres del catálogo enlazan a la ficha pública; imagen de reemplazo para productos sin foto. Estados de carga, ausencia y error con reintento. Componentes separados por marca/ID impiden mantener productos de la selección anterior. Ajustado `flex-shrink` del panel para que nombres largos no compriman el logo al necesitar scroll interno.
+- Cuatro recorridos Playwright distintos correctos: filtros/presentaciones, estabilidad del panel entre 320 y 1440, foco/retorno y datos asociados. Caso nuevo probado con marcas sin imágenes fijas, seis productos (muestra cuatro), dos productos, producto inactivo, producto de otra marca cuyo nombre coincide, foto faltante y marca sin productos. Se corrigió la inicialización de la base de demostración del test antes de repetirlo. Typecheck y ESLint correctos; revisión visual móvil/escritorio. Verificación con datos de demostración, sin modificar la base real, backend, commit ni push.
+
+## Panel lateral de marcas (11/10/2026)
+
+- Aplicada la opción «Panel lateral» elegida en la visualización: columna reservada de 360 px desde 1024 px, grilla de tres columnas y detalle adherente al desplazarse. Abrir, cambiar o cerrar no modifica el ancho/posición de las tarjetas ni fuerza scroll en escritorio. Conservados logos, descripciones, presentaciones y enlaces reales.
+- En móvil/tablet, el detalle ocupa el ancho disponible inmediatamente después de la fila seleccionada; tarjetas de dos columnas con alturas parejas. Sólo se desplaza lo necesario para mostrar el detalle, respetando movimiento reducido. Foco en título al seleccionar y retorno a tarjeta/buscador al cerrar conservados.
+- Verificación: tres recorridos Playwright correctos (estabilidad de geometría/scroll, foco y filtros, catálogo/presentaciones), con desbordamiento y ubicación del panel comprobados en 320, 768, 1024 y 1440 px. Typecheck, ESLint y detector de layout correctos. Inspección visual desktop/móvil; sin commit ni push.
+
+## Claridad de los textos públicos (11/10/2026)
+
+- Contacto: botones «Abrir WhatsApp» / «Abrir correo», explicación antes de elegir canal de que el envío se completa en la aplicación abierta, Comercio y Localidad marcados como opcionales y título «Contacto directo».
+- Trabajo: «Sin resultados» distingue búsquedas filtradas de ausencia de vacantes; instrucciones de recuperación incluyen palabra clave, sede, área y jornada. Postulación y CV indican correo y la necesidad de adjuntar y enviar desde allí. Marcas explica cómo recuperar resultados; Nosotros usa «Conocé nuestras marcas», como la portada.
+- Solicitud mayorista: confirmación explica que la solicitud queda pendiente de revisión y que ingreso/compra requieren aprobación. Conservadas política de garantía confirmada, requisitos reales, destinos y comportamiento. No se agregaron plazos ni requisitos por tipo de comercio sin confirmar.
+- Verificación: cinco recorridos Playwright correctos (consulta preparada en WhatsApp, gestión de vacantes/postulación por correo, ausencia real y filtrada de puestos, filtros móviles y alta con PDF). Typecheck y ESLint correctos; textos revisados en escritorio/móvil. Pruebas existentes actualizadas con las nuevas etiquetas; sin commit ni push.
+
+## Mejoras del recorrido público tras la crítica (11/10/2026)
+
+- Alta mayorista: requisitos existentes anticipados, campos agrupados en Comercio / Contacto / Acceso y documentación, formatos de RUT y contraseña visibles y autocomplete de contacto/dirección. Conservadas validación, documentos obligatorios, formatos/tamaño y aprobación. Pendiente la confirmación humana de documentos específicos por tipo de comercio; se ofrece consulta previa sin inventar habilitaciones.
+- Garantía: usuario confirmó que el envase puede estar abierto conservando al menos el 80 %. Corregidos paso resumido y condiciones completas; conservados envase original, vencimiento, ticket, plazos y procedimiento.
+- Marcas y Trabajo: filtros secundarios desplegables sólo en móvil; búsqueda, conteos y filtros desktop conservados. Contacto: enlaces directos, ubicación y limpiar filtros con altura mínima de 44 px, zoom de Leaflet 44×44. Ajustada especificidad del zoom tras detectar que CSS cargado por Leaflet lo sobrescribía.
+- Detalle de marca: foco al título al abrir, retorno a tarjeta al cerrar, o a búsqueda si filtros quitaron la tarjeta. Respeta movimiento reducido. Nosotros: misión con resumen y texto completo desplegable, nueve valores agrupados en tres conjuntos con textos originales accesibles; lectura a 72ch y jerarquía Manrope existente.
+- Verificación: 13 recorridos distintos Playwright correctos, incluido envío simulado con PDF, foco/retorno, filtros, garantía, nueve textos, tamaños táctiles y ausencia de desbordamiento de landing/catálogo entre 320 y 1440. La comprobación de Contacto se repitió y pasó tras corregir el zoom. Typecheck y ESLint correctos. Revisión visual desktop/móvil; sin pruebas en Safari ni dispositivos físicos. Servidor temporal detenido y tipos generados restaurados; `git diff --check` correcto. Sin cambios de backend, commit ni push.
+
+## Alineación de presentaciones destacadas (11/10/2026)
+
+- Corregido el desnivel de la presentación «Gatos castrados»: la fila de presentaciones estira sus elementos en lugar de alinearlos por el fondo del texto. Las etiquetas de una y dos líneas ya no desplazan las imágenes y separadores.
+- Verificación visual y geometría en navegador: cuatro separadores con idéntica altura en escritorio; pares alineados en grilla móvil de 390 px, sin desbordamiento horizontal. Servidor temporal detenido y tipos generados restaurados. `git diff --check` correcto; sin commit ni push.
+
+## Controles del banner público (11/10/2026)
+
+- Agregado arrastre horizontal con mouse y tacto para avanzar/retroceder sin controles visibles. Umbral para evitar cambios accidentales, bloqueo del clic posterior a un arrastre sobre enlaces, cursor de agarre y rotación pausada durante el gesto. Conservado desplazamiento vertical nativo mediante `touch-action: pan-y pinch-zoom`.
+- Verificación del gesto: mouse en ambos sentidos, desplazamientos cortos/verticales, arrastre sobre enlace y clic normal correctos; gesto táctil Chromium correcto tras corregir la pérdida de captura implícita desde la imagen. Cuatro recorridos distintos correctos (dos de gesto repetidos tras la corrección), typecheck y ESLint correctos. Dispositivos físicos y Safari sin probar.
+- Quitados flechas, indicadores y botón de pausa/reproducción del hero de la landing a pedido del usuario. Eliminados estado, función e importaciones manuales sin uso y sus estilos. Conservados enlaces comerciales, rotación automática y pausa por foco, visibilidad y movimiento reducido.
+- Actualizado el recorrido existente para verificar la rotación sin controles. Dos pruebas Playwright correctas (rotación y movimiento reducido), ESLint del componente y `git diff --check` correctos. Servidor temporal detenido por Playwright y archivo generado de tipos restaurado; sin commit ni push.
+
+## Color de la landing pública (11/10/2026)
+
+- Restaurado también el diseño anterior de Home Stats: arco decorativo horizontal y escalonado de las dos cifras centrales en escritorio. Reglas restituidas desde HEAD únicamente para esa sección; se mantienen los márgenes compactos y la ausencia del título visible. Diff de Home Stats contra HEAD sin diferencias y `git diff --check` correcto.
+- Revertido Colorize únicamente en Home Stats a pedido del usuario: fondo blanco, cifras petróleo y descripción con el token de texto anterior. Conservados los colores del resto de la landing y el layout compacto de cifras. Revisión de las tres reglas y `git diff --check` correctos.
+- Aplicado Impeccable Colorize con la paleta existente: cifras sobre petróleo, tarjetas con fondos suaves derivados del petróleo, alimento y pestaña seleccionada con lima suave y franja laboral con tinte lima. Conservados contenido, geometría y disposición vertical de Farmacia.
+- Verificación: 9 recorridos Playwright correctos, incluyendo marcas destacadas, portada compacta y ausencia de desbordamiento entre 320 y 1440 px. Capturas desktop/móvil revisadas. Contraste de textos comprobados desde 4,75:1 y de iconos 6,29:1; `git diff --check` correcto.
+- El servidor demo temporal produjo un error interno de Turbopack/HMR en sus logs, aunque los recorridos y las capturas terminaron correctamente; quedó detenido. Restaurado `next-env.d.ts`; sin commit ni push.
+
+## Plan de adaptación y robustez de la portada pública (11/10/2026)
+
+- Revertido a pedido del usuario el tratamiento de Farmacia: vuelve a una columna y disposición vertical; grilla desktop restituida a cuatro columnas. Se conserva el resto del plan. Eliminados los estilos y modificador específicos; `git diff --check` correcto.
+- Aplicado el plan Impeccable sobre la implementación existente, conservando los cambios pendientes previos. H1 fijo para lectores de pantalla fuera del carrusel, con distribución mayorista explícita; títulos de todas las diapositivas H2. Slide inicial «Marcas para mascotas, al por mayor para tu comercio». Subtítulo administrado limitado a tres líneas y sólo el punto activo lleva aria-current. Las marcas ausentes se filtran y una lista vacía no rompe la portada: la aserción `!` anterior no daba esa protección en ejecución.
+- Hero móvil `min(100svh, 680px)`, recorte de la foto ajustado y controles elevados; variante compacta para alturas hasta 640 px evita tapar el titular con el header. Links de compra y footer con blancos táctiles de 44 px, pill ISO de 11 px y navegación desktop de 13 px.
+- Cifras sin arco ni escalonado. Logos inactivos de pestañas a .8, siguiente pestaña parcialmente visible y indicación de deslizamiento en móvil. Farmacia ocupa dos columnas con texto/cantidad horizontales, sin inventar imagen; grilla desktop de tres columnas evita dejar Stack aislado en una fila de cuatro.
+- Marcas destacadas móvil: foto 160 px, cuerpo y espacios compactos, presentaciones en dos columnas con imágenes de 104 px. Altura a 390 px de 1.406 a 1.066 px, con todos los productos y textos conservados. «Trabajá con nosotros» sigue antes de «Cómo ser cliente». Sin cambios de cifras, afirmaciones nuevas, `--ease-spring` ni backend.
+- Verificación: 194 pruebas frontend; 21 recorridos existentes de landing correctos y 3 nuevos de tamaños táctiles, H1 estable y banners largos correctos. La preparación del fixture de banner se corrigió tras detectar que el estado demo anónimo no se persistía; repetición 3/3 correcta. Typecheck y lint correctos. Capturas desktop/móvil revisadas; geometría sin desbordamiento a 320, 390, 740 paisaje, 1120 y 1440, header sin superposición en pantalla baja y nav desktop; ampliación CSS al 200 % sin desbordamiento. Gesto horizontal sintetizado con CDP/Chromium desplaza las pestañas; dispositivos físicos y Safari sin probar.
+- Compilación de producción Next correcta; archivo de tipos generado restaurado a su contenido previo y servidor demo temporal detenido. Hook de diseño sin hallazgos deterministas; `git diff --check` correcto. Sin commit ni push; pendiente revisión del usuario en la portada.
 
 ## Cifras institucionales con arco horizontal (10/10/2026)
 
@@ -829,3 +892,12 @@ Para publicar el escenario simulado: completar autenticación de Vercel y ejecut
 Cuando llegue la API: ejecutar `docs/prompts/08a-integracion.md`, configurar el entorno real y verificar contratos con cuentas de prueba. Luego repetir `08b-calidad.md` y el guion de reunión.
 
 Para una sesión nueva: leer `CLAUDE.md`, este archivo y el estado de Git; elegir un solo prompt de `docs/prompts/INDEX.md`. La aplicación ya existe: continuarla, no regenerarla.
+
+## 2026-10-11 · Portada: recorte y cierre comercial (impeccable critique 22/32)
+
+- `apps/web/src/components/site-home.tsx`: se quitó HomeExplore (banner «Explorá nuestras marcas», repetía /marcas); HomeJobs pasa a una fila secundaria con botón outline, sin foto; nueva banda final «Cómo ser cliente» (3 pasos genéricos sin cifras comerciales, CTA lime «Solicitar cuenta» y «¿Ya sos cliente? Ingresá»); slide 1 del hero con «Solicitar cuenta» como primario; la cortina «Preparando DISTRICO…» solo aparece con sesión activa (redirección), no para visitantes anónimos.
+- `apps/web/src/app/site-home.css`: estilos de explore/collage/jobs-photo eliminados; nuevos `.home-jobs-row`, `.home-button--outline`, `.home-join*`.
+- `apps/web/src/app/site.css`: «Ingresar» móvil pasa a pill outline de 44px.
+- `apps/web/tests/e2e/landing.spec.ts`: test nuevo de la banda; el test de scroll horizontal esperaba `.site-apply` visible en móvil (desactualizado desde la opción C), ahora verifica `.site-login`.
+- Pruebas: `tsc` y `eslint` OK; `E2E_PORT=3107 npx playwright test tests/e2e/landing.spec.ts` 21/21.
+- Pendiente: datos reales para la banda (requisitos, tiempos, pedido mínimo, zonas); issues P2 restantes de la critique (flecha del hero a 4px del botón WhatsApp, pill ISO 9px, tarjeta Farmacia, logos inactivos .55). Snapshot en `apps/web/.impeccable/critique/`.

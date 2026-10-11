@@ -9,6 +9,12 @@ export const metadata = {
   description: "Historia, misión, valores e infraestructura de Districo S.A., distribuidora uruguaya de alimento y cuidado para mascotas: Casa Matriz de 10.000 m² en Montevideo, certificada ISO 9001, y sucursal propia en Maldonado.",
 };
 
+const valueGroups = [
+  { title: "Vínculos y confianza", names: ["Confianza", "Honestidad e integridad", "Respeto"] },
+  { title: "Aprendizaje y mejora", names: ["Mejora continua", "Conocimiento y habilidad", "Humildad"] },
+  { title: "Compromiso y equipo", names: ["Pasión", "Trabajo en equipo", "Orientación a resultados con filosofía ganar-ganar"] },
+];
+
 export default function Page() {
   return (
     <>
@@ -42,11 +48,14 @@ export default function Page() {
       <section className="site-about-purpose" aria-label="Misión y visión">
         <div className="container">
           <div>
-            <p className="reference-kicker">Nuestra misión</p>
+            <h2>Nuestra misión</h2>
+            <p className="site-about-summary">Desarrollar negocios sustentables y buscar la excelencia en el servicio.</p>
+            <details><summary>Leer la misión completa</summary>
             <p>Desarrollar negocios sustentables comercializando productos de distribución masiva, trascendiendo y accionando a través de nuestros valores, comprometidos con el crecimiento individual y profesional de nuestros colaboradores, buscando la excelencia en el servicio a nuestros clientes y procurando mejorar la calidad de vida de todos con quienes nos relacionamos.</p>
+            </details>
           </div>
           <div>
-            <p className="reference-kicker">Nuestra visión</p>
+            <h2>Nuestra visión</h2>
             <p>Ser referentes por nuestro modelo de gestión íntegro e innovador, que transforme nuestras acciones en valor para todos con quienes nos vinculamos.</p>
           </div>
         </div>
@@ -55,14 +64,17 @@ export default function Page() {
       <section className="site-section site-about-values" aria-labelledby="values-title">
         <div className="container">
           <h2 id="values-title">Nueve acuerdos sobre cómo trabajamos</h2>
-          <dl>
-            {values.map(([name, text]) => (
-              <div key={name}>
-                <dt>{name}</dt>
-                <dd>{text}</dd>
-              </div>
+          <div className="site-about-value-groups">
+            {valueGroups.map((group) => (
+              <details key={group.title}>
+                <summary><span>{group.title}</span><span className="site-about-value-names">{group.names.join(" · ")}</span></summary>
+                <dl>{group.names.map((name) => {
+                  const value = values.find(([title]) => title === name)!;
+                  return <div key={name}><dt>{name}</dt><dd>{value[1]}</dd></div>;
+                })}</dl>
+              </details>
             ))}
-          </dl>
+          </div>
         </div>
       </section>
 
@@ -113,7 +125,7 @@ export default function Page() {
           </div>
           <div className="reference-contact-actions">
             <Link className="reference-contact-primary" href={storeRoutes.requestAccount}>Solicitar cuenta</Link>
-            <Link className="reference-contact-secondary" href="/marcas">Conocer las marcas</Link>
+            <Link className="reference-contact-secondary" href="/marcas">Conocé nuestras marcas</Link>
           </div>
         </div>
       </section>

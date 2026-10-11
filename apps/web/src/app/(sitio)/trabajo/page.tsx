@@ -31,8 +31,9 @@ export default function Page() {
           <div>
             <h2 id="jobs-cv-title">¿No encontrás el puesto que buscás?</h2>
             <p>Dejanos tu CV y te contactamos cuando se abra una vacante para tu perfil.</p>
+            <p>Se abre tu correo. Adjuntá tu CV y enviá el mensaje desde allí.</p>
           </div>
-          <a className="button lime" href={cvHref}>Enviar mi CV</a>
+          <a className="button lime" href={cvHref}>Enviar CV por correo</a>
         </div>
       </section>
 
