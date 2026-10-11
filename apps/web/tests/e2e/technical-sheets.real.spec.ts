@@ -40,10 +40,9 @@ test("Supabase: edición persistente, permisos, conflicto y restauración de con
     await expect(editor).toContainText("Prueba temporal de edición");
     for (const path of [`/productos/${product.slug}`, `/tienda/producto/${product.slug}`]) {
       await page.goto(path);
-      if (path.startsWith("/tienda")) await page.getByRole("button", { name: "Información técnica", exact: true }).click();
-      const accordion = page.locator(".tech-acc").filter({ hasText: "Composición básica" });
-      await accordion.locator("summary").click();
-      await expect(accordion).toContainText("Prueba temporal de edición");
+      const section = page.getByRole("button", { name: "Composición básica", exact: true });
+      await section.click();
+      await expect(page.locator(`#${await section.getAttribute("aria-controls")}`)).toContainText("Prueba temporal de edición");
     }
     const logout = await page.request.post("/api/backend/auth/logout", { headers, data: {} });
     expect(logout.ok()).toBe(true);

@@ -55,12 +55,11 @@ test("editar texto y tabla conserva la ficha y actualiza tienda e institucional"
   await expect(composition).toContainText("Composición editada");
   await expect(nutrition).toContainText("99 %");
   await page.goto(`/tienda/producto/${product.slug}`);
-  await page.getByRole("button", { name: "Información técnica", exact: true }).click();
-  await page.locator(".tech-acc").filter({ hasText: "Composición básica" }).locator("summary").click();
-  await expect(page.locator(".tech-acc-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
+  await page.getByRole("button", { name: "Composición básica", exact: true }).click();
+  await expect(page.locator(".product-section-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
   await page.goto(`/productos/${product.slug}`);
-  await page.locator(".tech-acc").filter({ hasText: "Composición básica" }).locator("summary").click();
-  await expect(page.locator(".tech-acc-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
+  await page.getByRole("button", { name: "Composición básica", exact: true }).click();
+  await expect(page.locator(".product-section-body").filter({ hasText: "Composición editada desde el dashboard" })).toBeVisible();
   expect(staticRequests).toEqual([]);
   expect(errors).toEqual([]);
 });

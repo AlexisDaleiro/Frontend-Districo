@@ -22,7 +22,12 @@ import { automaticStorePreloadAllowed, warmStoreImages } from "./store-preload";
 import { brandLogoSrc } from "@/lib/brand-logos";
 import { CatalogPagination } from "./catalog-pagination";
 import { FavoriteButton } from "./favorite-button";
-import { TechnicalAccordions } from "./product-sheet";
+import {
+  BenefitList,
+  ProductSections,
+  technicalSections,
+  type ProductSection,
+} from "./product-sheet";
 import { TypeIcon, productTypeLinks } from "./store-art";
 import { canonicalCategoryIds, catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
@@ -884,7 +889,6 @@ function ProductInfo({
   product: Product;
   variant?: Variant;
 }) {
-  const [activeSection, setActiveSection] = useState<"specs" | "extra">("specs");
   const categories = product.categories.filter((c) => c.category);
   const technical = product.technicalSheet?.technical ?? [];
   // Solo filas con dato: la ficha no inventa valores.
@@ -931,68 +935,55 @@ function ProductInfo({
         "Requiere habilitación para medicamentos veterinarios",
     ],
   ];
+  const description = product.description?.replace(/<[^>]+>/g, " ").trim();
+  const sections: ProductSection[] = [
+    {
+      id: "ficha",
+      title: "Ficha técnica",
+      body: (
+        <dl className="detail-specs">
+          {rows
+            .filter(([, value]) => value)
+            .map(([title, value]) => (
+              <div key={title}>
+                <dt>{title}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+        </dl>
+      ),
+    },
+    // La información técnica reemplaza a la descripción cuando existe.
+    ...(technical.length > 0
+      ? technicalSections(technical)
+      : [{
+          id: "descripcion",
+          title: "Descripción",
+          body: (
+            <>
+              <p className="product-section-text">
+                {description || "Consultá a DISTRICO para obtener más información."}
+              </p>
+              {product.sourceUrl && (
+                <a
+                  className="text-link"
+                  style={{ marginTop: 16 }}
+                  href={product.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Información del proveedor <ArrowUpRight size={14} />
+                </a>
+              )}
+            </>
+          ),
+        }]),
+  ];
   return (
-    <div className="detail-details">
-      <div className="detail-section-nav" aria-label="Información del producto">
-        <button
-          type="button"
-          aria-pressed={activeSection === "specs"}
-          aria-controls="detail-panel-specs"
-          onClick={() => setActiveSection("specs")}
-        >
-          Ficha técnica
-        </button>
-        <button
-          type="button"
-          aria-pressed={activeSection === "extra"}
-          aria-controls="detail-panel-extra"
-          onClick={() => setActiveSection("extra")}
-        >
-          {technical.length > 0 ? "Información técnica" : "Descripción"}
-        </button>
-      </div>
-      <div className="detail-sections">
-        <section id="detail-panel-specs" aria-labelledby="detalle-ficha" hidden={activeSection !== "specs"}>
-          <h2 id="detalle-ficha">Ficha técnica</h2>
-          <dl className="detail-specs">
-            {rows
-              .filter(([, value]) => value)
-              .map(([title, value]) => (
-                <div key={title}>
-                  <dt>{title}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-          </dl>
-        </section>
-        {/* Después de la ficha: la información técnica reemplaza a la descripción cuando existe. */}
-        {technical.length > 0 ? (
-          <section id="detail-panel-extra" aria-labelledby="detalle-tecnica" hidden={activeSection !== "extra"}>
-            <h2 id="detalle-tecnica">Información técnica</h2>
-            <TechnicalAccordions blocks={technical} />
-          </section>
-        ) : (
-          <section id="detail-panel-extra" aria-labelledby="detalle-descripcion" hidden={activeSection !== "extra"}>
-            <h2 id="detalle-descripcion">Descripción</h2>
-            <p style={{ whiteSpace: "pre-line" }}>
-              {product.description?.replace(/<[^>]+>/g, " ") ||
-                "Consultá a DISTRICO para obtener más información."}
-            </p>
-            {product.sourceUrl && (
-              <a
-                className="text-link"
-                style={{ marginTop: 16 }}
-                href={product.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Información del proveedor <ArrowUpRight size={14} />
-              </a>
-            )}
-          </section>
-        )}
-      </div>
-    </div>
+    <section className="detail-details" aria-labelledby="detalle-info">
+      <h2 id="detalle-info">Información del producto</h2>
+      <ProductSections sections={sections} />
+    </section>
   );
 }
 // Barra fija en mobile: aparece mientras el bloque de compra está fuera de la
@@ -1058,6 +1049,9 @@ function ProductDetailContent({ product }: { product: Product }) {
     images.find((m) => m.variantId === variantId) ??
     images[0];
   const category = product.categories.at(-1);
+  const owner = product.brand ?? product.laboratory;
+  const ownerLogo = owner?.imageUrl || brandLogoSrc(product.brand?.slug);
+  const discount = Number(user?.customerAccount?.discountPercentage ?? 0);
   return (
     <>
       <div className="detail-grid">
@@ -1079,6 +1073,7 @@ function ProductDetailContent({ product }: { product: Product }) {
               alt={image?.alt || product.name}
             />
           </div>
+          <FavoriteButton productId={product.id} name={product.name} className="detail-favorite" />
           {images.length > 1 && (
             <div className="thumbs">
               {images.map((m, index) => (
@@ -1096,47 +1091,44 @@ function ProductDetailContent({ product }: { product: Product }) {
           )}
         </div>
         <div className="detail-info">
-          <p className="eyebrow detail-eyebrow">
-            {product.brand ? (
-              <Link href={catalogLink("brandId", product.brand.id)}>
-                {product.brand.name}
-              </Link>
-            ) : (
-              product.laboratory?.name
-            )}
-            {category?.category && (
-              <>
-                {(product.brand || product.laboratory) && " · "}
-                <Link href={catalogLink("categoryId", category.categoryId)}>
-                  {category.category.name}
+          <div className="detail-brand">
+            {owner &&
+              (product.brand ? (
+                <Link href={catalogLink("brandId", product.brand.id)} title={`Ver más ${owner.name}`}>
+                  {ownerLogo ? (
+                    <Picture src={ownerLogo} alt={owner.name} sizes="140px" />
+                  ) : (
+                    owner.name
+                  )}
                 </Link>
-              </>
+              ) : ownerLogo ? (
+                <Picture src={ownerLogo} alt={owner.name} sizes="140px" />
+              ) : (
+                <span>{owner.name}</span>
+              ))}
+            {category?.category && (
+              <Link href={catalogLink("categoryId", category.categoryId)}>
+                {category.category.name}
+              </Link>
             )}
-          </p>
+            {canSeeAdminSection(user, "catalogo") && canEditAdminFeature(user, "catalogo") && (
+              <Link href={storeRoutes.adminProduct(product.slug)} className="icon-button detail-edit" title="Editar producto" aria-label="Editar producto">
+                <Pencil size={19} />
+              </Link>
+            )}
+          </div>
           <h1>{product.name}</h1>
-          <FavoriteButton productId={product.id} name={product.name} className="detail-favorite" />
-          {canSeeAdminSection(user, "catalogo") && canEditAdminFeature(user, "catalogo") && (
-            <Link href={storeRoutes.adminProduct(product.slug)} className="icon-button detail-edit" title="Editar producto" aria-label="Editar producto">
-              <Pencil size={19} />
-            </Link>
+          {variant && (
+            <p className="detail-meta">
+              <span>SKU {variant.sku}</span>
+              {variant.presentation && <span>{variant.presentation}</span>}
+            </p>
           )}
           {product.shortDescription &&
             product.shortDescription.trim().toLocaleLowerCase() !==
               product.name.trim().toLocaleLowerCase() && (
               <p className="muted detail-lead">{product.shortDescription}</p>
             )}
-          {variant && (
-            <div className="detail-availability">
-              <span
-                className={variant.availableStock > 0 ? "" : "is-unavailable"}
-              >
-                {variant.availableStock > 0
-                  ? "Disponible para pedidos"
-                  : "Sin stock"}
-              </span>
-              <span>SKU {variant.sku}</span>
-            </div>
-          )}
           <div className="detail-pills">
             {product.newProduct && <span className="status-pill">Nuevo</span>}
             {product.featured && <span className="status-pill">Destacado</span>}
@@ -1145,80 +1137,98 @@ function ProductDetailContent({ product }: { product: Product }) {
             )}
           </div>
           {variant ? (
-            <>
-              <div className="detail-variants">
-                <p id="presentaciones">
-                  {variants.length > 1
-                    ? variants.length + " presentaciones"
-                    : "Presentación"}
-                </p>
-                <div role="radiogroup" aria-labelledby="presentaciones">
-                  {variants.map((v) => (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={v.id === variantId}
-                      key={v.id}
-                      onClick={() => {
-                        setVariantId(v.id);
-                        setImageId(undefined);
-                      }}
-                    >
+            <div className="detail-variants">
+              <p id="presentaciones">
+                {variants.length > 1
+                  ? "Elegí la presentación"
+                  : "Presentación"}
+              </p>
+              <div role="radiogroup" aria-labelledby="presentaciones">
+                {variants.map((v) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={v.id === variantId}
+                    key={v.id}
+                    onClick={() => {
+                      setVariantId(v.id);
+                      setImageId(undefined);
+                    }}
+                  >
+                    <span className="detail-variant-dot" aria-hidden="true" />
+                    <span className="detail-variant-name">
                       {v.name}
-                      <strong>
-                        {v.price
-                          ? money(v.price.amount, v.price.currency)
-                          : hiddenPriceText(user, product)}
-                      </strong>
-                      <small>
+                      <small className={v.availableStock > 0 ? "" : "is-unavailable"}>
                         {v.availableStock > 0 ? "Disponible" : "Sin stock"} ·
                         Mín. {firstQuantity(v)}
                       </small>
-                    </button>
-                  ))}
-                </div>
+                    </span>
+                    <strong>
+                      {v.price
+                        ? money(v.price.amount, v.price.currency)
+                        : hiddenPriceText(user, product)}
+                    </strong>
+                  </button>
+                ))}
               </div>
-              <div className="detail-purchase" id="comprar">
-                <div className="detail-price-heading">
-                  {variant.price ? (
-                    <div>
-                      <p className="detail-price-label">Precio por unidad</p>
-                      <p className="price">
-                        {money(variant.price.amount, variant.price.currency)}
-                      </p>
-                    </div>
-                  ) : (
-                    <span />
-                  )}
-                </div>
-                {variant.presentation && (
-                  <p className="muted small-copy">{variant.presentation}</p>
-                )}
-                <BuyForm key={variantId} product={product} variant={variant} />
-              </div>
-              <p className="detail-assistance">
-                ¿Necesitás asesoramiento?{" "}
-                <Link href={storeRoutes.contact}>Consultá a DISTRICO</Link>
-              </p>
-              {user && canBuy(user, product) && (
-                <BuyBar variant={variant} target="comprar" />
-              )}
-            </>
+            </div>
           ) : (
             <p className="panel">
               Este producto todavía no tiene presentaciones disponibles.
             </p>
           )}
-          {DEMO && (
-            <p className="info-note">
-              Nombre e imagen de catálogo público. Precio, stock, permisos y
-              presentación comercial son datos de demostración.
-            </p>
-          )}
-          {!DEMO && product.tags?.includes("DATOS_COMERCIALES_FICTICIOS") && (
-            <p className="info-note">Precios y stock de demostración. No constituyen una oferta comercial.</p>
-          )}
+          {product.technicalSheet?.benefits?.length ? (
+            <div className="detail-benefits">
+              <p>Beneficios</p>
+              <BenefitList benefits={product.technicalSheet.benefits} />
+            </div>
+          ) : null}
         </div>
+        {variant && (
+          <aside className="detail-purchase" id="comprar" aria-label="Comprar">
+            <div className="detail-price-heading">
+              <p className="detail-price-label">Precio mayorista · {variant.name}</p>
+              {variant.price && (
+                <>
+                  <p className="price">
+                    {money(variant.price.amount, variant.price.currency)}
+                  </p>
+                  <p className="detail-price-unit">por unidad</p>
+                </>
+              )}
+            </div>
+            {discount > 0 && (
+              <p className="detail-discount">
+                Tu descuento de cliente ({discount.toLocaleString("es-UY")} %)
+                se aplica en el carrito.
+              </p>
+            )}
+            <p className="detail-availability">
+              <span className={variant.availableStock > 0 ? "" : "is-unavailable"}>
+                {variant.availableStock > 0
+                  ? "Disponible para pedidos"
+                  : "Sin stock"}
+              </span>
+            </p>
+            <BuyForm key={variantId} product={product} variant={variant} />
+            <p className="detail-assistance">
+              ¿Necesitás asesoramiento?{" "}
+              <Link href={storeRoutes.contact}>Consultá a DISTRICO</Link>
+            </p>
+            {DEMO && (
+              <p className="info-note">
+                Nombre e imagen de catálogo público. Precio, stock, permisos y
+                presentación comercial son datos de demostración.
+              </p>
+            )}
+            {!DEMO && product.tags?.includes("DATOS_COMERCIALES_FICTICIOS") && (
+              <p className="info-note">Precios y stock de demostración. No constituyen una oferta comercial.</p>
+            )}
+          </aside>
+        )}
+        {variant && user && canBuy(user, product) && (
+          <BuyBar variant={variant} target="comprar" />
+        )}
       </div>
       <ProductInfo product={product} variant={variant} />
       <RelatedProducts product={product} />

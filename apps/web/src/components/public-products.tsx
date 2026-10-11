@@ -11,9 +11,14 @@ import {
 } from "lucide-react";
 import { usePublicApi } from "./providers";
 import { CatalogPagination } from "./catalog-pagination";
-import { TechnicalAccordions } from "./product-sheet";
+import {
+  BenefitList,
+  ProductSections,
+  technicalSections,
+  type ProductSection,
+} from "./product-sheet";
 import { ErrorBox, Picture } from "./ui";
-import { benefitIcons } from "@/lib/benefit-icons";
+import { brandLogoSrc } from "@/lib/brand-logos";
 import { catalogCardsPath } from "@/lib/catalog-query";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { salesLineLabel } from "@/lib/sales-line";
@@ -302,6 +307,7 @@ export function PublicProductDetail({ slug }: { slug: string }) {
   const ownerFilter = owner
     ? `${item.brand ? "brandId" : "laboratoryId"}=${encodeURIComponent(owner.id)}`
     : "";
+  const ownerLogo = owner?.imageUrl || brandLogoSrc(item.brand?.slug);
   const presentations = [
     ...new Set(
       item.variants
@@ -309,10 +315,31 @@ export function PublicProductDetail({ slug }: { slug: string }) {
         .map((variant) => variant.presentation || variant.name),
     ),
   ];
-  const attributes = item.attributes ?? [];
+  // Categorías, atributos y línea de venta como etiquetas, sin repetir.
+  const tags = [
+    ...new Set(
+      [
+        ...item.categories.map((c) => c.category?.name),
+        ...(item.attributes ?? []).map(({ attributeValue }) => attributeValue.value),
+        salesLineLabel(item.brand?.salesLine) &&
+          `Línea de venta: ${salesLineLabel(item.brand?.salesLine)}`,
+      ].filter((tag): tag is string => !!tag),
+    ),
+  ];
   const description = item.description?.replace(/<[^>]+>/g, " ").trim();
-  const technical = sheet.technical ?? [];
-  const benefits = (sheet.benefits ?? []).filter((b) => benefitIcons[b.icon]);
+  const sections: ProductSection[] = [
+    ...(description
+      ? [{
+          id: "sobre",
+          title: "Sobre el producto",
+          body: <p className="product-section-text">{description}</p>,
+        }]
+      : []),
+    ...technicalSections(sheet.technical ?? []),
+  ];
+  const relatedFilter =
+    ownerFilter ||
+    (category ? `categoryId=${encodeURIComponent(category.id)}` : "");
   return (
     <>
       <div className="container site-sheet-page">
@@ -329,7 +356,7 @@ export function PublicProductDetail({ slug }: { slug: string }) {
             </>
           )}
           <ChevronRight size={13} />
-          <span>{item.name}</span>
+          <span aria-current="page">{item.name}</span>
         </nav>
         <article className="site-sheet">
           <div className="site-sheet-media">
@@ -348,7 +375,7 @@ export function PublicProductDetail({ slug }: { slug: string }) {
                 key={image?.id ?? "placeholder"}
                 src={image?.url ?? "/images/placeholder.svg"}
                 alt={image?.alt || item.name}
-                sizes="(max-width: 940px) 92vw, 500px"
+                sizes="(max-width: 940px) 80vw, 560px"
                 fetchPriority="high"
               />
               <span className="site-sheet-zoom-badge" aria-hidden="true">
@@ -373,20 +400,37 @@ export function PublicProductDetail({ slug }: { slug: string }) {
             )}
           </div>
           <div className="site-sheet-info">
-            {category && <p className="eyebrow">{category.name}</p>}
-            <h1>{item.name}</h1>
             {owner && (
-              <p className="site-sheet-brand">
-                {item.brand ? "Marca" : "Laboratorio"}{" "}
-                <Link href={`/productos?${ownerFilter}`}>{owner.name}</Link>
-              </p>
+              <div className="site-sheet-brand">
+                {ownerLogo ? (
+                  <Picture src={ownerLogo} alt={owner.name} sizes="160px" />
+                ) : (
+                  <strong>{owner.name}</strong>
+                )}
+                <Link href={`/productos?${ownerFilter}`}>
+                  Ver toda la línea {owner.name}
+                </Link>
+              </div>
             )}
-            {item.shortDescription && (
-              <p className="site-sheet-lead">{item.shortDescription}</p>
+            <h1>{item.name}</h1>
+            {item.shortDescription &&
+              item.shortDescription.trim().toLocaleLowerCase() !==
+                item.name.trim().toLocaleLowerCase() && (
+                <p className="site-sheet-lead">{item.shortDescription}</p>
+              )}
+            {tags.length > 0 && (
+              <ul className="site-sheet-tags" aria-label="Clasificación">
+                {tags.map((tag) => (
+                  <li key={tag}>{tag}</li>
+                ))}
+              </ul>
             )}
-            {salesLineLabel(item.brand?.salesLine) && (
-              <p className="site-sheet-brand">Línea de venta: {salesLineLabel(item.brand?.salesLine)}</p>
-            )}
+            {sheet.benefits?.length ? (
+              <div>
+                <p className="site-sheet-label">Beneficios</p>
+                <BenefitList benefits={sheet.benefits} className="site-sheet-benefits" />
+              </div>
+            ) : null}
             {presentations.length > 0 && (
               <div>
                 <p className="site-sheet-label">Presentaciones</p>
@@ -397,87 +441,37 @@ export function PublicProductDetail({ slug }: { slug: string }) {
                 </ul>
               </div>
             )}
-            {(benefits.length > 0 || attributes.length > 0) && (
-              <div className="site-sheet-features">
-                <p className="site-sheet-label">Características principales</p>
-                {benefits.length > 0 && (
-                  <ul className="site-sheet-benefits">
-                    {benefits.map((benefit) => (
-                      <li key={benefit.label}>
-                        <svg
-                          viewBox="0 0 64 64"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                          focusable="false"
-                          // Trazos fijos de src/lib/benefit-icons.ts, no datos externos.
-                          dangerouslySetInnerHTML={{
-                            __html: benefitIcons[benefit.icon],
-                          }}
-                        />
-                        <span>{benefit.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {attributes.length > 0 && (
-                  <dl>
-                    {attributes.map(({ attributeValue }) => (
-                      <div key={attributeValue.id}>
-                        <dt>{attributeValue.attribute.name}</dt>
-                        <dd>{attributeValue.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
+            <section className="site-sheet-cta" aria-labelledby="site-sheet-cta-title">
+              <h2 id="site-sheet-cta-title">¿Tenés un comercio? Pedilo a DISTRICO</h2>
+              <p className="site-sheet-note">
+                Precios mayoristas, stock y pedidos online para comercios con
+                cuenta aprobada.
+              </p>
+              <div className="site-sheet-cta-actions">
+                <Link className="button lime" href={storeRoutes.requestAccount}>
+                  Solicitar cuenta
+                </Link>
+                <Link className="button site-sheet-ghost" href={storeRoutes.login}>
+                  Ya soy cliente: ingresar
+                </Link>
               </div>
-            )}
-            <div className="actions site-sheet-cta">
-              <Link className="button lime" href={storeRoutes.login}>
-                Ingresar para ver precios
-              </Link>
-              <Link
-                className="button secondary"
-                href={storeRoutes.requestAccount}
-              >
-                Solicitar cuenta
-              </Link>
-            </div>
-            <p className="site-sheet-note">
-              DISTRICO distribuye a comercios: precios y pedidos solo con una
-              cuenta aprobada.
-            </p>
+              <p className="site-sheet-cta-help">
+                ¿Buscás dónde comprarlo? <Link href="/contacto">Escribinos</Link>
+              </p>
+            </section>
           </div>
         </article>
-        {(description || technical.length > 0) && (
-          <section
-            className={`site-sheet-detail${description && technical.length ? " is-split" : ""}`}
-          >
-            {description && (
-              <div>
-                <h2>Sobre el producto</h2>
-                <p>{description}</p>
-              </div>
-            )}
-            {technical.length > 0 && (
-              <div>
-                <h2>Información técnica</h2>
-                <TechnicalAccordions blocks={technical} />
-              </div>
-            )}
+        {sections.length > 0 && (
+          <section className="site-sheet-detail" aria-labelledby="site-sheet-detail-title">
+            <h2 id="site-sheet-detail-title">Información del producto</h2>
+            <ProductSections sections={sections} />
           </section>
         )}
       </div>
-      {(category || owner) && (
+      {relatedFilter && (
         <PublicRelatedProducts
-          filter={
-            category
-              ? `categoryId=${encodeURIComponent(category.id)}`
-              : ownerFilter
-          }
+          title={owner ? `Más de ${owner.name}` : "Productos recomendados"}
+          filter={relatedFilter}
           exclude={item.id}
         />
       )}
@@ -486,9 +480,11 @@ export function PublicProductDetail({ slug }: { slug: string }) {
 }
 
 function PublicRelatedProducts({
+  title,
   filter,
   exclude,
 }: {
+  title: string;
   filter: string;
   exclude: string;
 }) {
@@ -508,7 +504,7 @@ function PublicRelatedProducts({
     <section className="site-related" aria-labelledby="related-title">
       <div className="container">
         <div className="site-related-head">
-          <h2 id="related-title">Productos recomendados</h2>
+          <h2 id="related-title">{title}</h2>
           {items.length > 1 && (
             <div className="site-related-controls">
               <button
@@ -535,7 +531,7 @@ function PublicRelatedProducts({
           id="related-track"
           ref={track}
           tabIndex={0}
-          aria-label="Productos recomendados"
+          aria-label={title}
         >
           {items.map((p) => (
             <li key={p.id}>
