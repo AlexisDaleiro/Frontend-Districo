@@ -1,14 +1,9 @@
 import { http } from "./http";
 import { DEMO } from "./data-mode";
+import { metricConsent } from "./metric-consent";
+export { metricConsent } from "./metric-consent";
 export type UsageKind =
   "SEARCH" | "NO_RESULTS" | "CHECKOUT_STARTED" | "CHECKOUT_COMPLETED";
-export function metricConsent() {
-  try {
-    return localStorage.getItem("districo-usage-consent") === "true";
-  } catch {
-    return false;
-  }
-}
 export function recordUsage(kind: UsageKind) {
   if (DEMO || !metricConsent()) return;
   try {

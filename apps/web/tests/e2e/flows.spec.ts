@@ -51,8 +51,8 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator(".orders-list .table-wrap").first()).toContainText("BIOFRESH");
   await page.goto("/tienda/cuenta/pedidos");
-  await expect(page.locator(".orders-list .card")).toHaveCount(1);
-  await page.getByRole("link", { name: "Ver detalle" }).click();
+  await expect(page.getByRole("region", { name: "Historial de pedidos" }).locator("tbody tr")).toHaveCount(1);
+  await page.getByRole("region", { name: "Historial de pedidos" }).locator("tbody tr a").first().click();
   await page.getByRole("button", { name: "Repetir pedido" }).click();
   await expect(page).toHaveURL(/\/tienda\/carrito$/);
   await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("1");
@@ -61,7 +61,7 @@ test("cliente envía pedido y consulta detalle", async ({ page }) => {
   await expect(page).toHaveURL(/\/tienda\/carrito$/);
   await expect(page.locator('.cart-item input[type="number"]')).toHaveValue("2");
   await page.goto("/tienda/cuenta/pedidos");
-  await expect(page.locator(".orders-list .card")).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Historial de pedidos" }).locator("tbody tr")).toHaveCount(1);
 });
 test("el panel del carrito permite revisar y editar sin salir de la página", async ({ page }) => {
   await login(page);
@@ -490,7 +490,7 @@ test("panel móvil atrapa foco, cierra con Escape y respeta movimiento reducido"
 
 test("el buscador previsualiza productos mientras se escribe", async ({ page }) => {
   await login(page);
-  const input = page.getByLabel("Buscar productos");
+  const input = page.getByRole("textbox", { name: "Buscar productos", exact: true });
   const panel = page.getByRole("region", { name: "Sugerencias de productos" });
   await input.fill("a");
   await expect(panel).toBeHidden();

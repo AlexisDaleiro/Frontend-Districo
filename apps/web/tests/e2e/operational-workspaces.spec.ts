@@ -180,6 +180,39 @@ async function workspace(page: Page, role = "ADMIN") {
         ],
         meta,
       };
+    else if (path === "admin/operations/performance")
+      body = {
+        readiness: "READY",
+        views: 30,
+        rows: [
+          {
+            name: "LCP",
+            target: "PAGE",
+            device: "MOBILE",
+            phase: "DOCUMENT",
+            cache: "UNKNOWN",
+            samples: 30,
+            validSamples: 30,
+            errors: 0,
+            p50: 1200,
+            p75: 2200,
+            p95: 2800,
+          },
+          {
+            name: "INP",
+            target: "PAGE",
+            device: "MOBILE",
+            phase: "DOCUMENT",
+            cache: "UNKNOWN",
+            samples: 3,
+            validSamples: 3,
+            errors: 0,
+            p50: 60,
+            p75: 100,
+            p95: 150,
+          },
+        ],
+      };
     else if (path === "admin/operations/metrics")
       body = {
         from: stamp,
@@ -467,5 +500,95 @@ test("catalog autocomplete works with the keyboard and zero results offer filter
     path: info.outputPath("catalog-alternatives-mobile.png"),
     fullPage: true,
   });
+  expect(errors).toEqual([]);
+});
+
+test("performance report shows p75 and sample coverage without approving unsupported or small samples", async ({
+  page,
+}, info) => {
+  const { errors } = await workspace(page);
+  await page.goto("/tienda/admin/metricas");
+  const vitals = page.getByRole("table", { name: "Percentiles de Web Vitals" });
+  await expect(
+    vitals
+      .getByRole("row")
+      .filter({ hasText: "LCP" })
+      .filter({ hasText: "Móvil" }),
+  ).toContainText("2.20 s");
+  await expect(
+    vitals
+      .getByRole("row")
+      .filter({ hasText: "LCP" })
+      .filter({ hasText: "Móvil" }),
+  ).toContainText("Cumple");
+  await expect(
+    vitals
+      .getByRole("row")
+      .filter({ hasText: "INP" })
+      .filter({ hasText: "Móvil" }),
+  ).toContainText("Muestra insuficiente");
+  await expect(
+    vitals
+      .getByRole("row")
+      .filter({ hasText: "CLS" })
+      .filter({ hasText: "Móvil" }),
+  ).toContainText("Sin muestra");
+  const request = page.waitForRequest(
+    (request) =>
+      request.url().includes("operations/performance") &&
+      request.url().includes("environment=LOCAL"),
+  );
+  await page
+    .getByRole("combobox", { name: "Entorno", exact: true })
+    .selectOption("LOCAL");
+  await request;
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: info.outputPath("performance-mobile.png"),
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("real browser capture is opt-in, preserves structured filters, and never sends URLs or identity", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("districo-usage-consent", "true"),
+  );
+  const { writes, errors } = await workspace(page, "CLIENT");
+  await page.goto("/tienda/productos?productType=FOOD&attributeValueIds=stage");
+  await expect(page.locator(".product-card")).toHaveCount(1);
+  await page.getByRole("combobox", { name: "Buscar en el catálogo" }).click();
+  await page.keyboard.press("Tab");
+  await expect
+    .poll(
+      () =>
+        writes.filter((write) => write.path === "performance-samples").length,
+      { timeout: 15000 },
+    )
+    .toBeGreaterThan(0);
+  const batch = writes.find(
+    (write) => write.path === "performance-samples",
+  )!.body;
+  expect(batch).toMatchObject({ consent: true, environment: "LOCAL" });
+  expect(
+    (batch.samples as { sequence: number }[]).every(
+      (sample) => Number.isInteger(sample.sequence) && sample.sequence >= 1,
+    ),
+  ).toBe(true);
+  expect(JSON.stringify(batch)).not.toMatch(
+    /qa-user|qa@example|attributeValueIds|search=|\/tienda\/|https:\/\//,
+  );
+  expect(
+    (batch.samples as { name: string }[]).some((sample) =>
+      ["LCP", "FCP", "TTFB"].includes(sample.name),
+    ),
+  ).toBe(true);
   expect(errors).toEqual([]);
 });

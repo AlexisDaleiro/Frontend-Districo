@@ -2,6 +2,7 @@
 import { UnsavedChangesGuard } from "@/lib/unsaved-changes";
 import {
   createContext,
+  Suspense,
   useContext,
   useState,
   useRef,
@@ -17,6 +18,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { http, ApiError } from "@/lib/http";
+import { PerformanceTelemetry } from "./performance-telemetry";
 import { DEMO } from "@/lib/data-mode";
 import type { User } from "@/lib/types";
 export { DEMO } from "@/lib/data-mode";
@@ -177,7 +179,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
     </Context.Provider>
   );
 }
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, release = "unknown", performanceEnvironment = "LOCAL" }: { children: ReactNode; release?: string; performanceEnvironment?: "PRODUCTION" | "LOCAL" }) {
   const [client] = useState(
     () =>
       new QueryClient({
@@ -189,7 +191,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <QueryClientProvider client={client}>
-      <SessionProvider><UnsavedChangesGuard />{children}</SessionProvider>
+      <SessionProvider><UnsavedChangesGuard /><Suspense fallback={null}><PerformanceTelemetry release={release} environment={performanceEnvironment} /></Suspense>{children}</SessionProvider>
     </QueryClientProvider>
   );
 }

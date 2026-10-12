@@ -58,7 +58,7 @@ export function StoreFrame({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </main>
-      {!publicAccess && !gated && user?.role === "CLIENT" && <UsageConsent />}
+      {!gated && (publicAccess || user?.role === "CLIENT") && <UsageConsent />}
       {publicAccess ? <PublicFooter /> : !gated ? <Footer /> : null}
     </>
   );

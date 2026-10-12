@@ -1,4 +1,5 @@
 import { browserOperationTimeout } from "./operation-timeout";
+import { recordPerformanceApi } from "./performance-recorder";
 
 export class ApiError extends Error {
   constructor(
@@ -23,6 +24,7 @@ export async function http<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
+  const started = typeof performance !== "undefined" ? performance.now() : 0;
   const multipart = body instanceof FormData;
   const send = () =>
     fetch(`/api/backend/${path}`, {
@@ -47,6 +49,7 @@ export async function http<T>(
       if (await refreshFlight) response = await send();
     }
   } catch {
+    if (method === "GET") recordPerformanceApi(path, performance.now() - started, false);
     throw new ApiError(
       method === "GET"
         ? "No se pudo conectar. Revisá tu conexión e intentá nuevamente."
@@ -54,6 +57,7 @@ export async function http<T>(
     );
   }
   const result = await response.json().catch(() => ({}));
+  if (method === "GET") recordPerformanceApi(path, performance.now() - started, response.ok);
   if (!response.ok) {
     if (
       response.status === 401 &&

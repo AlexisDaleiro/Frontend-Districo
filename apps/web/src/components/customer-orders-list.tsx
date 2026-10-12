@@ -9,6 +9,7 @@ import { Empty, ErrorBox, Loading } from "./ui";
 import { label, money } from "@/lib/commerce";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { RepeatOrderButton } from "./repeat-order-button";
+import { beginPerformanceNavigation } from "@/lib/performance-navigation";
 
 export type OrderSummary = {
   id: string;
@@ -45,7 +46,9 @@ export function CustomerOrdersList() {
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.delete("page");
-    window.history.pushState(null, "", withSearch(storeRoutes.orders, next));
+    const href = withSearch(storeRoutes.orders, next);
+    beginPerformanceNavigation(href);
+    window.history.pushState(null, "", href);
   }
   return (
     <section aria-label="Historial de pedidos">

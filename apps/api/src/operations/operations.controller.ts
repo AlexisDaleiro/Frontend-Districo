@@ -43,6 +43,7 @@ import { SupportService } from "./support.service";
 import { RecruitmentService } from "./recruitment.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { OperationsReadyGuard } from "./operations-ready.guard";
+import { PerformanceService } from "./performance.service";
 
 @Controller("admin/operations")
 @UseGuards(JwtAuthGuard, RolesGuard, OperationsReadyGuard)
@@ -215,6 +216,7 @@ export class OperationsMaintenanceController {
     private readonly config: ConfigService,
     private readonly recruitment: RecruitmentService,
     private readonly prisma: PrismaService,
+    private readonly performance: PerformanceService,
   ) {}
   @Post("maintenance") async maintenance(
     @Headers("authorization") authorization?: string,
@@ -230,7 +232,8 @@ export class OperationsMaintenanceController {
       )
     )
       throw new UnauthorizedException();
-    if (!(await this.prisma.operationalSchemaReady())) return { active: false };
+    const expiredPerformanceRemoved = await this.performance.removeExpired();
+    if (!(await this.prisma.operationalSchemaReady())) return { active: false, expiredPerformanceRemoved };
     const result = await this.recruitment.cleanup({
       role: Role.ADMIN,
       sub: "scheduled-maintenance",
@@ -240,6 +243,6 @@ export class OperationsMaintenanceController {
     const events = await this.prisma.usageEvent.deleteMany({
       where: { createdAt: { lt: new Date(Date.now() - 90 * 86400000) } },
     });
-    return { ...result, expiredMetricsRemoved: events.count };
+    return { ...result, expiredMetricsRemoved: events.count, expiredPerformanceRemoved };
   }
 }

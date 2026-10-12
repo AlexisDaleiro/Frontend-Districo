@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Dep\u00f3sito y log\u00edstica",
+    "view": [],
+    "edit": ["logistica"]
+  },
+  {
+    "name": "Atenci\u00f3n al cliente",
+    "view": ["clientes", "pedidos", "catalogo"],
+    "edit": ["consultas"]
+  },
+  {
+    "name": "Recursos humanos",
+    "view": [],
+    "edit": ["ofertas-laborales"]
+  },
+  {
+    "name": "Marketing y promociones",
+    "view": ["catalogo", "marcas", "categorias", "metricas"],
+    "edit": ["promociones", "recomendaciones", "banners"]
+  },
+  {
+    "name": "Analista de negocio",
+    "view": ["resumen", "ventas", "metricas"],
+    "edit": []
+  },
+  {
+    "name": "Cobranza y conciliaci\u00f3n",
+    "view": ["clientes", "pedidos"],
+    "edit": ["finanzas", "facturacion"]
+  },
+  {
+    "name": "Coordinaci\u00f3n comercial",
+    "view": ["resumen", "ventas", "clientes", "facturacion", "cartera", "catalogo", "marcas", "categorias"],
+    "edit": ["consultas", "solicitudes", "pedidos", "descuentos-clientes", "vendedores"]
+  }
+]

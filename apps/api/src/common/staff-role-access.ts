@@ -52,6 +52,7 @@ export function staffAccessMatrix(role: Role, overrides: { feature: string; canV
 
 export function staffFeatureForPath(path: string): StaffFeature | undefined {
   const clean = path.split('?')[0].replace(/^\/api\//, '/');
+  if (/^\/admin\/operations\/performance$/.test(clean)) return 'metricas';
   if (/^\/admin\/operations\/finance(?:\/|$)/.test(clean)) return 'finanzas';
   if (/^\/admin\/operations\/logistics(?:\/|$)/.test(clean)) return 'logistica';
   if (/^\/admin\/operations\/portfolio$/.test(clean)) return 'cartera';

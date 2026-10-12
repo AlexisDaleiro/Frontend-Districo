@@ -2,6 +2,7 @@ export function allowedPath(path: string, method: string) {
   const id = "[a-zA-Z0-9_-]+";
   const rules: Record<string, string[]> = {
     GET: [
+      "admin/operations/performance",
       "products/suggestions", "orders/me/page", "account/queries",
       "admin/operations/(portfolio|logistics|metrics)",
       "admin/operations/finance/(movements|payments|receivables)",
@@ -63,6 +64,7 @@ export function allowedPath(path: string, method: string) {
       "admin/contact-inquiries",
     ],
     POST: [
+      "performance-samples",
       "usage-events",
       "account/queries",
       "admin/operations/finance/(movements|reconciliations)",

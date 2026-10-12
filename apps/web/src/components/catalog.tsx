@@ -1,6 +1,7 @@
 "use client";
 import { CatalogSearch } from "./catalog-search";
 import { recordUsage } from "@/lib/usage-metrics";
+import { beginPerformanceNavigation } from "@/lib/performance-navigation";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -371,6 +372,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
     prefetchCategory(next);
     const href = withSearch(storeRoutes.products, next);
     // Query-only filters do not need another server-rendered route payload.
+    beginPerformanceNavigation(href);
     window.history.pushState(null, "", href);
   }
   const categoryIds = canonicalCategoryIds(

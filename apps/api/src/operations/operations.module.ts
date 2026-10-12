@@ -14,15 +14,19 @@ import { PortfolioService } from "./portfolio.service";
 import { RecruitmentService } from "./recruitment.service";
 import { SupportService } from "./support.service";
 import { OperationsReadyGuard } from "./operations-ready.guard";
+import { PerformanceService } from "./performance.service";
+import { PerformanceReportController, PerformanceSamplesController } from "./performance.controller";
 @Module({
   imports: [NotificationsModule, JobsModule],
   controllers: [
+    PerformanceReportController, PerformanceSamplesController,
     OperationsController,
     OperationsMaintenanceController,
     CustomerQueriesController,
     UsageEventsController,
   ],
   providers: [
+    PerformanceService,
     OperationsReadyGuard,
     FinanceService,
     LogisticsService,

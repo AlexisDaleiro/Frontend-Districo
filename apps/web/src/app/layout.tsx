@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es-UY">
-      <body className={manrope.className}><Providers>{children}</Providers></body>
+      <body className={manrope.className}><Providers release={process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown"} performanceEnvironment={process.env.VERCEL_ENV === "production" || (!process.env.VERCEL && process.env.NODE_ENV === "production") ? "PRODUCTION" : "LOCAL"}>{children}</Providers></body>
     </html>
   );
 }

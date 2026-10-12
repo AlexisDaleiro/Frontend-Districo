@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useApi } from "./providers";
 import { ErrorBox, Loading } from "./ui";
+import { PerformanceReport } from "./performance-report";
 type Metrics = {
   usage: {
     searches: number;
@@ -125,6 +126,7 @@ export function AdminMetrics() {
           </p>
         </>
       )}
+      <PerformanceReport from={from} to={to} />
     </>
   );
 }

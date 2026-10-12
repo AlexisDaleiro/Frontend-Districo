@@ -7,6 +7,7 @@ import { Copy } from "lucide-react";
 import { useSession } from "./providers";
 import { adminRecordHref, readAdminListValue, safeAdminListReturn, updateAdminListValue } from "@/lib/admin-list-navigation";
 import { withSearch } from "@/lib/store-routes";
+import { beginPerformanceNavigation } from "@/lib/performance-navigation";
 
 export function useAdminListField(key: string, fallback: string, allowed?: readonly string[]): [string, Dispatch<SetStateAction<string>>];
 export function useAdminListField(key: string, fallback: number): [number, Dispatch<SetStateAction<number>>];
@@ -19,7 +20,7 @@ export function useAdminListField<T extends string | number | boolean>(key: stri
     const previous = readAdminListValue(current, key, fallback, allowed);
     const next = updateAdminListValue(current, key, typeof action === "function" ? action(previous) : action, fallback);
     const href = `${withSearch(window.location.pathname, next)}${window.location.hash}`;
-    if (href !== `${window.location.pathname}${window.location.search}${window.location.hash}`) window.history.replaceState(null, "", href);
+    if (href !== `${window.location.pathname}${window.location.search}${window.location.hash}`) { beginPerformanceNavigation(href); window.history.replaceState(null, "", href); }
   }];
 }
 

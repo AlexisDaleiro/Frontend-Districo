@@ -1064,6 +1064,26 @@ model UsageEvent {
   @@index([kind, createdAt])
 }
 
+model PerformanceSample {
+  id String @id @db.VarChar(36)
+  sequence Int
+  viewId String @db.VarChar(36)
+  name String @db.VarChar(20)
+  value Float
+  page String @db.VarChar(20)
+  target String @db.VarChar(20)
+  phase String @db.VarChar(10)
+  cache String @db.VarChar(10)
+  outcome String @db.VarChar(10)
+  device String @db.VarChar(10)
+  visit String @db.VarChar(10)
+  environment String @db.VarChar(10)
+  release String @db.VarChar(40)
+  createdAt DateTime @default(now())
+  @@index([createdAt, environment, device, name])
+  @@index([viewId])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String?

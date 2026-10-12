@@ -4,7 +4,7 @@
   "private": true,
   "description": "Backend demo B2B para el e-commerce mayorista de DISTRICO S.A.",
   "scripts": {
-    "test:operations": "ts-node scripts/tests/operational-workspaces.test.ts",
+    "test:operations": "ts-node scripts/tests/operational-workspaces.test.ts && ts-node scripts/tests/performance.test.ts",
     "test:dashboard-data": "ts-node scripts/tests/dashboard-data-performance.test.ts",
     "test:customer-discounts": "ts-node scripts/tests/customer-discounts.test.ts",
     "test:customer-discounts:api": "ts-node scripts/tests/customer-discounts.integration.ts",
@@ -47,7 +47,7 @@
     "test:password-recovery:db": "ts-node scripts/tests/password-recovery.integration.ts",
     "test:security-jobs:api": "ts-node scripts/tests/security-jobs.integration.ts",
     "test:salespeople": "ts-node scripts/tests/salespeople.test.ts",
-    "test:staff-access": "ts-node scripts/tests/staff-role-access.test.ts",
+    "test:staff-access": "ts-node scripts/tests/staff-role-access.test.ts && ts-node scripts/tests/operational-role-presets.test.ts",
     "test:category-nesting": "ts-node scripts/tests/category-nesting.test.ts",
     "test:organizations": "ts-node scripts/tests/catalog-organizations.test.ts",
     "test:category-cleanup": "ts-node scripts/tests/category-cleanup.test.ts",

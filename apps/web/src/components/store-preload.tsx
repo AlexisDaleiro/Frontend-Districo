@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { request, useSession } from "./providers";
 import { createStorePrefetcher, storeBrowseTarget, storeReadPath } from "@/lib/store-prefetch";
 import { storeRoutes } from "@/lib/store-routes";
+import { beginPerformanceNavigation } from "@/lib/performance-navigation";
 
 const imageCache = new Map<string, HTMLImageElement>();
 export function automaticStorePreloadAllowed() {
@@ -57,6 +58,7 @@ export function StorePreload() {
       const href = link.pathname + link.search;
       prefetch.prepare(href, true);
       if (href === location.pathname + location.search) return;
+      beginPerformanceNavigation(href);
       window.history.pushState(null, "", href);
       if (link.pathname !== pathname) requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: "instant" });
