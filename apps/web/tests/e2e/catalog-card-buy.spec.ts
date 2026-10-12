@@ -30,6 +30,26 @@ async function prepare(page: Page, restricted = false) {
 }
 
 for (const width of [1440, 390]) {
+  test(`la ficha conserva la presentación elegida en la tarjeta a ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const { card, slug } = await prepare(page);
+    const catalogUrl = page.url();
+    for (const target of ["image", "title"]) {
+      await card.getByRole("button", { name: "10 kg", exact: true }).click();
+      const link = target === "image" ? card.locator(".product-image") : card.getByRole("link", { name: "Producto de prueba con variantes", exact: true });
+      await link.click();
+      await expect(page).toHaveURL(new RegExp(`/tienda/producto/${slug}\\?variantId=card-10kg$`));
+      const selected = page.getByRole("radio", { name: /^10 kg/ });
+      await expect(selected).toHaveAttribute("aria-checked", "true");
+      await expect(page.locator(".detail-meta")).toContainText("CARD-10");
+      await expect(page.locator(".detail-purchase .price")).toContainText("900");
+      await expect(page.locator(".detail-purchase").getByRole("spinbutton", { name: "Cantidad", exact: true })).toHaveValue("1");
+      await page.reload();
+      await expect(selected).toHaveAttribute("aria-checked", "true");
+      await page.goto(catalogUrl);
+    }
+  });
+
   test(`compra desde tarjeta elige variante y respeta cantidad y stock a ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const { card } = await prepare(page);
@@ -72,6 +92,19 @@ for (const width of [1440, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test("la ficha ignora una presentación inexistente o inactiva y acompaña el historial", async ({ page }) => {
+  const { slug } = await prepare(page);
+  await page.goto(`/tienda/producto/${slug}?variantId=card-10kg`);
+  await expect(page.getByRole("radio", { name: /^10 kg/ })).toHaveAttribute("aria-checked", "true");
+  for (const variantId of ["card-inactive", "otra-presentacion"]) {
+    await page.evaluate((id) => window.history.pushState(null, "", `?variantId=${id}`), variantId);
+    await expect(page.getByRole("radio", { name: /^3 kg/ })).toHaveAttribute("aria-checked", "true");
+  }
+  await page.goBack();
+  await page.goBack();
+  await expect(page.getByRole("radio", { name: /^10 kg/ })).toHaveAttribute("aria-checked", "true");
+});
 
 test("la compra desde tarjeta respeta el permiso veterinario", async ({ page }) => {
   const { card } = await prepare(page, true);

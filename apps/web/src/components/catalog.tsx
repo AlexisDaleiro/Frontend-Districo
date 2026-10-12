@@ -73,6 +73,9 @@ export function ProductCard({ product, eager = false }: { product: ProductCardDa
   const pending = !complete && detail.isPending;
   const [selection, setSelection] = useState<{ id: string; quantity: number }>();
   const variant = active.find((item) => item.id === selection?.id) ?? active[0];
+  const productHref = variant
+    ? withSearch(storeRoutes.product(product.slug), new URLSearchParams({ variantId: variant.id }))
+    : storeRoutes.product(product.slug);
   const quantity = variant ? (selection?.id === variant.id ? selection.quantity : firstQuantity(variant)) : 1;
   const price = variant?.price ?? (!source ? product.variants[0]?.price : undefined);
   const allowed = canBuy(user, product);
@@ -98,7 +101,7 @@ export function ProductCard({ product, eager = false }: { product: ProductCardDa
     <article className="product-card" onMouseEnter={prefetchDetail} onFocus={prefetchDetail}>
       <FavoriteButton productId={product.id} name={product.name} className="product-card-favorite" />
       <div className="product-card-media">
-      <Link href={storeRoutes.product(product.slug)} prefetch={false} className="product-image" aria-label={`Ver ${product.name}`}>
+      <Link href={productHref} prefetch={false} className="product-image" aria-label={`Ver ${product.name}`}>
         {product.requiresMedicationPermission && <span className="tag">Uso profesional</span>}
         <Picture src={product.media.find((item) => item.type === "IMAGE")?.url ?? "/images/placeholder.svg"} alt={product.name} loading={eager ? "eager" : "lazy"} sizes="(max-width: 767px) 50vw, 300px" />
       </Link>
@@ -127,7 +130,7 @@ export function ProductCard({ product, eager = false }: { product: ProductCardDa
       </div>
       </div>
       <p className="product-meta">{product.brand?.name ?? product.laboratory?.name ?? " "}</p>
-      <Link href={storeRoutes.product(product.slug)} prefetch={false}><h3>{product.name}</h3></Link>
+      <Link href={productHref} prefetch={false}><h3>{product.name}</h3></Link>
       <div className="product-price">
         <div className="product-price-row">
           <span>Precio</span>
@@ -1019,9 +1022,10 @@ function BuyBar({ variant, target }: { variant: Variant; target: string }) {
 }
 const catalogLink = (key: "brandId" | "categoryId", id: string) =>
   withSearch(storeRoutes.products, new URLSearchParams({ [key]: id }));
-function ProductDetailContent({ product }: { product: Product }) {
+function ProductDetailContent({ product, initialVariantId }: { product: Product; initialVariantId: string | null }) {
   const { user } = useSession();
   const [variantId, setVariantId] = useState(
+    product.variants.find((v) => v.id === initialVariantId && v.active !== false)?.id ??
     product.variants.find((v) => v.active !== false)?.id ?? "",
   );
   const [imageId, setImageId] = useState<string>();
@@ -1224,6 +1228,7 @@ function ProductDetailContent({ product }: { product: Product }) {
   );
 }
 export function ProductDetail({ slug }: { slug: string }) {
+  const initialVariantId = useSearchParams().get("variantId");
   const q = useApi<Product>(`products/${encodeURIComponent(slug)}`);
   useEffect(() => { if (q.data) document.title = `${q.data.name} | DISTRICO`; }, [q.data]);
   return (
@@ -1240,7 +1245,7 @@ export function ProductDetail({ slug }: { slug: string }) {
       ) : q.error ? (
         <ErrorBox error={q.error} retry={() => void q.refetch()} />
       ) : (
-        <ProductDetailContent key={q.data.id} product={q.data} />
+        <ProductDetailContent key={`${q.data.id}:${initialVariantId ?? ""}`} product={q.data} initialVariantId={initialVariantId} />
       )}
     </div>
   );

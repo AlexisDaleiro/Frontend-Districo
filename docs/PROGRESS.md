@@ -2,6 +2,11 @@
 
 Última actualización: 12 de octubre de 2026. Rama de trabajo: `main`.
 
+## Presentación seleccionada al abrir la ficha B2B (12/10/2026)
+
+- Los enlaces de imagen y título de las tarjetas llevan el ID de la presentación elegida. La ficha abre esa variante, con su imagen, precio, SKU y compra correspondientes; la selección se conserva al recargar y acompaña los cambios del historial. IDs inexistentes, ajenos al producto o inactivos vuelven a la primera presentación activa.
+- Se conserva la precarga por producto y la navegación local del ecommerce. Verificación: seis recorridos de navegador correctos, incluyendo escritorio/celular, ambos enlaces, recarga, historial, stock, cantidades y permiso veterinario; ESLint y TypeScript correctos. Sin cambios de API/base de datos ni commit/push.
+
 ## Correos opcionales para publicar sin configuracion (12/10/2026)
 
 - Comparada la version local con origin/main: incluye `450e0be` y el rediseño del companero `a27f4d0`; sin commits remotos pendientes al comenzar. No se cambian el diseño, las rutas institucionales, el binding privado de Services ni las variables existentes.
