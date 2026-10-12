@@ -7,6 +7,7 @@ import { request, useApi, useSession } from "./providers";
 import { ErrorBox, Modal } from "./ui";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import type { BulkHistoryRecord, BulkPreview, BulkResult } from "@/lib/admin-tools";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 export function useAdminSelection() {
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -88,7 +89,11 @@ export function AdminBulkActions({ kind, selection }: { kind: "products" | "cust
   const [error, setError] = useState<unknown>();
   const requestId = useRef("");
   const client = useQueryClient();
-  const { notify } = useSession();
+  const { user, notify } = useSession();
+  const canEditProducts = canEditAdminFeature(user, "catalogo");
+  const canEditPrices = canEditAdminFeature(user, "precios");
+  const canReassign = canEditAdminFeature(user, "vendedores");
+  const allowed = operation === "prices" ? canEditPrices : operation === "salesperson" ? canReassign : canEditProducts;
   const path = operation === "salesperson" ? "admin/bulk/customers/salesperson" : operation === "prices" ? "admin/bulk/products/prices" : "admin/bulk/products/active";
   const titles = { active: "Activar productos", inactive: "Desactivar productos", prices: "Actualizar precios", salesperson: "Reasignar clientes" };
   function begin(next: typeof operation) { setOperation(next); setPreview(null); setError(undefined); setReason(""); setValue(""); setSeller(""); requestId.current = crypto.randomUUID(); }
@@ -96,7 +101,7 @@ export function AdminBulkActions({ kind, selection }: { kind: "products" | "cust
   function changed() { setPreview(null); setError(undefined); requestId.current = crypto.randomUUID(); }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !allowed) return;
     setError(undefined); setBusy(true);
     const body = { ids: selection.ids, reason: reason.trim(), requestId: requestId.current,
       ...(operation === "salesperson" ? { salespersonUserId: seller } : operation === "prices" ? { mode, value: Number(value) } : { active: operation === "active" }) };
@@ -118,14 +123,14 @@ export function AdminBulkActions({ kind, selection }: { kind: "products" | "cust
       <strong>{selection.ids.length} seleccionados</strong>
       <div className="actions">
         {kind === "products" ? <>
-          <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("active")}><Check size={16} />Activar</button>
-          <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("inactive")}><X size={16} />Desactivar</button>
-          <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("prices")}><RefreshCw size={16} />Actualizar precios</button>
-        </> : <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("salesperson")}><RefreshCw size={16} />Reasignar vendedor</button>}
+          {canEditProducts && <><button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("active")}><Check size={16} />Activar</button>
+          <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("inactive")}><X size={16} />Desactivar</button></>}
+          {canEditPrices && <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("prices")}><RefreshCw size={16} />Actualizar precios</button>}
+        </> : canReassign && <button className="button small secondary" type="button" disabled={!selection.ids.length} onClick={() => begin("salesperson")}><RefreshCw size={16} />Reasignar vendedor</button>}
         <button className="icon-button" type="button" title="Limpiar selección" aria-label="Limpiar selección" disabled={!selection.ids.length} onClick={selection.clear}><X size={16} /></button>
       </div>
     </div>
-    <Modal open={operation !== null} onClose={close} title={operation ? titles[operation] : "Acción por lote"} className="admin-bulk-dialog">
+    <Modal open={operation !== null && allowed} onClose={close} title={operation ? titles[operation] : "Acción por lote"} className="admin-bulk-dialog">
       {operation && <form className="stack" onSubmit={(event) => void submit(event)}>
         <p><strong>{selection.ids.length} {kind === "products" ? "productos" : "clientes"}</strong> seleccionados.</p>
         <fieldset disabled={busy || !!preview} className="admin-bulk-fields">

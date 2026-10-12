@@ -48,7 +48,7 @@ import { downloadPrivateFile } from "@/lib/http";
 import { orderProgressChoices, orderProgressOptionLabel } from "@/lib/order-progress";
 import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
-import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
+import { canEditAdminFeature, canManageAdminProduct, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { confirmNavigation } from "@/lib/unsaved-changes";
 import { scopedPromotion } from "@/lib/promotion-scope";
@@ -727,6 +727,8 @@ function AdminOrders() {
 function ProductManagement({ edit }: { edit: OpenEditor }) {
   const { user } = useSession();
   const canEdit = canEditAdminFeature(user, "catalogo");
+  const canBulk = canEdit || canEditAdminFeature(user, "precios");
+  const canManage = canManageAdminProduct(user);
   const selection = useAdminSelection();
   const [page, setPage] = useAdminListField("page", 1),
     [search, setSearch] = useAdminListField("search", ""),
@@ -797,13 +799,13 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
         <label className="admin-filter-check"><input type="checkbox" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
       </AdminListFilters>
       {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
-      {canEdit && <AdminBulkActions kind="products" selection={selection} />}
+      {canBulk && <AdminBulkActions kind="products" selection={selection} />}
       <div className="actions admin-history-actions"><BulkHistory feature="catalogo" /></div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              {canEdit && <th className="admin-selection-cell"><PageSelection selection={selection} rows={q.data.items.map((p) => ({ id: p.id, name: p.name }))} /></th>}
+              {canBulk && <th className="admin-selection-cell"><PageSelection selection={selection} rows={q.data.items.map((p) => ({ id: p.id, name: p.name }))} /></th>}
               <th>PRODUCTO</th>
               <th>MARCA</th>
               <th>PRESENTACIONES</th>
@@ -817,7 +819,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                 .filter((variant) => variant.active !== false)
                 .reduce((total, variant) => total + variant.availableStock, 0);
               return <tr key={p.id}>
-                {canEdit && <td className="admin-selection-cell"><RowSelection selection={selection} id={p.id} name={p.name} /></td>}
+                {canBulk && <td className="admin-selection-cell"><RowSelection selection={selection} id={p.id} name={p.name} /></td>}
                 <td>
                   <div className="row">
                     <Picture
@@ -837,8 +839,8 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
                 <td>{p.variants.length}</td>
                 <td><strong>{availableStock}</strong> uds.</td>
                 <td>
-                  <AdminRecordLink className="button small secondary" href={canEdit ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
-                    {canEdit ? <Pencil size={15} /> : null}{canEdit ? "Editar producto" : "Ver producto"}
+                  <AdminRecordLink className="button small secondary" href={canManage ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
+                    {canManage ? <Pencil size={15} /> : null}{canEdit ? "Editar producto" : canManage ? "Gestionar producto" : "Ver producto"}
                   </AdminRecordLink>
                 </td>
               </tr>
@@ -910,7 +912,7 @@ export function VariantManagement({
               >
                 Editar presentación
               </button>}
-              {canEdit && <button
+              {canEditAdminFeature(user, "precios") && <button
                 className="button small secondary"
                 onClick={() =>
                   edit({
@@ -956,7 +958,7 @@ export function VariantManagement({
                 {stock.data.availableStock}
               </p>
               <div className="actions">
-                {canEdit && <button
+                {canEditAdminFeature(user, "stock") && <button
                   className="button small"
                   onClick={() =>
                     edit({

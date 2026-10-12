@@ -7,9 +7,11 @@ import { money } from "@/lib/commerce";
 import { downloadPrivateFile } from "@/lib/http";
 import { orderBalance } from "@/lib/order-billing";
 import type { Order } from "@/lib/types";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Order; onUpdated: () => Promise<void>; readOnly?: boolean }) {
-  const { notify } = useSession();
+  const { user, notify } = useSession();
+  const canRefund = canEditAdminFeature(user, "reintegros");
   const [creditAmount, setCreditAmount] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [noteNumber, setNoteNumber] = useState("");
@@ -54,6 +56,7 @@ export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Or
 
   async function saveRefund(event: FormEvent) {
     event.preventDefault();
+    if (!canRefund || busy) return;
     setError("");
     const amount = Number(refundAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > balance.refundable || refundReason.trim().length < 3) {
@@ -103,7 +106,7 @@ export function OrderReturns({ order, onUpdated, readOnly = false }: { order: Or
       <label className="field">Archivo (PDF, PNG o JPG)<input ref={fileInput} className="form-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
       <button className="button small secondary" disabled={busy} type="submit"><FileUp size={16} /> Registrar crédito</button>
     </form>}
-    {!readOnly && balance.refundable > 0 && <form data-admin-save="true" aria-busy={busy} className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
+    {canRefund && balance.refundable > 0 && <form data-admin-save="true" aria-busy={busy} className="order-billing-form" onSubmit={(event) => void saveRefund(event)}>
       <h4>Registrar dinero reintegrado</h4>
       <label className="field">Importe ({order.currency})<input className="form-input" type="number" min="0.01" max={balance.refundable} step="0.01" required value={refundAmount} onChange={(event) => setRefundAmount(event.target.value)} /></label>
       <label className="field">Motivo<textarea className="form-input" minLength={3} maxLength={500} required value={refundReason} onChange={(event) => setRefundReason(event.target.value)} /></label>

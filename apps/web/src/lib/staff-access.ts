@@ -5,6 +5,14 @@ export type BuiltInStaffRole = Exclude<StaffRole, "CUSTOM">;
 
 export const staffRoles: BuiltInStaffRole[] = ["ADMIN", "SALES", "CATALOG", "FINANCE"];
 
+export const sensitiveStaffFeatures = {
+  stock: "catalogo", precios: "catalogo", cobros: "facturacion",
+  "anular-cobros": "facturacion", reintegros: "facturacion",
+} as const;
+export type SensitiveStaffFeature = keyof typeof sensitiveStaffFeatures;
+export const isSensitiveStaffFeature = (feature: string): feature is SensitiveStaffFeature =>
+  Object.prototype.hasOwnProperty.call(sensitiveStaffFeatures, feature);
+
 export const staffFeatures = [
   ["resumen", "Resumen"], ["ventas", "Ventas"], ["consultas", "Consultas"],
   ["solicitudes", "Solicitudes"], ["clientes", "Clientes"], ["pedidos", "Pedidos"],
@@ -17,6 +25,8 @@ export const staffFeatures = [
   ["ofertas-laborales", "Ofertas laborales"],
   ["integraciones", "Integraciones"],
   ["cartera", "Prioridades de cartera"], ["finanzas", "Finanzas"], ["logistica", "Depósito y logística"], ["metricas", "Métricas"],
+  ["stock", "Ajustar stock"], ["precios", "Cambiar precios"], ["cobros", "Registrar cobros"],
+  ["anular-cobros", "Anular cobros"], ["reintegros", "Realizar reintegros"],
 ] as const;
 export type StaffFeature = typeof staffFeatures[number][0];
 
@@ -40,9 +50,10 @@ const defaultSections: Record<BuiltInStaffRole, string[]> = {
 export const isStaff = (user: User | null | undefined) =>
   !!user && user.active !== false && [...staffRoles, "CUSTOM"].includes(user.role);
 
-export function canViewAdminFeature(user: User | null | undefined, feature: StaffFeature) {
+export function canViewAdminFeature(user: User | null | undefined, feature: StaffFeature): boolean {
   if (!user || !isStaff(user)) return false;
   if (user.role === "ADMIN") return true;
+  if (isSensitiveStaffFeature(feature)) return canEditAdminFeature(user, feature);
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canView ?? false;
   const fallback = feature === "ventas" || feature === "facturacion" || feature === "descuentos-clientes"
     ? ["SALES", "FINANCE"].includes(user.role)
@@ -61,10 +72,16 @@ export function canAccessAdmin(user: User | null | undefined) {
   return Object.keys(sectionFeature).some((section) => canSeeAdminSection(user, section));
 }
 
-export function canEditAdminFeature(user: User | null | undefined, feature: StaffFeature) {
+export function canEditAdminFeature(user: User | null | undefined, feature: StaffFeature): boolean {
   if (!user || !isStaff(user)) return false;
   if (["integraciones", "metricas", "cartera"].includes(feature)) return false;
   if (user.role === "ADMIN") return true;
+  if (isSensitiveStaffFeature(feature)) {
+    const parent = sensitiveStaffFeatures[feature];
+    if (!canViewAdminFeature(user, parent)) return false;
+    const access = user.staffAccess?.[feature];
+    return access ? access.canView && access.canEdit : canEditAdminFeature(user, parent);
+  }
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canEdit ?? false;
   return user.staffAccess?.[feature]?.canEdit ?? (
     (user.role === "SALES" && ["consultas", "pedidos", "descuentos-clientes"].includes(feature)) ||
@@ -72,3 +89,6 @@ export function canEditAdminFeature(user: User | null | undefined, feature: Staf
     (user.role === "FINANCE" && ["facturacion", "finanzas"].includes(feature))
   );
 }
+
+export const canManageAdminProduct = (user: User | null | undefined) =>
+  canEditAdminFeature(user, "catalogo") || canEditAdminFeature(user, "stock") || canEditAdminFeature(user, "precios");

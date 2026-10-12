@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { Prisma, Role } from '@prisma/client';
-import { defaultStaffAccess, StaffFeature } from '../common/staff-role-access';
+import { staffAccessForUser, StaffFeature } from '../common/staff-role-access';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkBaseDto, BulkCustomerSellerDto, BulkHistoryDto, BulkProductActiveDto, BulkProductPricesDto } from './dto/admin-tools.dto';
@@ -18,14 +18,7 @@ export class AdminToolsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async access(user: JwtUser, feature: StaffFeature) {
-    if (user.role === Role.CLIENT) return { canView: false, canEdit: false };
-    if (user.role === Role.ADMIN) return { canView: true, canEdit: true };
-    if (user.role === Role.CUSTOM) {
-      if (!user.customRoleId) return { canView: false, canEdit: false };
-      return await this.prisma.customStaffRoleAccess.findUnique({ where: { roleId_feature: { roleId: user.customRoleId, feature } } })
-        ?? { canView: false, canEdit: false };
-    }
-    return await this.prisma.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature } } }) ?? defaultStaffAccess(user.role, feature);
+    return staffAccessForUser(this.prisma, user, feature);
   }
 
   private async requireAccess(user: JwtUser, feature: StaffFeature, edit = false) {
@@ -124,7 +117,8 @@ export class AdminToolsService {
   }
 
   async productsPrices(dto: BulkProductPricesDto, user: JwtUser, previewOnly = false) {
-    await this.requireAccess(user, 'catalogo', true);
+    await this.requireAccess(user, 'catalogo');
+    await this.requireAccess(user, 'precios', true);
     if (!Number.isFinite(dto.value) || (dto.mode === 'PERCENTAGE' ? dto.value <= -100 || dto.value > 1000 || dto.value === 0 : dto.value <= 0 || dto.value > 9999999999.99)) {
       throw new BadRequestException('Revisa el porcentaje o importe ingresado.');
     }

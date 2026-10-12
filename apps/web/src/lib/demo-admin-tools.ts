@@ -56,7 +56,8 @@ export async function demoAdminTools(state: DemoToolsState, path: string, method
   }
   const operation = route.split("/")[3] as keyof typeof actions;
   if (method !== "POST" || !['admin/bulk/products/active', 'admin/bulk/products/prices', 'admin/bulk/customers/salesperson'].some((target) => route === target || route === `${target}/preview`)) throw new ApiError("Acción no disponible.", 404);
-  requireAccess(operation === "salesperson" ? "vendedores" : "catalogo", true);
+  requireAccess(operation === "salesperson" ? "vendedores" : operation === "prices" ? "precios" : "catalogo", true);
+  if (operation === "prices") requireAccess("catalogo");
   if (operation === "salesperson") requireAccess("clientes");
   const ids = Array.isArray(body.ids) ? body.ids as string[] : [];
   const reason = String(body.reason ?? "").trim();

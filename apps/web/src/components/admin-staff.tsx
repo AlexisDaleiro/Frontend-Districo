@@ -6,7 +6,7 @@ import { Archive, Copy, CopyPlus, Pencil, Plus, Save, UserCheck, UserX } from "l
 import { request, useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal } from "./ui";
 import { storeRoutes } from "@/lib/store-routes";
-import { canEditAdminFeature, canViewAdminFeature, staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
+import { canEditAdminFeature, canViewAdminFeature, isSensitiveStaffFeature, sensitiveStaffFeatures, staffFeatures, type BuiltInStaffRole, type StaffFeature, type StaffRole } from "@/lib/staff-access";
 import type { User } from "@/lib/types";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import { AdminListFilters, ListPagination, StaffStatusFilter } from "./admin-list-filters";
@@ -116,6 +116,17 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
         next.clientes = { ...next.clientes, canView: true };
       if (feature === "clientes" && key === "canView" && !value)
         next["descuentos-clientes"] = { canView: false, canEdit: false };
+      if (isSensitiveStaffFeature(feature)) {
+        next[feature] = { canView: value, canEdit: value };
+        if (value) {
+          const parent = sensitiveStaffFeatures[feature];
+          next[parent] = { ...next[parent], canView: true };
+          if (parent === "facturacion") next.pedidos = { ...next.pedidos, canView: true };
+        }
+      }
+      for (const action of Object.keys(sensitiveStaffFeatures) as (keyof typeof sensitiveStaffFeatures)[]) {
+        if (!next[sensitiveStaffFeatures[action]].canView) next[action] = { canView: false, canEdit: false };
+      }
       return next;
     });
   }
@@ -135,10 +146,15 @@ function RoleAccessEditor({ item, onSaved, canEdit }: { item: RoleAccess; onSave
   }
   return <form data-admin-save={!locked ? "true" : undefined} aria-busy={busy} className="staff-role-access" onSubmit={(event) => { event.preventDefault(); if (!locked && dirty && !busy) void save(); }}>
     <div className="table-wrap"><table className="admin-staff-table"><thead><tr><th>FUNCIONALIDAD</th><th>VER</th><th>EDITAR</th></tr></thead>
-      <tbody>{staffFeatures.map(([feature, title]) => <tr key={feature}>
+      <tbody>{staffFeatures.filter(([feature]) => !isSensitiveStaffFeature(feature)).map(([feature, title]) => <tr key={feature}>
         <td>{title}</td>
         <td><input type="checkbox" aria-label={`Ver ${title}`} checked={draft[feature].canView} disabled={locked || busy} onChange={(event) => toggle(feature, "canView", event.target.checked)} /></td>
         <td><input type="checkbox" aria-label={`Editar ${title}`} checked={draft[feature].canEdit} disabled={locked || busy || feature === "resumen" || feature === "ventas" || feature === "integraciones"} onChange={(event) => toggle(feature, "canEdit", event.target.checked)} /></td>
+      </tr>)}</tbody></table></div>
+    <h3>Acciones sensibles</h3>
+    <div className="table-wrap"><table className="admin-staff-table" aria-label="Permisos de acciones sensibles"><thead><tr><th>ACCIÓN</th><th>PERMITIR</th></tr></thead>
+      <tbody>{staffFeatures.filter(([feature]) => isSensitiveStaffFeature(feature)).map(([feature, title]) => <tr key={feature}>
+        <td>{title}</td><td><input type="checkbox" aria-label={`Permitir ${title}`} checked={draft[feature].canEdit} disabled={locked || busy} onChange={(event) => toggle(feature, "canEdit", event.target.checked)} /></td>
       </tr>)}</tbody></table></div>
     {error && <p className="error" role="alert">{error}</p>}
     {!locked && <div className="actions"><button className="button small" type="submit" disabled={!dirty || busy}><Save size={16} />{busy ? "Guardando…" : "Guardar permisos"}</button>

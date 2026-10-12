@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search, UserRound, Package, ShoppingBag, ArrowRight } from "lucide-react";
 import { API_STALE_TIME, apiQueryKey, request, useApi, useSession } from "./providers";
 import { Modal } from "./ui";
-import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature, isStaff } from "@/lib/staff-access";
+import { canManageAdminProduct, canSeeAdminSection, canViewAdminFeature, isStaff } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import { label } from "@/lib/commerce";
 import { shortcutForm, submitShortcutForm, type AdminSearchResult } from "@/lib/admin-tools";
@@ -68,7 +68,7 @@ export function AdminCommandMenu() {
     ...(canViewAdminFeature(user, "pedidos") ? data?.orders ?? [] : []).map((item) => ({ id: `order-${item.id}`, name: item.orderNumber,
       detail: `${item.customerAccount?.businessName ?? item.user.email} · ${label(item.status)}`, href: storeRoutes.adminOrder(item.id), Icon: ShoppingBag })),
     ...(canViewAdminFeature(user, "catalogo") ? data?.products ?? [] : []).map((item) => ({ id: `product-${item.id}`, name: item.name,
-      detail: item.active ? "Producto activo" : "Producto inactivo", href: canEditAdminFeature(user, "catalogo") ? storeRoutes.adminProduct(item.slug) : storeRoutes.adminProductPreview(item.slug), Icon: Package })),
+      detail: item.active ? "Producto activo" : "Producto inactivo", href: canManageAdminProduct(user) ? storeRoutes.adminProduct(item.slug) : storeRoutes.adminProductPreview(item.slug), Icon: Package })),
     ...shortcuts,
   ];
   const activeIndex = Math.min(active, Math.max(0, results.length - 1));

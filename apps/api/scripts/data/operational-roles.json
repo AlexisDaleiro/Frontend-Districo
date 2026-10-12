@@ -27,7 +27,7 @@
   {
     "name": "Cobranza y conciliaci\u00f3n",
     "view": ["clientes", "pedidos"],
-    "edit": ["finanzas", "facturacion"]
+    "edit": ["finanzas", "facturacion", "cobros", "anular-cobros", "reintegros"]
   },
   {
     "name": "Coordinaci\u00f3n comercial",

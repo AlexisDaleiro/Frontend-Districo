@@ -9,11 +9,12 @@ import { AdminToolsService } from '../../src/admin/admin-tools.service';
 import { BulkProductActiveDto, BulkProductPricesDto } from '../../src/admin/dto/admin-tools.dto';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { JwtUser } from '../../src/common/types/jwt-user.type';
+import type { StaffAccess, StaffFeature } from '../../src/common/staff-role-access';
 
 const admin: JwtUser = { sub: 'admin-1', email: 'admin@example.test', role: Role.ADMIN, permissions: [] };
 const base = () => ({ ids: ['product-1'], reason: 'Revision comercial', requestId: randomUUID() });
 
-function fixture() {
+function fixture(access?: Partial<Record<StaffFeature, StaffAccess>>) {
   const product = { id: 'product-1', name: 'Producto', active: true, updatedAt: new Date('2026-01-01'), variants: [{
     id: 'variant-1', name: '5 kg', sku: 'SKU-1', updatedAt: new Date('2026-01-01'), prices: [{
       id: 'price-1', amount: new Prisma.Decimal('100.05'), currency: 'UYU', updatedAt: new Date('2026-01-01'), validFrom: new Date('2026-01-01'), validUntil: null as Date | null,
@@ -38,7 +39,7 @@ function fixture() {
   };
   const prisma = {
     ...tx,
-    staffRoleAccess: { findUnique: async () => ({ canView: true, canEdit: false }) },
+    staffRoleAccess: { findUnique: async ({ where }: { where: { role_feature: { feature: StaffFeature } } }) => access ? access[where.role_feature.feature] ?? null : { canView: true, canEdit: false } },
     customStaffRoleAccess: { findUnique: async () => null },
     $transaction: async (callback: (client: typeof tx) => Promise<unknown>, options: { isolationLevel: string }) => {
       assert.equal(options.isolationLevel, 'Serializable');
@@ -112,6 +113,28 @@ test('price percentage uses decimal rounding, expires prices, and writes both hi
   await f.service.productsPrices({ ...dto, previewToken: preview.token }, admin);
   assert.deepEqual(f.effects, ['close-price', 'price:110.06', 'price-history']);
   assert.equal(f.records[0].action, 'ADMIN_BULK_PRODUCTS_PRICES');
+});
+
+test('price-only staff can preview and apply prices without broad product editing', async () => {
+  const f = fixture({ catalogo: { canView: true, canEdit: false }, precios: { canView: true, canEdit: true } });
+  const member = { ...admin, role: Role.CATALOG };
+  const dto = { ...base(), mode: 'FIXED' as const, value: 150 };
+  const preview = await f.service.productsPrices(dto, member, true);
+  assert.ok('token' in preview);
+  await f.service.productsPrices({ ...dto, previewToken: preview.token }, member);
+  assert.deepEqual(f.effects, ['close-price', 'price:150.00', 'price-history']);
+  await assert.rejects(f.service.productsActive({ ...base(), active: false }, member, true), ForbiddenException);
+});
+
+test('revoking the price action invalidates a previously authorized preview', async () => {
+  const access = { catalogo: { canView: true, canEdit: true }, precios: { canView: true, canEdit: true } };
+  const f = fixture(access), member = { ...admin, role: Role.CATALOG };
+  const dto = { ...base(), mode: 'FIXED' as const, value: 150 };
+  const preview = await f.service.productsPrices(dto, member, true);
+  assert.ok('token' in preview);
+  access.precios = { canView: false, canEdit: false };
+  await assert.rejects(f.service.productsPrices({ ...dto, previewToken: preview.token }, member), ForbiddenException);
+  assert.deepEqual(f.effects, []);
 });
 
 test('fixed prices can fill missing prices while percentage adjustments fail atomically', async () => {

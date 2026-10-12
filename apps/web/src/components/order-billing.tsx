@@ -8,9 +8,12 @@ import { orderBalance } from "@/lib/order-billing";
 import type { Order } from "@/lib/types";
 import { OrderReturns } from "./order-returns";
 import { OrderPaymentPlan } from "./order-payment-plan";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Order; onUpdated: () => Promise<void>; readOnly?: boolean }) {
-  const { notify } = useSession();
+  const { user, notify } = useSession();
+  const canRegisterPayment = canEditAdminFeature(user, "cobros");
+  const canVoidPayment = canEditAdminFeature(user, "anular-cobros");
   const [mode, setMode] = useState<"partial" | "full">("full");
   const [amount, setAmount] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -29,6 +32,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
 
   async function recordPayment(event: FormEvent) {
     event.preventDefault();
+    if (!canRegisterPayment || busy) return;
     setError("");
     const value = mode === "full" ? balance.due : Number(amount);
     if (!canPay || !Number.isFinite(value) || value <= 0 || (mode === "partial" && value >= balance.due)) {
@@ -96,7 +100,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
 
   async function voidRecord(event: FormEvent) {
     event.preventDefault();
-    if (!correction || reason.trim().length < 3) return;
+    if (!correction || reason.trim().length < 3 || busy || (correction.kind === "payment" ? !canVoidPayment : readOnly)) return;
     setError("");
     setBusy("void");
     try {
@@ -145,12 +149,12 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
             <li key={payment.id} className={payment.voidedAt ? "is-voided" : ""}>
               <span>{new Date(payment.createdAt).toLocaleString("es-UY")}{payment.recordedByEmail ? ` · ${payment.recordedByEmail}` : ""}{payment.voidedAt ? ` · Anulado ${new Date(payment.voidedAt).toLocaleString("es-UY")}${payment.voidedByEmail ? ` por ${payment.voidedByEmail}` : ""}: ${payment.voidReason}` : ""}</span>
               <strong>{money(Number(payment.amount), order.currency)}</strong>
-              {!readOnly && !payment.voidedAt && !DEMO && <button className="text-link" type="button" disabled={!!busy} onClick={() => { setCorrection({ kind: "payment", id: payment.id, requestId: crypto.randomUUID() }); setReason(""); }}>Anular</button>}
+              {canVoidPayment && !payment.voidedAt && !DEMO && <button className="text-link" type="button" disabled={!!busy} onClick={() => { setCorrection({ kind: "payment", id: payment.id, requestId: crypto.randomUUID() }); setReason(""); }}>Anular</button>}
             </li>
           ))}</ul>
         </div>
       )}
-      {!readOnly && !DEMO && canPay && (
+      {canRegisterPayment && !DEMO && canPay && (
         <form data-admin-save="true" aria-busy={!!busy} onSubmit={(event) => void recordPayment(event)} className="order-billing-form">
           <h4>Actualizar estado de pago</h4>
           <div className="order-billing-modes" role="group" aria-label="Tipo de pago">
@@ -188,7 +192,7 @@ export function OrderBilling({ order, onUpdated, readOnly = false }: { order: Or
           ))}</ul>
         ) : <p className="muted small-copy">Sin facturas registradas.</p>}
       </div>
-      {correction && (
+      {correction && (correction.kind === "payment" ? canVoidPayment : !readOnly) && (
         <form data-admin-save="true" aria-busy={!!busy} className="order-billing-form" onSubmit={(event) => void voidRecord(event)}>
           <h4>Anular {correction.kind === "payment" ? "pago" : "factura"}</h4>
           <label className="field">Motivo de la anulación

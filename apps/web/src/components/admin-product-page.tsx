@@ -11,7 +11,7 @@ import { AdminForm, type Editor } from "./admin-form";
 import { useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal, PageHeading } from "./ui";
 import { adminProductEditor } from "@/lib/admin-product-editor";
-import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
+import { canEditAdminFeature, canManageAdminProduct, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { Attribute, Entity, Product } from "@/lib/types";
 import { useAdminReturnHref } from "./admin-list-navigation";
@@ -37,6 +37,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
 
   const catalog = useAdminReturnHref("catalogo");
   const item = product.data;
+  const canEdit = canEditAdminFeature(user, "catalogo");
 
   return (
     <>
@@ -47,7 +48,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
               <Loading />
             ) : product.error ? (
               <ErrorBox error={product.error} retry={() => void product.refetch()} />
-            ) : item && !canEditAdminFeature(user, "catalogo") ? (
+            ) : item && !canManageAdminProduct(user) ? (
               <div className="stack"><PageHeading eyebrow="DISTRICO · Administración" title={item.name} /><Link className="button small secondary" href={adminRecordHref(storeRoutes.adminProductPreview(item.slug), catalog)}>Ver producto</Link></div>
             ) : item ? (
               <>
@@ -63,12 +64,12 @@ export function AdminProductPage({ slug }: { slug: string }) {
                   <Link className="icon-button admin-preview-toggle" href={adminRecordHref(storeRoutes.adminProductPreview(item.slug), catalog)} title="Vista previa" aria-label="Vista previa"><Eye size={19} /></Link>
                 </div>
                 <nav className="admin-product-tabs" aria-label="Secciones del producto">
-                  <a href="#imagenes"><Images size={16} /> Imágenes</a>
+                  {canEdit && <><a href="#imagenes"><Images size={16} /> Imágenes</a>
                   <a href="#edicion"><Pencil size={16} /> Editar producto</a>
-                  <a href="#ficha-tecnica"><FileText size={16} /> Ficha técnica</a>
+                  <a href="#ficha-tecnica"><FileText size={16} /> Ficha técnica</a></>}
                   <a href="#presentaciones"><Layers3 size={16} /> Presentaciones</a>
                 </nav>
-                <AdminProductImages product={item} edit={setEditor} />
+                {canEdit && <><AdminProductImages product={item} edit={setEditor} />
                 <section id="edicion" className="admin-product-section">
                   <div className="admin-toolbar"><h2>Editar producto</h2></div>
                   {brands.isPending || categories.isPending || laboratories.isPending || attributes.isPending ? <Loading /> :
@@ -84,7 +85,7 @@ export function AdminProductPage({ slug }: { slug: string }) {
                         onCancel={() => router.push(catalog)}
                       />}
                 </section>
-                <AdminTechnicalSheet key={item.id} product={item} />
+                <AdminTechnicalSheet key={item.id} product={item} /></>}
                 <section id="presentaciones" className="admin-product-section">
                   <div className="admin-toolbar"><h2>Presentaciones</h2></div>
                   <VariantManagement product={item} edit={setEditor} />

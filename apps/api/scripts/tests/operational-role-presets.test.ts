@@ -6,7 +6,7 @@ import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { Role } from '@prisma/client';
 import { RolesGuard } from '../../src/common/guards/roles.guard';
-import { staffFeatures, type StaffFeature } from '../../src/common/staff-role-access';
+import { isSensitiveStaffFeature, sensitiveStaffFeatures, staffFeatures, type StaffFeature } from '../../src/common/staff-role-access';
 import { slugify } from '../../src/common/utils/slugify';
 import type { PrismaService } from '../../src/prisma/prisma.service';
 
@@ -29,6 +29,9 @@ test('operational roles have valid unique names, least privilege and complete de
     for (const feature of ['personal', 'roles', 'integraciones'] as const) assert.equal(access(preset, feature).canView, false);
     if (access(preset, 'pedidos').canEdit) assert.ok(access(preset, 'facturacion').canView);
     if (access(preset, 'facturacion').canView) assert.ok(access(preset, 'pedidos').canView);
+    for (const action of Object.keys(sensitiveStaffFeatures) as (keyof typeof sensitiveStaffFeatures)[]) {
+      if (access(preset, action).canEdit) assert.ok(access(preset, sensitiveStaffFeatures[action]).canView);
+    }
     if (access(preset, 'ventas').canView) assert.ok(access(preset, 'resumen').canView);
     if (access(preset, 'vendedores').canEdit || access(preset, 'descuentos-clientes').canEdit) assert.ok(access(preset, 'clientes').canView);
     if (access(preset, 'promociones').canEdit || access(preset, 'recomendaciones').canEdit) {
@@ -40,13 +43,16 @@ test('operational roles have valid unique names, least privilege and complete de
 const paths: Record<StaffFeature, string> = {
   resumen: '/api/admin/dashboard', ventas: '/api/admin/sales', consultas: '/api/admin/contact-inquiries',
   solicitudes: '/api/admin/applications', clientes: '/api/admin/customers', pedidos: '/api/admin/orders',
-  'descuentos-clientes': '/api/admin/customers/customer/discount', facturacion: '/api/admin/orders/order/payments',
+  'descuentos-clientes': '/api/admin/customers/customer/discount', facturacion: '/api/admin/orders/order/invoices',
   catalogo: '/api/products/admin/list', marcas: '/api/brands/admin', categorias: '/api/categories',
   promociones: '/api/admin/promotions', banners: '/api/admin/banners', recomendaciones: '/api/admin/recommendations',
   personal: '/api/admin/staff', roles: '/api/admin/staff/access', vendedores: '/api/admin/salespeople',
   'ofertas-laborales': '/api/admin/jobs', integraciones: '/api/admin/integrations',
   cartera: '/api/admin/operations/portfolio', finanzas: '/api/admin/operations/finance/movements',
   logistica: '/api/admin/operations/logistics', metricas: '/api/admin/operations/metrics',
+  stock: '/api/inventory/variants/variant/stock', precios: '/api/pricing/variants/variant',
+  cobros: '/api/admin/orders/order/payments', 'anular-cobros': '/api/admin/orders/order/payments/payment/void',
+  reintegros: '/api/admin/orders/order/refunds',
 };
 
 for (const preset of presets) test(`${preset.name}: backend guard respects every view/edit permission`, async () => {
@@ -54,6 +60,7 @@ for (const preset of presets) test(`${preset.name}: backend guard respects every
   const reflector = { getAllAndOverride: () => [Role.ADMIN] } as unknown as Reflector;
   const guard = new RolesGuard(reflector, prisma);
   for (const feature of staffFeatures) for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
+    if (isSensitiveStaffFeature(feature) && method === 'GET') continue;
     const context = {
       getHandler: () => function handler() {}, getClass: () => class Controller {},
       switchToHttp: () => ({ getRequest: () => ({ originalUrl: paths[feature], method, user: { role: Role.CUSTOM, customRoleId: 'preset' } }) }),

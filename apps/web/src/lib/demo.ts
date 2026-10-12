@@ -35,7 +35,7 @@ import { demoSalesReport } from "./demo-sales";
 import { salesReportCsv } from "./sales-report";
 import { staffListStatus } from "./admin-list-filters";
 import { customerDiscountSchema, demoCustomerPricing, omitCustomerDiscounts } from "./customer-discount";
-import { canEditAdminFeature, canViewAdminFeature, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
+import { canEditAdminFeature, canViewAdminFeature, isSensitiveStaffFeature, sensitiveStaffFeatures, staffFeatures, staffRoles, type StaffFeature, type StaffRole } from "./staff-access";
 type DemoRoleAccess = Record<StaffFeature, { canView: boolean; canEdit: boolean }>;
 function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
   const user = { id: "demo", email: "demo@example.test", role, permissions: [] } as User;
@@ -45,7 +45,14 @@ function defaultDemoRoleAccess(role: StaffRole): DemoRoleAccess {
   }])) as DemoRoleAccess;
 }
 function completeDemoRoleAccess(role: StaffRole, saved?: Partial<DemoRoleAccess>): DemoRoleAccess {
-  return { ...defaultDemoRoleAccess(role), ...saved };
+  const user = { id: "demo", email: "demo@example.test", role, permissions: [], staffAccess: saved } as User;
+  return Object.fromEntries(staffFeatures.map(([feature]) => [feature, {
+    canView: canViewAdminFeature(user, feature), canEdit: canEditAdminFeature(user, feature),
+  }])) as DemoRoleAccess;
+}
+function invalidSensitiveAccess(entries: { feature: StaffFeature; canView: boolean; canEdit: boolean }[]) {
+  return entries.some((entry) => isSensitiveStaffFeature(entry.feature) &&
+    (entry.canView !== entry.canEdit || entry.canEdit && !entries.find((parent) => parent.feature === sensitiveStaffFeatures[entry.feature as keyof typeof sensitiveStaffFeatures])?.canView));
 }
 type State = {
   version: number;
@@ -394,7 +401,12 @@ export async function demoRequest<T>(
         if (!order || !assigned(order.customerAccount?.id)) throw new ApiError("No tenés permiso para esta acción.", 403);
       }
     }
-    const feature = route.startsWith("admin/orders/") && /\/(payments|invoices|credit-notes|refunds)(\/|$)/.test(route) ? "facturacion" :
+    const feature = method !== "GET" && /^inventory(?:\/|$)/.test(route) ? "stock" :
+      method !== "GET" && /^pricing(?:\/|$)/.test(route) ? "precios" :
+      method !== "GET" && /^admin\/orders\/[^/]+\/payments\/[^/]+\/void$/.test(route) ? "anular-cobros" :
+      method !== "GET" && /^admin\/orders\/[^/]+\/payments$/.test(route) ? "cobros" :
+      method !== "GET" && /^admin\/orders\/[^/]+\/refunds$/.test(route) ? "reintegros" :
+      route.startsWith("admin/orders/") && /\/(payments|invoices|credit-notes|refunds)(\/|$)/.test(route) ? "facturacion" :
       route.startsWith("admin/contact-inquiries") ? "consultas" :
       route.startsWith("admin/applications") ? "solicitudes" :
       route.startsWith("admin/staff/access") || route.startsWith("admin/staff/roles") ? "roles" :
@@ -415,6 +427,12 @@ export async function demoRequest<T>(
       /^(recommendations)(\/|$)/.test(route) ? "recomendaciones" : null;
     const access = member.role === "CUSTOM" ? s.customRoles?.find((item) => item.id === member.customRoleId)?.access : s.staffRoleAccess?.[member.role];
     const decorated = { ...member, staffAccess: access ?? (member.role === "CUSTOM" ? undefined : defaultDemoRoleAccess(member.role as StaffRole)) };
+    if (method !== "GET" && /^products\/(?:variants\/[^/]+|[^/]+\/variants)$/.test(route) &&
+        ["physicalStock", "reservedStock"].some((field) => Object.hasOwn(b, field)) && !canEditAdminFeature(decorated, "stock"))
+      throw new ApiError("No tenés permiso para modificar stock.", 403);
+    if (method !== "GET" && /^admin\/orders\/[^/]+\/returns(?:\/preview)?$/.test(route) && Array.isArray(b.items) &&
+        b.items.some((item: unknown) => typeof item === "object" && item !== null && Number((item as { restockedQuantity?: unknown }).restockedQuantity) > 0) && !canEditAdminFeature(decorated, "stock"))
+      throw new ApiError("No tenés permiso para reincorporar stock.", 403);
     if (feature && (method === "GET" ? canViewAdminFeature(decorated, feature) : canEditAdminFeature(decorated, feature))) return;
     throw new ApiError("No tenés permiso para esta acción.", 403);
   };
@@ -1117,7 +1135,7 @@ export async function demoRequest<T>(
       const entries = b.entries as { feature: StaffFeature; canView: boolean; canEdit: boolean }[];
       if (!staffRoles.some((item) => item === role) || role === "ADMIN" || !Array.isArray(entries) || entries.length !== staffFeatures.length ||
           new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
-          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones"))) {
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones")) || invalidSensitiveAccess(entries)) {
         throw new ApiError("Configuración de permisos inválida.", 400);
       }
       s.staffRoleAccess ??= {};
@@ -1139,7 +1157,7 @@ export async function demoRequest<T>(
       if (!item) throw new ApiError("Rol no encontrado.", 404);
       if (!Array.isArray(entries) || entries.length !== staffFeatures.length ||
           new Set(entries.map((entry) => entry.feature)).size !== staffFeatures.length ||
-          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones"))) {
+          entries.some((entry) => !staffFeatures.some(([feature]) => feature === entry.feature) || entry.canEdit && (!entry.canView || entry.feature === "integraciones")) || invalidSensitiveAccess(entries)) {
         throw new ApiError("Configuración de permisos inválida.", 400);
       }
       item.access = Object.fromEntries(entries.map((entry) => [entry.feature, { canView: entry.canView, canEdit: entry.canEdit }])) as DemoRoleAccess;

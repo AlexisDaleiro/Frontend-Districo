@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { staffFeatures } from "../../src/lib/staff-access";
+import { isSensitiveStaffFeature, staffFeatures } from "../../src/lib/staff-access";
 async function admin(page: Page) {
   await page.goto("/tienda/ingresar");
   await expect(async () => {
@@ -18,7 +18,11 @@ test("roles configura permisos de ver y editar por rol", async ({ page }) => {
   await expect(page).toHaveURL(/\/tienda\/admin\/roles$/);
   await expect(page.getByRole("heading", { name: "Permisos por rol" })).toBeVisible();
   await expect(page.locator(".staff-role-access tbody tr")).toHaveCount(staffFeatures.length);
-  for (const [, title] of staffFeatures) {
+  for (const [feature, title] of staffFeatures) {
+    if (isSensitiveStaffFeature(feature)) {
+      await expect(page.getByRole("checkbox", { name: `Permitir ${title}`, exact: true })).toBeVisible();
+      continue;
+    }
     await expect(page.getByRole("checkbox", { name: `Ver ${title}`, exact: true })).toBeVisible();
     await expect(page.getByRole("checkbox", { name: `Editar ${title}`, exact: true })).toBeVisible();
   }

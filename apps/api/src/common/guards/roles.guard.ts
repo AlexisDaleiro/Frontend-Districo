@@ -4,7 +4,7 @@ import { Role } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { JwtUser } from '../types/jwt-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
-import { defaultStaffAccess, staffFeatureForPath } from '../staff-role-access';
+import { isSensitiveStaffFeature, sensitiveStaffFeatures, staffAccessForUser, staffFeatureForPath } from '../staff-role-access';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -12,29 +12,33 @@ export class RolesGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const roles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [context.getHandler(), context.getClass()]);
-    const request = context.switchToHttp().getRequest<{ user?: JwtUser; originalUrl: string; method: string }>();
+    const request = context.switchToHttp().getRequest<{ user?: JwtUser; originalUrl: string; method: string; body?: Record<string, unknown> }>();
     const user = request.user;
     if (!roles?.length) return true;
-    const feature = staffFeatureForPath(request.originalUrl);
+    const feature = staffFeatureForPath(request.originalUrl, request.method);
     if (feature) {
       if (!user || user.role === Role.CLIENT) return false;
       if (user.role === Role.ADMIN) return true;
-      if (user.role === Role.CUSTOM) {
-        if (!user.customRoleId) return false;
-        const access = await this.prisma.customStaffRoleAccess.findUnique({ where: { roleId_feature: { roleId: user.customRoleId, feature } } });
-        if (!access) return false;
-        return request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)
-          ? access.canEdit : request.method === 'GET' ? access.canView : access.canEdit;
+      const access = await staffAccessForUser(this.prisma, user, feature);
+      const allowed = request.method === 'GET' && /^\/(?:api\/)?admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+\/?(?:\?|$)/i.test(request.originalUrl)
+        ? access.canEdit : request.method === 'GET' ? access.canView : access.canView && access.canEdit;
+      if (!allowed) return false;
+      if (isSensitiveStaffFeature(feature) && !(await staffAccessForUser(this.prisma, user, sensitiveStaffFeatures[feature])).canView) return false;
+      const path = request.originalUrl.split('?')[0].replace(/^\/api\//i, '/').replace(/\/+$/, '');
+      const variantStock = /^\/products\/(?:variants\/[^/]+|[^/]+\/variants)$/i.test(path) &&
+        ['physicalStock', 'reservedStock'].some((field) => Object.prototype.hasOwnProperty.call(request.body ?? {}, field));
+      const returnedStock = /^\/admin\/orders\/[^/]+\/returns(?:\/preview)?$/i.test(path) &&
+        Array.isArray(request.body?.items) && request.body.items.some((item: unknown) =>
+          typeof item === 'object' && item !== null && Number((item as { restockedQuantity?: unknown }).restockedQuantity) > 0);
+      if (request.method !== 'GET' && (variantStock || returnedStock)) {
+        const stock = await staffAccessForUser(this.prisma, user, 'stock');
+        const catalog = await staffAccessForUser(this.prisma, user, 'catalogo');
+        if (!stock.canView || !stock.canEdit || !catalog.canView) return false;
       }
-      const override = await this.prisma.staffRoleAccess.findUnique({ where: { role_feature: { role: user.role, feature } } });
-      const access = override ?? defaultStaffAccess(user.role, feature);
-      const allowed = request.method === 'GET' && /^\/api\/admin\/orders\/[^/]+\/(?:invoices|credit-notes)\/[^/?]+(?:\?|$)/.test(request.originalUrl)
-        ? access.canEdit : request.method === 'GET' ? access.canView : access.canEdit;
-      if (!allowed || user.role !== Role.SALES) return allowed;
-      const path = request.originalUrl.split('?')[0];
-      const customerId = /^\/api\/admin\/customers\/(?!page(?:\/|$))([^/]+)/.exec(path)?.[1];
+      if (user.role !== Role.SALES) return true;
+      const customerId = /^\/admin\/customers\/(?!page(?:\/|$))([^/]+)/i.exec(path)?.[1];
       if (customerId) return !!await this.prisma.customerAccount.findFirst({ where: { id: customerId, salesperson: { is: { userId: user.sub } } }, select: { id: true } });
-      const orderId = /^\/api\/admin\/orders\/(?!page(?:\/|$)|export(?:\/|$))([^/]+)/.exec(path)?.[1];
+      const orderId = /^\/admin\/orders\/(?!page(?:\/|$)|export(?:\/|$))([^/]+)/i.exec(path)?.[1];
       if (orderId) return !!await this.prisma.order.findFirst({ where: { id: orderId, customerAccount: { is: { salesperson: { is: { userId: user.sub } } } } }, select: { id: true } });
       return true;
     }

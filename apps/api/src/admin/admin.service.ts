@@ -12,7 +12,7 @@ import { UpdateCustomerDiscountDto } from './dto/update-customer-discount.dto';
 import { CustomerListQueryDto, OrderListQueryDto, StaffListQueryDto } from './dto/admin-list-query.dto';
 import { customerDebtPredicate, customerListWhere } from './customer-list-filter';
 import { pendingInvitation, staffListWhere } from './staff-list-filter';
-import { defaultStaffAccess, staffAccessMatrix, staffFeatures, type StaffFeature } from '../common/staff-role-access';
+import { defaultStaffAccess, isSensitiveStaffFeature, sensitiveStaffFeatures, staffAccessMatrix, staffFeatures, type StaffFeature } from '../common/staff-role-access';
 import { StaffAccessEntryDto } from './dto/update-staff-access.dto';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { slugify } from '../common/utils/slugify';
@@ -151,7 +151,8 @@ export class AdminService {
 
   private async assertGrantBounded(actorId: string, entries: { feature: StaffFeature; canView: boolean; canEdit: boolean }[]) {
     const access = await this.actorAccess(actorId);
-    if (access && entries.some((entry) => (entry.canView && !access[entry.feature].canView) || (entry.canEdit && !access[entry.feature].canEdit))) {
+    const target = staffAccessMatrix(Role.CUSTOM, entries);
+    if (access && staffFeatures.some((feature) => (target[feature].canView && !access[feature].canView) || (target[feature].canEdit && !access[feature].canEdit))) {
       throw new ForbiddenException('No podés otorgar permisos que no tenés.');
     }
   }
@@ -185,6 +186,11 @@ export class AdminService {
     if (entries.find((entry) => entry.feature === 'ventas')?.canView &&
         !entries.find((entry) => entry.feature === 'resumen')?.canView) {
       throw new BadRequestException('Para ver ventas se debe poder ver el resumen.');
+    }
+    for (const entry of entries.filter((item) => isSensitiveStaffFeature(item.feature))) {
+      if (entry.canView !== entry.canEdit || entry.canEdit && !entries.find((item) => item.feature === sensitiveStaffFeatures[entry.feature as keyof typeof sensitiveStaffFeatures])?.canView) {
+        throw new BadRequestException('Las acciones sensibles requieren acceso de lectura a su sección.');
+      }
     }
   }
 

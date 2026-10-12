@@ -6,9 +6,11 @@ import { request, useSession } from "./providers";
 import { ErrorBox } from "./ui";
 import { returnedQuantities, type ProductReturnLine, type ProductReturnPreview } from "@/lib/product-returns";
 import type { Order } from "@/lib/types";
+import { canEditAdminFeature } from "@/lib/staff-access";
 
 export function OrderProductReturns({ order, onUpdated, readOnly }: { order: Order; onUpdated: () => Promise<void>; readOnly: boolean }) {
-  const { notify } = useSession();
+  const { user, notify } = useSession();
+  const canRestock = canEditAdminFeature(user, "stock");
   const [draft, setDraft] = useState<Record<string, ProductReturnLine>>({});
   const [reason, setReason] = useState("");
   const [preview, setPreview] = useState<ProductReturnPreview | null>(null);
@@ -22,7 +24,7 @@ export function OrderProductReturns({ order, onUpdated, readOnly }: { order: Ord
   function change() { setPreview(null); setError(undefined); requestId.current = crypto.randomUUID(); }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || !selected.length) return;
+    if (busy || !selected.length || (!canRestock && selected.some((line) => line.restockedQuantity > 0))) return;
     setBusy(true); setError(undefined);
     const path = `admin/orders/${order.id}/returns`;
     try {
@@ -58,7 +60,7 @@ export function OrderProductReturns({ order, onUpdated, readOnly }: { order: Ord
             }); }} /><span>{item.productName}<small>{item.variantName} · {item.sku}</small></span></label></td>
             <td>{item.quantity}</td><td>{returned.get(id) ?? 0}</td>
             <td><input aria-label={`Cantidad a devolver ${item.sku}`} className="form-input" type="number" min={1} max={Math.min(remaining, 1000000)} step={1} required={!!line} disabled={!line} value={line?.quantity ?? ""} onChange={(event) => { change(); const quantity = Number(event.target.value); setDraft((current) => ({ ...current, [id]: { ...current[id], quantity, restockedQuantity: Math.min(quantity, current[id].restockedQuantity) } })); }} /></td>
-            <td><input aria-label={`Cantidad a reincorporar ${item.sku}`} className="form-input" type="number" min={0} max={line?.quantity ?? 0} step={1} required={!!line} disabled={!line} value={line?.restockedQuantity ?? ""} onChange={(event) => { change(); setDraft((current) => ({ ...current, [id]: { ...current[id], restockedQuantity: Number(event.target.value) } })); }} /></td>
+            <td><input aria-label={`Cantidad a reincorporar ${item.sku}`} className="form-input" type="number" min={0} max={line?.quantity ?? 0} step={1} required={!!line} disabled={!line || !canRestock} value={line?.restockedQuantity ?? ""} onChange={(event) => { change(); setDraft((current) => ({ ...current, [id]: { ...current[id], restockedQuantity: Number(event.target.value) } })); }} /></td>
           </tr>;
         })}</tbody></table></div>
         <label className="field">Motivo de devolución de mercadería<textarea className="form-input" required minLength={3} maxLength={500} value={reason} onChange={(event) => { change(); setReason(event.target.value); }} /></label>
