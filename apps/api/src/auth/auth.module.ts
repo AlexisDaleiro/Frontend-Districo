@@ -8,6 +8,8 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { AuthSessionsService } from './auth-sessions.service';
 import { MfaService } from './mfa.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { PasswordRecoveryService } from './password-recovery.service';
 
 @Module({
   imports: [
@@ -21,9 +23,10 @@ import { MfaService } from './mfa.service';
       }),
     }),
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, AuthSessionsService, MfaService],
+  providers: [AuthService, JwtStrategy, AuthSessionsService, MfaService, PasswordRecoveryService],
   exports: [AuthService],
 })
 export class AuthModule {}

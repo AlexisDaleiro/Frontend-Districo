@@ -175,6 +175,7 @@ model User {
   emailVerified     Boolean          @default(false)
   permissions       UserPermission[]
   refreshTokens     RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   authSessions      AuthSession[]
   mfaChallenges     MfaChallenge[]
   recoveryCodes     MfaRecoveryCode[]
@@ -249,6 +250,19 @@ model RefreshToken {
   revokedAt DateTime?
   createdAt DateTime  @default(now())
   @@index([sessionId, revokedAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 model AuthSession {
@@ -956,6 +970,16 @@ model NotificationLog {
   payload   Json?
   provider  String   @default("console")
   createdAt DateTime @default(now())
+  status    String   @default("RECORDED")
+  attempts  Int      @default(0)
+  availableAt DateTime @default(now())
+  lockedAt  DateTime?
+  acceptedAt DateTime?
+  expiresAt DateTime?
+  errorCode String?
+  encryptedMessage String?
+
+  @@index([status, availableAt])
 }
 
 model Campaign {

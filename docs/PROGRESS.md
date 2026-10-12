@@ -1,6 +1,21 @@
 # Registro de avance
 
-Última actualización: 11 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 12 de octubre de 2026. Rama de trabajo: `main`.
+
+## Correos opcionales para publicar sin configuracion (12/10/2026)
+
+- Comparada la version local con origin/main: incluye `450e0be` y el rediseño del companero `a27f4d0`; sin commits remotos pendientes al comenzar. No se cambian el diseño, las rutas institucionales, el binding privado de Services ni las variables existentes.
+- Ambos pasos de recuperacion verifican configuracion antes de acceder a usuarios/tokens y responden 503 controlado. El proxy muestra un aviso fijo para ese caso, conserva sesiones ante errores y sigue ocultando detalles de otros 5xx. Notificaciones opcionales y worker desactivado en Vercel si no esta configurado el despacho.
+- Verificados arranque HTTP compilado sin variables de correo y sin require(ESM), login valido/invalido con fixtures, MFA y rechazo de replay, suite completa de pruebas backend, 218 unidades frontend y seis recorridos de recuperacion en Chrome, escritorio/celular. Lint/tipos y compilaciones API/web correctos. No se enviaron correos ni se cambiaron contraseñas reales en esta pasada. Secretos locales y capturas fuera de Git.
+- El envio publicado sigue requiriendo variables privadas, despacho protegido de la cola y dominio verificado para destinatarios ajenos a la cuenta Resend; no se configura un cron ni se aplica una migracion automaticamente durante el despliegue.
+
+## Correos Resend y recuperacion de acceso (11/10/2026)
+
+- Adaptador privado de Resend y cola durable cifrada en NotificationLog: solicitudes, aprobacion/rechazo, pedidos y consultas existentes. Reintentos acotados, bloqueo por envio, idempotencia y borrado de contenido; ACCEPTED no afirma entrega al inbox. Fallas de notificacion no convierten operaciones comerciales guardadas en errores. Worker opt-in para servidor persistente y endpoint de despacho protegido para scheduler serverless, no transportado por el proxy publico.
+- Recuperacion con formulario real, token aleatorio privado y hash SHA-256, vencimiento de 30 minutos, un solo uso, transacciones serializables, cooldown y respuesta generica. Fragmento eliminado al abrir, sin storage ni tokens en JSON/logs. Cambiar contraseña consume todos los enlaces, revoca sesiones/refresh/desafios y conserva MFA/codigos; no inicia sesion automaticamente. Demo declara que no envia correos.
+- Migracion aditiva 20261011002000 aplicada tras comprobar que era la unica pendiente; tablas privadas con RLS. Configuracion local preparada sin mostrar/reemplazar secretos; remitente test onboarding@resend.dev. El usuario indico marafio2018@gmail.com como destinatario del ejemplo: solo puede recibir pruebas si corresponde a su cuenta de Resend y a un usuario activo del sitio. La primera pasada se verifico sin API key; posteriormente el usuario la cargo en el archivo privado.
+- Verificacion inicial sin API key: 15 pruebas de autenticacion/MFA/correos y 20 operaciones comerciales, 217 unidades frontend y cinco flujos de navegador correctos; capturas escritorio/celular, lint/tipos y builds correctos. Integracion Supabase con fixtures dentro de una transaccion serializable revertida verifico cambio/hash, consumo/replay, sesiones/refresh/desafios, MFA conservado, auditoria y RLS. Cero correos enviados y cero cuentas QA persistentes en esa pasada. API local actualizada en 3001; web conservada en 3002 y archivo generado de Next restaurado. Sin commit/push. Configuracion y limites en EMAIL-RECOVERY.md.
+- Envio real posterior: correo de conexion aceptado por Resend y recibido segun confirmacion del usuario; solicitud de recuperacion desde el formulario local genero un correo ACCEPTED en un intento, borro el contenido cifrado y dejo un token valido sin consumir. El usuario confirmo recepcion y apertura del formulario de nueva contraseña. No se cambio la contraseña de su cuenta. Node 24.19 con `--use-system-ca` resuelve el problema de certificados local sin desactivar HTTPS ni cambiar la confianza del sistema. Durante esa prueba los correos aun no estaban publicados; para Vercel falta configurar variables y despacho privado de la cola.
 
 ## Integracion de ecommerce e institucional para main (11/10/2026)
 

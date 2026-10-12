@@ -90,15 +90,6 @@ async function handle(
     const input = JSON.parse(String(body ?? '{}'));
     body = JSON.stringify({ code: input.code, challengeToken: request.cookies.get("districo-mfa-challenge")?.value ?? "" });
   }
-  // Backend currently returns a password-reset token to any caller. Do not expose it publicly.
-  if (path === "auth/forgot-password")
-    return reply(
-      {
-        message:
-          "La recuperación por correo aún no está disponible. Contactá a DISTRICO para recuperar tu acceso.",
-      },
-      501,
-    );
   try {
     const token = request.cookies.get("districo-access")?.value;
     const upstream = await fetch(
@@ -128,12 +119,16 @@ async function handle(
       });
     }
     const data = await upstream.json().catch(() => ({}));
+    const recoveryUnavailable = upstream.status === 503 && data.code === "PASSWORD_RECOVERY_UNAVAILABLE" &&
+      ["auth/forgot-password", "auth/reset-password"].includes(path);
     const response = reply(
       upstream.ok
         ? sanitize(data)
         : {
             message:
-              upstream.status >= 500
+              recoveryUnavailable
+                ? "La recuperación por correo no está configurada. Contactá a DISTRICO."
+                : upstream.status >= 500
                 ? "El servicio no pudo completar la operación."
                 : (data.message ?? "No se pudo completar la operación."),
           },
@@ -159,8 +154,8 @@ async function handle(
       response.cookies.set("districo-mfa-challenge", data.challengeToken, { ...cookieOptions, maxAge: 300 });
       for (const name of ["districo-access", "districo-refresh"]) response.cookies.set(name, "", { ...cookieOptions, maxAge: 0 });
     }
-    if (path === "auth/logout" || (path === "auth/refresh" && !upstream.ok)) {
-      if (path === "auth/logout") response.cookies.set("districo-mfa-challenge", "", { ...cookieOptions, maxAge: 0 });
+    if (path === "auth/logout" || (path === "auth/refresh" && !upstream.ok) || (path === "auth/reset-password" && upstream.ok)) {
+      if (path === "auth/logout" || path === "auth/reset-password") response.cookies.set("districo-mfa-challenge", "", { ...cookieOptions, maxAge: 0 });
       response.cookies.set("districo-access", "", {
         ...cookieOptions,
         maxAge: 0,

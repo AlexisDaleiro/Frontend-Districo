@@ -16,6 +16,7 @@ import { staffAccessMatrix } from '../common/staff-role-access';
 import { AuthSessionsService } from './auth-sessions.service';
 import { MfaService } from './mfa.service';
 import { JwtUser } from '../common/types/jwt-user.type';
+import { PasswordRecoveryService } from './password-recovery.service';
 
 export interface TokenPayload {
   sub: string;
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly sessions: AuthSessionsService = new AuthSessionsService(config, jwtService, prisma),
     private readonly mfa: MfaService = new MfaService(config, prisma),
+    private readonly recovery?: PasswordRecoveryService,
   ) {}
 
   async login(dto: LoginDto, userAgent?: string) {
@@ -86,13 +88,13 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    void dto;
-    throw new ServiceUnavailableException('La recuperación automática no está disponible. Contactá a DISTRICO.');
+    if (!this.recovery) throw new ServiceUnavailableException('La recuperación por correo no está configurada.');
+    return this.recovery.request(dto.email);
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    void dto;
-    throw new ServiceUnavailableException('La recuperación automática no está disponible. Contactá a DISTRICO.');
+    if (!this.recovery) throw new ServiceUnavailableException('La recuperación por correo no está configurada.');
+    return this.recovery.reset(dto.resetToken, dto.password);
   }
 
   async acceptStaffInvitation(dto: AcceptStaffInvitationDto) {

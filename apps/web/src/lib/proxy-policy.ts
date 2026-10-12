@@ -59,9 +59,7 @@ export function allowedPath(path: string, method: string) {
       "admin/contact-inquiries",
     ],
     POST: [
-      // forgot-password se admite solo para responder 501 en el proxy; el flujo de
-      // restablecimiento del backend expone el token y no se transporta.
-      "auth/(login|refresh|logout|forgot-password)",
+      "auth/(login|refresh|logout|forgot-password|reset-password)",
       "auth/mfa/(verify|setup|enable|disable|recovery-codes)",
       "auth/staff-invitations/accept",
       "applications",
@@ -150,6 +148,8 @@ export function sanitize(value: unknown): unknown {
               "pendingMfaSecret",
               "mfaLastStep",
               "codeHash",
+              "encryptedMessage",
+              "passwordResetTokens",
             ].includes(key),
         )
         .map(([key, item]) => [key, sanitize(item)]),

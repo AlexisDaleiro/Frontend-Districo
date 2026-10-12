@@ -174,10 +174,10 @@ describe("Frontera entre frontend y API", () => {
     expect(cookies).toContain("SameSite=lax");
     expect(result.headers.get("cache-control")).toContain("no-store");
   });
-  it("no expone el token de recuperación inseguro del backend actual", async () => {
+  it("transporta recuperación sin exponer tokens aunque una API antigua los devuelva", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
-    const fetch = vi.fn();
+    const fetch = vi.fn().mockResolvedValue(Response.json({ received: true, resetToken: "never-public" }));
     vi.stubGlobal("fetch", fetch);
     const result = await POST(
       new NextRequest("http://localhost/api/backend/auth/forgot-password", {
@@ -187,8 +187,31 @@ describe("Frontera entre frontend y API", () => {
       }),
       params("auth/forgot-password"),
     );
-    expect(result.status).toBe(501);
-    expect(fetch).not.toHaveBeenCalled();
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({ received: true });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(result.headers.get("cache-control")).toContain("no-store");
+  });
+  it("conserva el aviso de correos sin configurar y no interfiere con el catálogo ni borra sesiones", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
+    vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
+    const message = "La recuperación por correo no está configurada. Contactá a DISTRICO.";
+    const fetch = vi.fn().mockImplementation(async () => Response.json({ message, code: "PASSWORD_RECOVERY_UNAVAILABLE" }, { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    for (const path of ["forgot-password", "reset-password"]) {
+      const result = await POST(new NextRequest(`http://localhost/api/backend/auth/${path}`, {
+        method: "POST", headers: { origin: "http://localhost", cookie: "districo-access=existing-session" }, body: "{}",
+      }), params(`auth/${path}`));
+      expect(result.status).toBe(503);
+      expect(await result.json()).toEqual({ message });
+      expect(result.headers.get("cache-control")).toContain("no-store");
+      expect(result.headers.get("set-cookie")).toBeNull();
+    }
+    fetch.mockResolvedValue(Response.json({ items: [{ id: "product-1" }], meta: { total: 1 } }));
+    const catalogue = await GET(new NextRequest("http://localhost/api/backend/products/cards"), params("products/cards"));
+    expect(catalogue.status).toBe(200);
+    expect((await catalogue.json()).items).toEqual([{ id: "product-1" }]);
+    expect(allowedPath("internal/notifications/dispatch", "POST")).toBe(false);
   });
   it("transporta catálogo con autenticación sin caché y conserva errores", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
@@ -270,10 +293,10 @@ describe("Frontera entre frontend y API", () => {
         expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
       }
   });
-  it("no transporta el restablecimiento de contraseña del backend", async () => {
+  it("restablece la contraseña y borra las cookies de sesión y doble factor", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_MODE", "real");
     vi.stubEnv("BACKEND_API_URL", "http://backend.test/api");
-    const fetch = vi.fn();
+    const fetch = vi.fn().mockResolvedValue(Response.json({ success: true }));
     vi.stubGlobal("fetch", fetch);
     const result = await POST(
       new NextRequest("http://localhost/api/backend/auth/reset-password", {
@@ -283,7 +306,10 @@ describe("Frontera entre frontend y API", () => {
       }),
       params("auth/reset-password"),
     );
-    expect(result.status).toBe(404);
-    expect(fetch).not.toHaveBeenCalled();
+    expect(result.status).toBe(200);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ resetToken: "x", password: "y" });
+    for (const name of ["districo-access", "districo-refresh", "districo-mfa-challenge"])
+      expect(result.cookies.get(name)?.value).toBe("");
+    expect(result.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 });
