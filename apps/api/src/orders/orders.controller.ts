@@ -8,6 +8,7 @@ import { CheckoutDto } from './dto/checkout.dto';
 import { OrdersService } from './orders.service';
 import { CustomerInvoicesService } from './customer-invoices.service';
 import { CustomerInvoiceQueryDto } from './dto/customer-invoice-query.dto';
+import { MyOrdersQueryDto } from './dto/my-orders-query.dto';
 
 @ApiTags('orders')
 @ApiBearerAuth()
@@ -29,6 +30,11 @@ export class OrdersController {
   @Get('me/invoices')
   findMyInvoices(@CurrentUser() user: JwtUser, @Query() query: CustomerInvoiceQueryDto) {
     return this.invoices.list(user.sub, query);
+  }
+
+  @Get('me/page')
+  findMinePage(@CurrentUser() user: JwtUser, @Query() query: MyOrdersQueryDto) {
+    return this.ordersService.findMyOrdersPage(user, query);
   }
 
   @Get('me/invoices/:invoiceId/pdf')

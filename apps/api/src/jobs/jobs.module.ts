@@ -4,5 +4,5 @@ import { JobsService } from './jobs.service';
 import { JobApplicationsService } from './job-applications.service';
 import { CvStorageService } from './cv-storage.service';
 
-@Module({ controllers: [JobsController, AdminJobsController], providers: [JobsService, JobApplicationsService, CvStorageService] })
+@Module({ controllers: [JobsController, AdminJobsController], providers: [JobsService, JobApplicationsService, CvStorageService], exports: [CvStorageService] })
 export class JobsModule {}

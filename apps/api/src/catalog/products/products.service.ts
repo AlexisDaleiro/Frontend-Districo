@@ -33,6 +33,11 @@ export class ProductsService {
     return { ...result, items: result.items.map((product) => this.toPublicProduct(product, user)) };
   }
 
+  async suggestions(filters: ProductFilterDto) {
+    if (!filters.search?.trim() || filters.search.trim().length < 2) return { items: [] };
+    return { items: await this.productsRepository.suggestions(filters) };
+  }
+
   async findAdminMany(filters: AdminProductFilterDto) {
     const result = await this.productsRepository.findMany(filters, true);
     return { ...result, items: result.items.map((product) => ({ ...this.toPublicProduct(product, { role: Role.ADMIN } as JwtUser), source: product.source })) };

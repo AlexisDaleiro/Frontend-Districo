@@ -2,6 +2,10 @@ export function allowedPath(path: string, method: string) {
   const id = "[a-zA-Z0-9_-]+";
   const rules: Record<string, string[]> = {
     GET: [
+      "products/suggestions", "orders/me/page", "account/queries",
+      "admin/operations/(portfolio|logistics|metrics)",
+      "admin/operations/finance/(movements|payments|receivables)",
+      `admin/operations/(support|recruitment)/${id}`,
       "auth/me",
       "auth/(security|sessions)",
       "account/me/favorites(/ids)?",
@@ -59,6 +63,14 @@ export function allowedPath(path: string, method: string) {
       "admin/contact-inquiries",
     ],
     POST: [
+      "usage-events",
+      "account/queries",
+      "admin/operations/finance/(movements|reconciliations)",
+      "admin/operations/finance/movements/import(/preview)?",
+      `admin/operations/finance/orders/${id}/followups`,
+      `admin/operations/logistics/orders/${id}/fulfillments`,
+      `admin/operations/support/${id}/entries`,
+      `admin/operations/recruitment/${id}`, "admin/operations/recruitment/maintenance/cleanup",
       "auth/(login|refresh|logout|forgot-password|reset-password)",
       "auth/mfa/(verify|setup|enable|disable|recovery-codes)",
       "auth/staff-invitations/accept",
@@ -96,6 +108,9 @@ export function allowedPath(path: string, method: string) {
       "admin/(promotions|recommendations)",
     ],
     PATCH: [
+      `admin/operations/finance/reconciliations/${id}/void`,
+      `admin/operations/logistics/fulfillments/${id}/delivery`,
+      `admin/operations/support/${id}`, `admin/operations/recruitment/${id}/retention`,
       `products/${id}`,
       `products/${id}/technical-sheet`,
       `products/(variants|media)/${id}`,

@@ -6,6 +6,7 @@ import { AdminProductFilterDto } from './dto/admin-product-filter.dto';
 import { CategoryHierarchyService } from '../categories/category-hierarchy.service';
 import { SearchListQueryDto } from '../../admin/dto/admin-list-query.dto';
 import type { ProductSheet } from './technical-sheet';
+import { productSearchWhere } from './product-search';
 
 const productInclude = () =>
   ({
@@ -136,6 +137,7 @@ export class ProductsRepository {
   private async productWhere(filters: ProductFilterDto | AdminProductFilterDto, admin = false): Promise<Prisma.ProductWhereInput> {
     const categoryIds = filters.categoryId?.length ? await this.hierarchy.descendantIds(filters.categoryId) : undefined;
     const and: Prisma.ProductWhereInput[] = filters.attributeValueIds?.map((attributeValueId) => ({ attributes: { some: { attributeValueId } } })) ?? [];
+    and.push(...productSearchWhere(filters.search));
     if (admin && (filters as AdminProductFilterDto).withoutPrice) {
       const now = new Date();
       const active = { active: true, deletedAt: null };
@@ -154,16 +156,12 @@ export class ProductsRepository {
       featured: filters.featured,
       categories: categoryIds ? { some: { categoryId: { in: categoryIds } } } : undefined,
       AND: and.length ? and : undefined,
-      OR: filters.search
-        ? [
-            { name: { contains: filters.search, mode: 'insensitive' } },
-            { variants: { some: { sku: { contains: filters.search, mode: 'insensitive' } } } },
-            { variants: { some: { ean: { contains: filters.search, mode: 'insensitive' } } } },
-            { brand: { name: { contains: filters.search, mode: 'insensitive' } } },
-            { laboratory: { name: { contains: filters.search, mode: 'insensitive' } } },
-          ]
-        : undefined,
     };
+  }
+
+  async suggestions(filters: ProductFilterDto) {
+    return this.prisma.product.findMany({ where: await this.productWhere(filters), take: 6,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }], select: { id: true, slug: true, name: true } });
   }
 
   findBySlug(slug: string, admin = false) {

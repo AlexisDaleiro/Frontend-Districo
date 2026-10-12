@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ContactInquiryStatus, Prisma } from '@prisma/client';
+import { ContactInquiryStatus, Prisma, Role } from '@prisma/client';
+import { JwtUser } from '../common/types/jwt-user.type';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,6 +9,7 @@ import { CreateContactInquiryDto } from './dto/create-contact-inquiry.dto';
 import { UpdateContactInquiryDto } from './dto/update-contact-inquiry.dto';
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
+const legacySelect = { id: true, name: true, businessName: true, email: true, phone: true, locality: true, message: true, status: true, internalNote: true, handledById: true, resolvedAt: true, createdAt: true, updatedAt: true, handledBy: { select: { id: true, email: true } } } as const satisfies Prisma.ContactInquirySelect;
 
 @Injectable()
 export class ContactInquiriesService {
@@ -39,25 +41,32 @@ export class ContactInquiriesService {
     return { received: true, ...inquiry };
   }
 
-  findMany(query: ContactInquiryQueryDto) {
-    const where = this.where(query);
+  private async select() {
+    return await this.prisma.operationalSchemaReady?.() ? { ...legacySelect, customerId: true, orderId: true, assignedToId: true, responseDueAt: true } as const : legacySelect;
+  }
+
+  async findMany(query: ContactInquiryQueryDto, user?: JwtUser) {
+    const where = await this.where(query, user);
     return this.prisma.contactInquiry.findMany({
       where,
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-      include: { handledBy: { select: { id: true, email: true } } },
+      select: await this.select(),
     });
   }
 
-  async findPage(query: ContactInquiryQueryDto) {
-    const where = this.where(query);
+  async findPage(query: ContactInquiryQueryDto, user?: JwtUser) {
+    const where = await this.where(query, user);
+    const select = await this.select();
     const [items, total] = await Promise.all([
-      this.prisma.contactInquiry.findMany({ where, orderBy: [{ status: 'asc' }, { createdAt: 'desc' }], skip: (query.page - 1) * query.limit, take: query.limit, include: { handledBy: { select: { id: true, email: true } } } }),
+      this.prisma.contactInquiry.findMany({ where, orderBy: [{ status: 'asc' }, { createdAt: 'desc' }], skip: (query.page - 1) * query.limit, take: query.limit, select }),
       this.prisma.contactInquiry.count({ where }),
     ]);
-    return { items, meta: { total, page: query.page, limit: query.limit } };
+    const ids = items.flatMap((item) => 'assignedToId' in item && typeof item.assignedToId === 'string' ? [item.assignedToId] : []);
+    const assignees = ids.length ? await this.prisma.user.findMany({ where: { id: { in: [...new Set(ids)] } }, select: { id: true, email: true } }) : [];
+    return { items: items.map((item) => ({ ...item, assignedTo: 'assignedToId' in item ? assignees.find((assignee) => assignee.id === item.assignedToId) ?? null : null })), meta: { total, page: query.page, limit: query.limit } };
   }
 
-  private where(query: ContactInquiryQueryDto): Prisma.ContactInquiryWhereInput {
+  private async where(query: ContactInquiryQueryDto, user?: JwtUser): Promise<Prisma.ContactInquiryWhereInput> {
     const search = clean(query.search);
     const where: Prisma.ContactInquiryWhereInput = {
       status: query.status,
@@ -73,11 +82,18 @@ export class ContactInquiriesService {
           }
         : {}),
     };
+    if (user?.role === Role.SALES && await this.prisma.operationalSchemaReady?.()) {
+      const customers = await this.prisma.customerAccount.findMany({ where: { salesperson: { userId: user.sub } }, select: { id: true } });
+      where.AND = [{ OR: [{ customerId: null }, { customerId: { in: customers.map((customer) => customer.id) } }] }];
+    }
     return where;
   }
 
-  async update(id: string, dto: UpdateContactInquiryDto, userId: string) {
-    const current = await this.prisma.contactInquiry.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateContactInquiryDto, actor: string | JwtUser) {
+    const userId = typeof actor === 'string' ? actor : actor.sub;
+    const where = await this.where({ page: 1, limit: 1 }, typeof actor === 'string' ? undefined : actor);
+    const select = await this.select();
+    const current = typeof actor === 'string' ? await this.prisma.contactInquiry.findUnique({ where: { id }, select }) : await this.prisma.contactInquiry.findFirst({ where: { ...where, id }, select });
     if (!current) throw new NotFoundException('Consulta no encontrada.');
 
     const status = dto.status ?? current.status;
@@ -92,7 +108,7 @@ export class ContactInquiriesService {
             ? current.resolvedAt ?? new Date()
             : null,
       },
-      include: { handledBy: { select: { id: true, email: true } } },
+      select,
     });
     await this.audit.log('CONTACT_INQUIRY_UPDATED', 'ContactInquiry', id, userId, {
       from: current.status,

@@ -600,7 +600,7 @@ export async function demoRequest<T>(
       s.contactInquiries.unshift(inquiry);
       result = { received: true, id: inquiry.id, createdAt: now };
     }
-  } else if (["products", "products/cards", "products/admin/list"].includes(route) && method === "GET") {
+  } else if (["products", "products/cards", "products/admin/list", "products/suggestions"].includes(route) && method === "GET") {
     if (route === "products/admin/list") needAdmin();
     let items = route === "products/admin/list" ? [...s.products] : s.products.filter((p) => p.active !== false);
     const active = query.get("active");
@@ -612,15 +612,12 @@ export async function demoRequest<T>(
     if (route === "products/admin/list" && query.get("withoutStock") === "true") items = items.filter((product) =>
       !product.variants.some((variant) => variant.active !== false && (variant.physicalStock == null ? variant.availableStock : variant.physicalStock - (variant.reservedStock ?? 0)) > 0));
     const term = (query.get("search") ?? "").toLowerCase();
-    if (term)
-      items = items.filter((p) =>
-        [
-          p.name,
-          p.brand?.name,
-          p.laboratory?.name,
-          ...p.variants.flatMap((v) => [v.sku, v.ean]),
-        ].some((v) => v?.toLowerCase().includes(term)),
-      );
+    const synonyms = [["alimento", "comida", "racion", "ración", "balanceado"], ["humedo", "húmedo", "wet"], ["seco", "dry"], ["arnes", "arnés", "pretal"], ["arena", "sanitaria", "sanitario"], ["antipulgas", "pulgas"], ["champu", "champú", "shampoo"]];
+    const words = term.trim().split(/\s+/).filter((word) => !["de", "para", "con", "y", "el", "la"].includes(word)).slice(0, 8);
+    if (term) items = items.filter((product) => {
+      const fields = [product.name, product.brand?.name, product.laboratory?.name, ...product.variants.filter((variant) => variant.active !== false).flatMap((variant) => [variant.sku, variant.ean])];
+      return words.every((word) => (synonyms.find((group) => group.includes(word)) ?? [word]).some((alternative) => fields.some((value) => value?.toLowerCase().includes(alternative))));
+    });
     for (const [key, test] of [
       [
         "categoryId",
@@ -655,7 +652,7 @@ export async function demoRequest<T>(
     result = {
       items: items
         .slice((page - 1) * limit, page * limit)
-        .map((p) => route === "products/cards" ? publicCard(p, user, query.get("includeVariants") === "true") : publicProduct(p, user)),
+        .map((p) => route === "products/suggestions" ? { id: p.id, name: p.name, slug: p.slug } : route === "products/cards" ? publicCard(p, user, query.get("includeVariants") === "true") : publicProduct(p, user)),
       meta: { total: items.length, page, limit },
     };
   } else if (
@@ -841,6 +838,20 @@ export async function demoRequest<T>(
     const invoice = s.orders.filter((order) => order.userId === u.id).flatMap((order) => order.invoices ?? []).find((invoice) => invoice.id === invoiceId && !invoice.voidedAt);
     if (!invoice || !s.invoiceFiles?.[invoiceId]) throw new ApiError("Factura no disponible para descargar.", 404);
     result = s.invoiceFiles[invoiceId];
+  } else if (route === "orders/me/page" && method === "GET") {
+    const u = needUser(), term = (query.get("search") ?? "").trim().toLowerCase();
+    const from = query.get("dateFrom"), to = query.get("dateTo");
+    const items = s.orders.filter((order) => {
+      if (order.userId !== u.id || (term && ![order.id, order.orderNumber].some((value) => value.toLowerCase().includes(term)))) return false;
+      if (query.get("status") && order.status !== query.get("status")) return false;
+      if (from && order.createdAt < `${from}T03:00:00.000Z`) return false;
+      if (to && new Date(order.createdAt).getTime() >= new Date(`${to}T00:00:00-03:00`).getTime() + 86400000) return false;
+      const total = Math.max(0, Number(order.total) - Number(order.creditedTotal ?? 0)), paid = Math.max(0, Number(order.paidTotal ?? 0) - Number(order.refundedTotal ?? 0));
+      const status = total === 0 ? "CREDITED" : paid === 0 ? "PENDING" : paid < total ? "PARTIAL" : "PAID";
+      return !query.get("paymentStatus") || query.get("paymentStatus") === status;
+    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    const page = Math.max(1, Number(query.get("page")) || 1), limit = Math.min(100, Math.max(1, Number(query.get("limit")) || 12));
+    result = { items: items.slice((page - 1) * limit, page * limit).map((order) => ({ id: order.id, orderNumber: order.orderNumber, status: order.status, createdAt: order.createdAt, total: order.total, paidTotal: order.paidTotal ?? 0, creditedTotal: order.creditedTotal ?? 0, refundedTotal: order.refundedTotal ?? 0, currency: order.currency, itemCount: order.items.length })), meta: { page, limit, total: items.length } };
   } else if (route === "orders/me" || route.startsWith("orders/me/")) {
     const u = needUser();
     const orders = s.orders.filter((o) => o.userId === u.id);

@@ -33,17 +33,17 @@ export class AdminContactInquiriesController {
   constructor(private readonly inquiries: ContactInquiriesService) {}
 
   @Get()
-  findMany(@Query() query: ContactInquiryQueryDto) {
-    return this.inquiries.findMany(query);
+  findMany(@Query() query: ContactInquiryQueryDto, @CurrentUser() user: JwtUser) {
+    return this.inquiries.findMany(query, user);
   }
 
   @Get('page')
-  findPage(@Query() query: ContactInquiryQueryDto) {
-    return this.inquiries.findPage(query);
+  findPage(@Query() query: ContactInquiryQueryDto, @CurrentUser() user: JwtUser) {
+    return this.inquiries.findPage(query, user);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateContactInquiryDto, @CurrentUser() user: JwtUser) {
-    return this.inquiries.update(id, dto, user.sub);
+    return this.inquiries.update(id, dto, user);
   }
 }

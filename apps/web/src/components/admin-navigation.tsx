@@ -7,6 +7,7 @@ import {
   BadgePercent, BriefcaseBusiness, Cable, ClipboardList, FolderTree, Images,
   Inbox, LayoutDashboard, ListChecks, LogOut, Menu, Package, ShieldCheck,
   Sparkles, Tags, UserPlus, Users, type LucideIcon,
+  WalletCards, Truck, ChartNoAxesCombined, Target,
 } from "lucide-react";
 import { AdminCommandMenu } from "./admin-command-menu";
 import { useApi, useSession } from "./providers";
@@ -21,6 +22,10 @@ export const adminSections: [string, string, string, LucideIcon, string?][] = [
   ["Operación", "clientes", "Clientes", Users],
   ["Operación", "vendedores", "Vendedores", BriefcaseBusiness],
   ["Operación", "pedidos", "Pedidos", ClipboardList, "pendingReviewOrders"],
+  ["Operación", "cartera", "Prioridades de cartera", Target],
+  ["Operación", "finanzas", "Finanzas", WalletCards],
+  ["Operación", "logistica", "Depósito y logística", Truck],
+  ["Operación", "metricas", "Métricas", ChartNoAxesCombined],
   ["Catálogo", "catalogo", "Catálogo", Package],
   ["Catálogo", "marcas", "Marcas y laboratorios", Tags],
   ["Catálogo", "categorias", "Categorías", FolderTree],

@@ -16,6 +16,7 @@ export const staffFeatures = [
   ["roles", "Roles"], ["vendedores", "Vendedores"],
   ["ofertas-laborales", "Ofertas laborales"],
   ["integraciones", "Integraciones"],
+  ["cartera", "Prioridades de cartera"], ["finanzas", "Finanzas"], ["logistica", "Depósito y logística"], ["metricas", "Métricas"],
 ] as const;
 export type StaffFeature = typeof staffFeatures[number][0];
 
@@ -26,13 +27,14 @@ const sectionFeature: Record<string, StaffFeature> = {
   personal: "personal", roles: "roles", vendedores: "vendedores", organizacion: "catalogo",
   "ofertas-laborales": "ofertas-laborales",
   integraciones: "integraciones",
+  cartera: "cartera", finanzas: "finanzas", logistica: "logistica", metricas: "metricas",
 };
 
 const defaultSections: Record<BuiltInStaffRole, string[]> = {
   ADMIN: Object.keys(sectionFeature),
-  SALES: ["", "consultas", "solicitudes", "clientes", "pedidos"],
+  SALES: ["", "consultas", "solicitudes", "clientes", "pedidos", "cartera"],
   CATALOG: ["", "catalogo", "marcas", "categorias", "promociones", "banners", "recomendaciones"],
-  FINANCE: ["", "clientes", "pedidos"],
+  FINANCE: ["", "clientes", "pedidos", "finanzas", "metricas"],
 };
 
 export const isStaff = (user: User | null | undefined) =>
@@ -61,12 +63,12 @@ export function canAccessAdmin(user: User | null | undefined) {
 
 export function canEditAdminFeature(user: User | null | undefined, feature: StaffFeature) {
   if (!user || !isStaff(user)) return false;
-  if (feature === "integraciones") return false;
+  if (["integraciones", "metricas", "cartera"].includes(feature)) return false;
   if (user.role === "ADMIN") return true;
   if (user.role === "CUSTOM") return user.staffAccess?.[feature]?.canEdit ?? false;
   return user.staffAccess?.[feature]?.canEdit ?? (
     (user.role === "SALES" && ["consultas", "pedidos", "descuentos-clientes"].includes(feature)) ||
     (user.role === "CATALOG" && ["catalogo", "marcas", "categorias", "promociones", "banners", "recomendaciones"].includes(feature)) ||
-    (user.role === "FINANCE" && feature === "facturacion")
+    (user.role === "FINANCE" && ["facturacion", "finanzas"].includes(feature))
   );
 }

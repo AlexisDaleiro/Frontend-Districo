@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, CheckCircle, RotateCcw, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Trash2, CheckCircle, ShoppingBag, ShieldCheck } from "lucide-react";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { AccessGate } from "./auth";
 import { Quantity } from "./catalog";
@@ -18,10 +18,12 @@ import {
 } from "@/lib/commerce";
 import { ApiError } from "@/lib/http";
 import { storeRoutes } from "@/lib/store-routes";
-import { repeatOrderItems, type RepeatOrderResult } from "@/lib/repeat-order";
+import { RepeatOrderButton } from "./repeat-order-button";
 import { paymentDate, paymentSchedulePreview } from "@/lib/payment-terms";
 import { OrderPaymentPlan } from "./order-payment-plan";
 import { discountModeLabel } from "@/lib/customer-discount";
+import { CustomerOrdersList } from "./customer-orders-list";
+import { recordUsage } from "@/lib/usage-metrics";
 function CartLine({
   item,
   busy,
@@ -169,6 +171,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "INSTALLMENTS">("CASH");
   const [paymentTermMonths, setPaymentTermMonths] = useState(3);
+  useEffect(() => { if (checkoutMode && user?.role === "CLIENT" && q.data?.items.length) recordUsage("CHECKOUT_STARTED"); }, [checkoutMode, user?.role, q.data?.items.length]);
   const [pendingLines, setPendingLines] = useState<string[]>([]);
   const onPendingChange = useCallback((id: string, pending: boolean) => {
     setPendingLines((current) => {
@@ -193,6 +196,7 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
       request<Order>("checkout", "POST", { acceptManualReview: accept, deliveryAddressId: addressId,
         paymentMethod, ...(paymentMethod === "INSTALLMENTS" ? { paymentTermMonths } : {}) }),
     onSuccess: (order) => {
+      if (user?.role === "CLIENT") recordUsage("CHECKOUT_COMPLETED");
       router.replace(`${storeRoutes.order(order.id)}?confirmado=1`);
       void client.invalidateQueries();
     },
@@ -526,66 +530,6 @@ export function OrderItems({ order }: { order: Order }) {
     </>
   );
 }
-function RepeatOrderButton({ order }: { order: Order }) {
-  const { user, notify } = useSession();
-  const client = useQueryClient();
-  const router = useRouter();
-  const [result, setResult] = useState<RepeatOrderResult | null>(null);
-  const mutation = useMutation({
-    mutationFn: () => repeatOrderItems(
-      order.items,
-      () => request<Cart>("cart"),
-      (variantId, quantity) => request<Cart>("cart/items", "POST", { variantId, quantity }),
-    ),
-    onSuccess: (next) => {
-      client.setQueryData(apiQueryKey("cart", user?.id), next.cart);
-      if (next.interrupted) {
-        void client.invalidateQueries({ queryKey: apiQueryKey("cart", user?.id) });
-      }
-      void client.invalidateQueries({ queryKey: apiQueryKey("cart/recommendations", user?.id) });
-      if (!next.skipped.length) {
-        notify("Productos agregados. Revisá el carrito antes de confirmar.");
-        router.push(storeRoutes.cart);
-      } else {
-        setResult(next);
-      }
-    },
-  });
-
-  if (!order.items.length || !can(user, "CAN_VIEW_PRICES") || !can(user, "CAN_PLACE_ORDERS"))
-    return null;
-
-  return (
-    <div>
-      <button
-        type="button"
-        className="button small secondary"
-        disabled={mutation.isPending || !!result}
-        onClick={() => mutation.mutate()}
-      >
-        <RotateCcw size={16} />
-        {mutation.isPending ? "Agregando…" : "Repetir pedido"}
-      </button>
-      {mutation.error && <ErrorBox error={mutation.error} />}
-      {result && (
-        <div className="error-box" role="alert" style={{ marginTop: 12 }}>
-          <p>
-            {result.added
-              ? `Se agregaron ${result.added} de ${order.items.length} productos al carrito.`
-              : "No se pudieron agregar productos al carrito."}
-            {result.interrupted && " La operación se interrumpió; verificá el carrito antes de intentarlo otra vez."}
-          </p>
-          <ul>
-            {result.skipped.map((item, index) => (
-              <li key={`${item.name}-${index}`}>{item.name}: {item.reason}</li>
-            ))}
-          </ul>
-          <ActionLink href={storeRoutes.cart} secondary>Ver carrito</ActionLink>
-        </div>
-      )}
-    </div>
-  );
-}
 function OrdersContent({ id }: { id?: string }) {
   const { user } = useSession();
   const q = useApi<Order[] | Order>(
@@ -648,6 +592,7 @@ function OrdersContent({ id }: { id?: string }) {
               <div className="actions">
                 <RepeatOrderButton order={order} />
                 <ActionLink href={storeRoutes.invoices} secondary>Mis facturas</ActionLink>
+                {user?.role === "CLIENT" && <ActionLink href={`${storeRoutes.queries}?orderId=${encodeURIComponent(order.id)}`} secondary>Consultar sobre este pedido</ActionLink>}
               </div>
             </>
           ) : (
@@ -679,6 +624,9 @@ export function OrdersPage({
   id?: string;
   confirmed?: boolean;
 }) {
+  const params = useSearchParams();
+  const back = params.get("back");
+  const returnHref = back === storeRoutes.orders || back?.startsWith(`${storeRoutes.orders}?`) ? back : storeRoutes.orders;
   return (
     <div className="container section">
       <PageHeading
@@ -700,10 +648,10 @@ export function OrdersPage({
               : "Tu pedido fue registrado por DISTRICO."}
           </div>
         )}
-        <OrdersContent id={id} />
+        {id ? <OrdersContent id={id} /> : <CustomerOrdersList key={params.get("search") ?? ""} />}
         {id && (
           <div className="actions">
-            <ActionLink href={storeRoutes.orders} secondary>
+            <ActionLink href={returnHref} secondary>
               Todos mis pedidos
             </ActionLink>
           </div>

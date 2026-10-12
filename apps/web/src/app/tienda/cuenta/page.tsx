@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Heart, MapPin, Package, ShoppingBag } from "lucide-react";
+import { FileText, Heart, MapPin, Package, ShoppingBag, MessagesSquare } from "lucide-react";
 import { useState } from "react";
 import { AccessGate } from "@/components/auth";
 import { AccountDetails } from "@/components/account-details";
@@ -11,13 +11,12 @@ import { ActionLink, ErrorBox, PageHeading } from "@/components/ui";
 import { can, label, money, reviewRequired } from "@/lib/commerce";
 import { storeRoutes } from "@/lib/store-routes";
 import { canAccessAdmin } from "@/lib/staff-access";
-import type { Customer, Order } from "@/lib/types";
+import type { Customer } from "@/lib/types";
+import type { OrderSummary } from "@/components/customer-orders-list";
 
 function AccountOverview({ customer }: { customer: Customer }) {
-  const orders = useApi<Order[]>("orders/me");
-  const latestOrder = [...(orders.data ?? [])].sort(
-    (first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt),
-  )[0];
+  const orders = useApi<{ items: OrderSummary[] }>("orders/me/page?limit=1");
+  const latestOrder = orders.data?.items[0];
   const primaryAddress = customer.addresses?.[0];
   const addressText = primaryAddress
     ? [primaryAddress.address, primaryAddress.city, primaryAddress.department].filter(Boolean).join(", ")
@@ -42,7 +41,7 @@ function AccountOverview({ customer }: { customer: Customer }) {
               <span className={`status-pill ${latestOrder.status === "PENDING_REVIEW" ? "pending" : ""}`} data-status={latestOrder.status}>{label(latestOrder.status)}</span>
             </div>
             <p className="account-card-muted">
-              {new Date(latestOrder.createdAt).toLocaleDateString("es-UY")} · {latestOrder.items.length} {latestOrder.items.length === 1 ? "producto" : "productos"} · {money(latestOrder.total, latestOrder.currency)}
+              {new Date(latestOrder.createdAt).toLocaleDateString("es-UY")} · {latestOrder.itemCount} {latestOrder.itemCount === 1 ? "producto" : "productos"} · {money(latestOrder.total, latestOrder.currency)}
             </p>
             <Link className="account-card-link" href={storeRoutes.order(latestOrder.id)}>Ver detalle del pedido</Link>
           </>
@@ -104,6 +103,7 @@ export default function Page() {
                 <Link className="button secondary" href={storeRoutes.orders}><Package size={18} aria-hidden="true" /> Mis pedidos</Link>
                 <Link className="button secondary" href={storeRoutes.invoices}><FileText size={18} aria-hidden="true" /> Mis facturas</Link>
                 <Link className="button secondary" href={storeRoutes.favorites}><Heart size={18} aria-hidden="true" /> Mis favoritos</Link>
+                <Link className="button secondary" href={storeRoutes.queries}><MessagesSquare size={18} aria-hidden="true" /> Mis consultas</Link>
                 {canOrder && <Link className="account-dashboard-cart" href={storeRoutes.cart}>Ir al carrito</Link>}
               </div>
             </section>

@@ -44,4 +44,11 @@ export class CvStorageService {
     const { base, bucket, headers } = this.settings();
     await fetch(`${base}/object/${bucket}/${path}`, { method: 'DELETE', headers, signal: AbortSignal.timeout(10000) }).catch(() => null);
   }
+
+  async removeConfirmed(path: string) {
+    if (!/^[a-zA-Z0-9_-]+\/[a-f0-9-]+\.pdf$/.test(path)) throw new ServiceUnavailableException('Ruta de CV no válida.');
+    const { base, bucket, headers } = await this.privateBucket();
+    const response = await fetch(`${base}/object/${bucket}/${path}`, { method: 'DELETE', headers, signal: AbortSignal.timeout(10000) }).catch(() => null);
+    if (!response || (!response.ok && response.status !== 404)) throw new ServiceUnavailableException('No se pudo eliminar el CV. No se marcó como eliminado.');
+  }
 }

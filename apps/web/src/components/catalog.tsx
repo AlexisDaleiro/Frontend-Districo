@@ -1,4 +1,6 @@
 "use client";
+import { CatalogSearch } from "./catalog-search";
+import { recordUsage } from "@/lib/usage-metrics";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -167,6 +169,11 @@ export function ProductGrid({ products }: { products: ProductCardData[] }) {
     </div>
   );
 }
+function SearchAlternatives({ filters }: { filters: URLSearchParams }) {
+  const query = new URLSearchParams(filters); query.delete("search"); query.delete("page"); query.set("limit", "4");
+  const suggestions = useApi<ProductCardList>(`products/cards?${query}`);
+  return suggestions.data?.items.length ? <section aria-label="Productos con los filtros seleccionados"><h2>Productos en esta selección</h2><ProductGrid products={suggestions.data.items} /></section> : null;
+}
 // La API entrega un árbol que providers aplana; se reordena por parentId para
 // mostrar cada subcategoría debajo de su categoría superior.
 function categoryTree(list: Entity[]) {
@@ -322,6 +329,10 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
   const products = useQuery<ProductCardList>({ queryKey: apiQueryKey(path, user?.id),
     queryFn: () => request<ProductCardList>(path), enabled: ready && !loading,
     placeholderData: (previous, query) => previousCatalogData(previous, query?.queryKey, user?.id) });
+  useEffect(() => {
+    if (user?.role !== "CLIENT" || !products.data || products.isPlaceholderData || products.error || !new URLSearchParams(path.split("?")[1]).get("search")) return;
+    recordUsage("SEARCH"); if (!products.data.meta.total) recordUsage("NO_RESULTS");
+  }, [path, products.data, products.isPlaceholderData, products.error, user?.role]);
   const categories = usePublicApi<Entity[]>("categories/catalog"),
     brands = usePublicApi<Entity[]>("brands"),
     labs = usePublicApi<Entity[]>("laboratories"),
@@ -572,33 +583,7 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
               <SlidersHorizontal size={16} />
               Filtrar
             </button>
-            <form
-              className="inline-search"
-              onSubmit={(e) => {
-                e.preventDefault();
-                set(
-                  "search",
-                  String(new FormData(e.currentTarget).get("search") ?? ""),
-                );
-              }}
-            >
-              <input
-                key={filters.get("search")}
-                className="form-input"
-                aria-label="Buscar en el catálogo"
-                name="search"
-                placeholder="Nombre o código de producto"
-                defaultValue={filters.get("search") ?? ""}
-                onChange={(event) => {
-                  window.clearTimeout(searchPrefetch.current);
-                  const next = nextFilters("search", event.target.value.trim());
-                  searchPrefetch.current = window.setTimeout(() => prefetchCategory(next), 250);
-                }}
-              />
-              <button className="button small" type="submit">
-                Buscar
-              </button>
-            </form>
+            <CatalogSearch key={filters.get("search") ?? ""} value={filters.get("search") ?? ""} filters={filters.toString()} onSearch={(value) => set("search", value)} onPreview={(value) => { window.clearTimeout(searchPrefetch.current); searchPrefetch.current = window.setTimeout(() => prefetchCategory(nextFilters("search", value)), 250); }} />
           </div>
           <div className="active-filters">
             {categoryIds.map((id) => (
@@ -672,12 +657,13 @@ export function Catalog({ categoryId }: { categoryId?: string }) {
               retry={() => void products.refetch()}
             />
           ) : !products.data.items.length ? (
-            <Empty title="No encontramos productos">
+            <><Empty title="No encontramos productos">
               <p>Probá con otra búsqueda o quitá algún filtro.</p>
+              {!!filters.get("search") && <button className="button small secondary" onClick={() => set("search", "")}>Ver productos con estos filtros</button>}
               <ActionLink href={storeRoutes.products}>
                 Ver todo el catálogo
               </ActionLink>
-            </Empty>
+            </Empty>{filters.get("search") && <SearchAlternatives filters={filters} />}</>
           ) : (
             <>
               {products.isPlaceholderData && <span className="sr-only" role="status">Actualizando productos</span>}

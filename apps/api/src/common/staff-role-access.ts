@@ -4,6 +4,7 @@ export const staffFeatures = [
   'resumen', 'ventas', 'consultas', 'solicitudes', 'clientes', 'pedidos',
   'descuentos-clientes', 'facturacion', 'catalogo', 'marcas', 'categorias', 'promociones',
   'banners', 'recomendaciones', 'personal', 'roles', 'vendedores', 'ofertas-laborales', 'integraciones',
+  'cartera', 'finanzas', 'logistica', 'metricas',
 ] as const;
 
 export type StaffFeature = typeof staffFeatures[number];
@@ -29,10 +30,14 @@ const defaults: Record<StaffFeature, Partial<Record<Role, StaffAccess>>> = {
   vendedores: {},
   'ofertas-laborales': {},
   integraciones: {},
+  cartera: { SALES: { canView: true, canEdit: false } },
+  finanzas: { FINANCE: { canView: true, canEdit: true } },
+  logistica: {},
+  metricas: { FINANCE: { canView: true, canEdit: false } },
 };
 
 export function defaultStaffAccess(role: Role, feature: StaffFeature): StaffAccess {
-  if (role === Role.ADMIN) return { canView: true, canEdit: !['resumen', 'ventas', 'integraciones'].includes(feature) };
+  if (role === Role.ADMIN) return { canView: true, canEdit: !['resumen', 'ventas', 'integraciones', 'metricas', 'cartera'].includes(feature) };
   return defaults[feature][role] ?? { canView: false, canEdit: false };
 }
 
@@ -47,6 +52,12 @@ export function staffAccessMatrix(role: Role, overrides: { feature: string; canV
 
 export function staffFeatureForPath(path: string): StaffFeature | undefined {
   const clean = path.split('?')[0].replace(/^\/api\//, '/');
+  if (/^\/admin\/operations\/finance(?:\/|$)/.test(clean)) return 'finanzas';
+  if (/^\/admin\/operations\/logistics(?:\/|$)/.test(clean)) return 'logistica';
+  if (/^\/admin\/operations\/portfolio$/.test(clean)) return 'cartera';
+  if (/^\/admin\/operations\/metrics$/.test(clean)) return 'metricas';
+  if (/^\/admin\/operations\/support(?:\/|$)/.test(clean)) return 'consultas';
+  if (/^\/admin\/operations\/recruitment(?:\/|$)/.test(clean)) return 'ofertas-laborales';
   if (/^\/admin\/audit-logs(?:\/|$)/.test(clean)) return undefined;
   if (/^\/admin\/staff\/access(?:\/|$)|^\/admin\/staff\/roles(?:\/|$)/.test(clean)) return 'roles';
   if (/^\/admin\/staff(?:\/|$)/.test(clean)) return 'personal';

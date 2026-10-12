@@ -11,6 +11,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import { StorePreload } from "./store-preload";
 import { StoreBrowse } from "./store-browse";
 import { storeBrowseTarget } from "@/lib/store-prefetch";
+import { UsageConsent } from "./usage-consent";
 
 const publicAccessPaths = new Set<string>([
   storeRoutes.login,
@@ -57,6 +58,7 @@ export function StoreFrame({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </main>
+      {!publicAccess && !gated && user?.role === "CLIENT" && <UsageConsent />}
       {publicAccess ? <PublicFooter /> : !gated ? <Footer /> : null}
     </>
   );

@@ -4,6 +4,7 @@ import "../globals.css";
 import "../motion.css";
 import "../site.css";
 import "../site-motion.css";
+import "../operational.css";
 import { MotionSystem } from "@/components/motion-system";
 import { StoreFrame } from "@/components/store-frame";
 

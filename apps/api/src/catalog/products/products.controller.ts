@@ -119,6 +119,12 @@ export class ProductsController {
     return this.productsService.update(id, dto);
   }
 
+  @Get('suggestions')
+  @UseGuards(OptionalJwtAuthGuard)
+  suggestions(@Query() filters: ProductFilterDto) {
+    return this.productsService.suggestions(filters);
+  }
+
   @Patch(':id/technical-sheet')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

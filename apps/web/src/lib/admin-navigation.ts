@@ -24,6 +24,10 @@ const sectionQueries: Record<string, readonly string[]> = {
   roles: ["admin/staff/access"],
   "ofertas-laborales": ["admin/jobs?page=1&limit=20"],
   integraciones: ["admin/integrations"],
+  cartera: ["admin/operations/portfolio?page=1&limit=20"],
+  finanzas: ["admin/operations/finance/movements?page=1&limit=20"],
+  logistica: ["admin/operations/logistics?page=1&limit=20"],
+  metricas: ["admin/operations/metrics"],
 };
 export const adminSectionPaths = Object.keys(sectionQueries);
 

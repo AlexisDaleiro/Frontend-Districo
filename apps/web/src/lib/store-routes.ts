@@ -16,6 +16,7 @@ export const storeRoutes = {
   orders: `${root}/cuenta/pedidos`,
   invoices: `${root}/cuenta/facturas`,
   favorites: `${root}/cuenta/favoritos`,
+  queries: `${root}/cuenta/consultas`,
   order: (id: string) => `${root}/cuenta/pedidos/${encodeURIComponent(id)}`,
   login: `${root}/ingresar`,
   recoverAccess: `${root}/recuperar-acceso`,

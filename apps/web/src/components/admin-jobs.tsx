@@ -12,6 +12,7 @@ import { request, useApi, useSession } from "./providers";
 import { AdminListFilters, ListPagination } from "./admin-list-filters";
 import { AdminRecordLink, ShareAdminList, useAdminListField, useAdminListScroll } from "./admin-list-navigation";
 import { JobForm } from "./job-form";
+import { InterviewAgenda } from "./interview-agenda";
 import { Empty, ErrorBox, Loading, Modal } from "./ui";
 
 export function AdminJobs() {
@@ -36,6 +37,7 @@ export function AdminJobs() {
   }
   return <>
     <div className="admin-toolbar"><ShareAdminList /><Link className="button small secondary" href={jobsPage} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /> Ver empleos</Link>{canEdit && <button className="button small" onClick={() => setCreating(true)}><Plus size={16} /> Nueva oferta</button>}</div>
+    <InterviewAgenda />
     <AdminListFilters active={!!search || !!status} onClear={clearFilters}>
       <label className="field">Buscar ofertas<input className="form-input" type="search" maxLength={120} placeholder="Puesto, área o sede" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
       <label className="field">Estado<select className="form-input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="active">Activas</option><option value="inactive">Inactivas</option><option value="retired">Retiradas</option></select></label>

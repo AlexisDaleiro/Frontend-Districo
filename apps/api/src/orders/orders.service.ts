@@ -11,6 +11,7 @@ import { OrderListQueryDto } from '../admin/dto/admin-list-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromotionsService } from '../promotions/promotions.service';
 import { createPaymentSchedule, normalizePaymentTerms, PaymentTermsInput } from '../common/business/payment-terms';
+import { MyOrdersQueryDto } from './dto/my-orders-query.dto';
 
 const adminOrderInclude = {
   items: true,
@@ -339,6 +340,44 @@ export class OrdersService {
     return { items: await this.withAdminActors(items), meta: { total, page: query.page, limit: query.limit } };
   }
 
+  async findMyOrdersPage(user: JwtUser, query: MyOrdersQueryDto) {
+    const terms = [Prisma.sql`o."userId" = ${user.sub}`];
+    for (const day of [query.dateFrom, query.dateTo]) {
+      if (!day) continue;
+      const date = new Date(`${day}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== day) throw new BadRequestException('Revisá el rango de fechas.');
+    }
+    const from = query.dateFrom ? new Date(`${query.dateFrom}T00:00:00-03:00`) : undefined;
+    const until = query.dateTo ? new Date(new Date(`${query.dateTo}T00:00:00-03:00`).getTime() + 86400000) : undefined;
+    if ((from && !Number.isFinite(from.getTime())) || (until && !Number.isFinite(until.getTime())) || (from && until && from >= until)) throw new BadRequestException('Revisá el rango de fechas.');
+    if (from) terms.push(Prisma.sql`o."createdAt" >= ${from}`);
+    if (until) terms.push(Prisma.sql`o."createdAt" < ${until}`);
+    if (query.status) terms.push(Prisma.sql`o."status"::text = ${query.status}`);
+    if (query.search?.trim()) {
+      const pattern = `%${query.search.trim().replace(/[\\%_]/g, '\\$&')}%`;
+      terms.push(Prisma.sql`(o."orderNumber" ILIKE ${pattern} OR o."id" ILIKE ${pattern})`);
+    }
+    const total = Prisma.sql`GREATEST(o."total" - o."creditedTotal", 0)`;
+    const paid = Prisma.sql`GREATEST(o."paidTotal" - o."refundedTotal", 0)`;
+    if (query.paymentStatus === 'CREDITED') terms.push(Prisma.sql`${total} = 0`);
+    if (query.paymentStatus === 'PENDING') terms.push(Prisma.sql`${total} > 0 AND ${paid} = 0`);
+    if (query.paymentStatus === 'PARTIAL') terms.push(Prisma.sql`${total} > 0 AND ${paid} > 0 AND ${paid} < ${total}`);
+    if (query.paymentStatus === 'PAID') terms.push(Prisma.sql`${total} > 0 AND ${paid} >= ${total}`);
+    const predicate = Prisma.join(terms, ' AND ');
+    const [ids, counts] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<{ id: string }[]>`SELECT o."id" FROM "Order" o WHERE ${predicate} ORDER BY o."createdAt" DESC, o."id" DESC LIMIT ${query.limit} OFFSET ${(query.page - 1) * query.limit}`,
+      this.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::integer AS total FROM "Order" o WHERE ${predicate}`,
+    ]);
+    const rows = ids.length ? await this.prisma.order.findMany({ where: { userId: user.sub, id: { in: ids.map((item) => item.id) } }, select: {
+      id: true, orderNumber: true, status: true, createdAt: true, total: true, currency: true,
+      paidTotal: true, creditedTotal: true, refundedTotal: true, _count: { select: { items: true } },
+    } }) : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return { items: ids.flatMap(({ id }) => {
+      const row = byId.get(id); return row ? [{ ...row, itemCount: row._count.items, _count: undefined }] : [];
+    }), meta: { total: counts[0]?.total ?? 0, page: query.page, limit: query.limit } };
+  }
+
   async findAdminOrder(id: string) {
     const order = await this.prisma.order.findUnique({ where: { id }, include: adminOrderInclude });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
@@ -381,7 +420,19 @@ export class OrdersService {
       throw new BadRequestException('El pedido tiene pagos registrados. Gestioná la devolución antes de anularlo.');
     }
 
+    const logisticsReady = await this.prisma.operationalSchemaReady?.();
     await this.prisma.$transaction(async (tx) => {
+      if (logisticsReady) {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
+        const batches = await tx.orderFulfillment.findMany({ where: { orderId: id }, include: { items: true } });
+        if (batches.length) {
+          if (status !== OrderStatus.SHIPPED && status !== OrderStatus.DELIVERED) throw new BadRequestException('El pedido ya tiene salidas registradas. Gestioná las entregas o devoluciones desde su historial.');
+          if (status === OrderStatus.DELIVERED) {
+            const items = await tx.orderItem.findMany({ where: { orderId: id }, select: { id: true, quantity: true } });
+            if (!items.every((item) => batches.filter((batch) => batch.deliveredAt).flatMap((batch) => batch.items).filter((line) => line.orderItemId === item.id).reduce((sum, line) => sum + line.quantity, 0) === item.quantity)) throw new BadRequestException('Confirmá la entrega de todas las cantidades desde Logística.');
+          }
+        }
+      }
       if (order.status === OrderStatus.REJECTED) {
         const changed = await tx.order.updateMany({
           where: { id, status: OrderStatus.REJECTED },

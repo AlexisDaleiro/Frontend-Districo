@@ -247,6 +247,7 @@ export type ContactInquiry = CreateContactInquiryInput & {
   internalNote?: string | null;
   handledById?: string | null;
   handledBy?: { id: string; email: string } | null;
+  assignedTo?: { id: string; email: string } | null;
   resolvedAt?: string | null;
   createdAt: string;
   updatedAt: string;

@@ -97,10 +97,11 @@ test('product price and stock filters combine with search, taxonomy and attribut
   assert.deepEqual(find?.where?.categories, { some: { categoryId: { in: ['parent', 'child'] } } });
   assert.equal(find?.where?.active, false); assert.equal(find?.where?.brandId, 'b1');
   const and = find?.where?.AND as Prisma.ProductWhereInput[];
-  assert.equal(and.length, 3);
-  assert.deepEqual(and[2], { variants: { none: { active: true, deletedAt: null, physicalStock: { gt: 'RESERVED_FIELD' } } } });
-  assert.match(JSON.stringify(and[1]), /priceList.*active.*amount.*gt.*validFrom.*validUntil/);
+  assert.equal(and.length, 4);
+  assert.ok(and.some((condition) => JSON.stringify(condition).includes('SKU')));
+  assert.ok(and.some((condition) => JSON.stringify(condition) === JSON.stringify({ variants: { none: { active: true, deletedAt: null, physicalStock: { gt: 'RESERVED_FIELD' } } } })));
+  assert.ok(and.some((condition) => /priceList.*active.*amount.*gt.*validFrom.*validUntil/.test(JSON.stringify(condition))));
   await repository.findMany(query);
-  assert.equal((find?.where?.AND as unknown[]).length, 1);
+  assert.equal((find?.where?.AND as unknown[]).length, 2);
   assert.equal(find?.where?.active, true);
 });

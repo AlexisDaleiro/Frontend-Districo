@@ -29,6 +29,10 @@ import { AdminSales } from "./admin-sales";
 import { AdminBanners } from "./admin-banners";
 import { AdminJobs } from "./admin-jobs";
 import { AdminIntegrations } from "./admin-integrations";
+import { AdminPortfolio, AdminFinance } from "./admin-operational-pages";
+import { AdminLogistics } from "./admin-logistics";
+import { AdminMetrics } from "./admin-metrics";
+import { InquiryWorkspace } from "./inquiry-workspace";
 import { AdminRoles, AdminStaff } from "./admin-staff";
 import { AdminSalespeople } from "./admin-salespeople";
 import { AdminPromotionForm } from "./admin-promotion-form";
@@ -46,6 +50,7 @@ import { storeRoutes } from "@/lib/store-routes";
 import { adminProductEditor } from "@/lib/admin-product-editor";
 import { canEditAdminFeature, canSeeAdminSection, canViewAdminFeature } from "@/lib/staff-access";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
+import { confirmNavigation } from "@/lib/unsaved-changes";
 import { scopedPromotion } from "@/lib/promotion-scope";
 import {
   label,
@@ -212,13 +217,14 @@ function ContactInquiries({ edit }: { edit: OpenEditor }) {
                   <td>{new Intl.DateTimeFormat("es-UY", { dateStyle: "short", timeStyle: "short" }).format(new Date(inquiry.createdAt))}</td>
                   <td><strong>{inquiry.businessName || inquiry.name}</strong><br /><span className="muted small-copy">{inquiry.name} · {inquiry.email}</span></td>
                   <td><span className="status-pill" data-status={inquiry.status}>{label(inquiry.status)}</span></td>
-                  <td>{inquiry.handledBy?.email ?? "Sin asignar"}</td>
-                  <td><button className="button small secondary" type="button" aria-expanded={expandedId === inquiry.id} aria-controls={`consulta-${inquiry.id}`} onClick={() => setExpandedId(expandedId === inquiry.id ? null : inquiry.id)}>{expandedId === inquiry.id ? "Ocultar" : "Ver detalle"}</button></td>
+                  <td>{inquiry.assignedTo?.email ?? inquiry.handledBy?.email ?? "Sin asignar"}</td>
+                  <td><button className="button small secondary" type="button" aria-expanded={expandedId === inquiry.id} aria-controls={`consulta-${inquiry.id}`} onClick={() => { if (confirmNavigation()) setExpandedId(expandedId === inquiry.id ? null : inquiry.id); }}>{expandedId === inquiry.id ? "Ocultar" : "Ver detalle"}</button></td>
                 </tr>
                 {expandedId === inquiry.id && <tr id={`consulta-${inquiry.id}`} className="admin-inquiry-detail"><td colSpan={5}>
                   <p>{inquiry.message}</p>
                   <p className="muted small-copy">{[inquiry.phone, inquiry.locality].filter(Boolean).join(" · ")}</p>
                   {inquiry.internalNote && <p><strong>Nota interna:</strong> {inquiry.internalNote}</p>}
+                  <InquiryWorkspace id={inquiry.id} />
                   <div className="actions">
                     <a className="text-link" href={`mailto:${inquiry.email}`}>{inquiry.email}</a>
                     {canEditAdminFeature(user, "consultas") && <button className="button small" type="button" onClick={() => edit({
@@ -1357,6 +1363,10 @@ function Marketing({
   );
 }
 function AdminSection({ section, edit }: { section: string; edit: OpenEditor }) {
+  if (section === "cartera") return <AdminPortfolio />;
+  if (section === "finanzas") return <AdminFinance />;
+  if (section === "logistica") return <AdminLogistics />;
+  if (section === "metricas") return <AdminMetrics />;
   return section === "" ? (
     <Dashboard />
   ) : section === "consultas" ? (

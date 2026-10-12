@@ -24,6 +24,7 @@ import { ContactInquiriesModule } from './contact-inquiries/contact-inquiries.mo
 import { BannersModule } from './banners/banners.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { JobsModule } from './jobs/jobs.module';
+import { OperationsModule } from './operations/operations.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { JobsModule } from './jobs/jobs.module';
     BannersModule,
     FavoritesModule,
     JobsModule,
+    OperationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
