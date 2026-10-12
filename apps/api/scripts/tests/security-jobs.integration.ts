@@ -3,7 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaClient, Role } from '@prisma/client';
 import { PDFDocument } from 'pdf-lib';
-import { generate } from 'otplib';
 import { ConfigService } from '@nestjs/config';
 import { CvStorageService } from '../../src/jobs/cv-storage.service';
 import { loadBackendEnv } from '../script-env';
@@ -11,6 +10,7 @@ import { jobExamples } from '../../src/jobs/job-examples';
 import { chromium } from '@playwright/test';
 
 async function main() {
+  const { generate } = await import('otplib');
   loadBackendEnv();
   const db = new PrismaClient(), suffix = randomUUID(), password = randomBytes(24).toString('base64url');
   const email = `qa-security-${suffix}@example.test`;

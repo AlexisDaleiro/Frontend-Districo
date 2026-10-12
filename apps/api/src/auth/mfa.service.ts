@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { generateSecret, generateURI, verify } from 'otplib';
 import { toDataURL } from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
 import { decryptMfa, encryptMfa, securityHash } from './mfa-crypto';
@@ -28,6 +27,7 @@ export class MfaService {
   async setup(userId: string, sid: string, password: string) {
     const user = await this.password(userId, password);
     if (user.role !== Role.ADMIN || user.mfaEnabledAt) throw new ForbiddenException('El doble factor opcional está disponible para administradores sin configuración activa.');
+    const { generateSecret, generateURI } = await import('otplib');
     const secret = generateSecret(), encrypted = encryptMfa(secret, this.key(), userId);
     const saved = await this.prisma.authSession.updateMany({ where: { id: sid, userId, revokedAt: null, expiresAt: { gt: new Date() } }, data: { pendingMfaSecret: encrypted, pendingMfaExpiresAt: new Date(Date.now() + 10 * 60000) } });
     if (!saved.count) throw new UnauthorizedException();
@@ -41,6 +41,7 @@ export class MfaService {
       if (!session?.pendingMfaSecret || !user?.active || user.role !== Role.ADMIN || user.mfaEnabledAt) throw new UnauthorizedException('La configuración venció. Volvé a iniciarla.');
       const token = code.replace(/\s/g, '');
       if (!/^\d{6}$/.test(token)) throw new UnauthorizedException('Ingresá el código de seis dígitos de la app.');
+      const { verify } = await import('otplib');
       const verified = await verify({ secret: this.decrypt(session.pendingMfaSecret, userId), token, epochTolerance: 30 });
       if (!verified.valid || !('timeStep' in verified)) throw new UnauthorizedException('Código incorrecto.');
       const now = new Date();
@@ -64,6 +65,7 @@ export class MfaService {
       return;
     }
     if (!/^\d{6}$/.test(token)) throw new UnauthorizedException('Código incorrecto.');
+    const { verify } = await import('otplib');
     const result = await verify({ secret: this.decrypt(user.mfaSecretEncrypted, userId), token, epochTolerance: 30, ...(user.mfaLastStep != null ? { afterTimeStep: user.mfaLastStep } : {}) });
     if (!result.valid || !('timeStep' in result)) throw new UnauthorizedException('Código incorrecto o ya utilizado. Esperá al siguiente código.');
     const consumed = await tx.user.updateMany({ where: { id: userId, mfaSecretEncrypted: user.mfaSecretEncrypted, OR: [{ mfaLastStep: null }, { mfaLastStep: { lt: result.timeStep } }] }, data: { mfaLastStep: result.timeStep } });

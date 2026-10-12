@@ -16,6 +16,10 @@ Navegador -> /api/backend/products en web (Next.js)
 
 ## Variables
 
+La API conserva su salida CommonJS, pero TypeScript usa `module` y `moduleResolution` `Node16` para preservar los `import()` nativos. `MfaService` carga `otplib` mediante `await import('otplib')`: su entrada CommonJS intenta hacer `require()` de dependencias ESM y puede derribar toda la función de Vercel con `ERR_REQUIRE_ESM`, incluso en rutas públicas sin doble factor. No volver a una importación estática ni a `module: commonjs`, que transforma el import dinámico en `require()`.
+
+Antes de publicar, ejecutar `npm run test:mfa-runtime -w apps/api`. Compila la API y prueba la carga de `AppModule`, configuración MFA y rechazo de códigos reutilizados con `require(ESM)` deshabilitado. No usa la base ni cambia cuentas.
+
 | Dónde | Variable | Uso |
 | --- | --- | --- |
 | Web, compilación | `NEXT_PUBLIC_DATA_MODE` | Opcional. Omitida o `real` = API real. `demo` solo funciona con `next dev` local. Quitar cualquier valor `demo` antiguo de Production y Preview. |

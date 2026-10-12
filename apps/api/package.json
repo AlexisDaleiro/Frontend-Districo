@@ -41,6 +41,7 @@
     "test:laboratory-brand-cleanup": "ts-node scripts/tests/laboratory-brand-cleanup.test.ts",
     "brands:cleanup-laboratories": "ts-node scripts/cleanup-laboratory-brands.ts",
     "test:auth-security": "ts-node scripts/tests/auth-security.test.ts && ts-node scripts/tests/mfa-cv.test.ts",
+    "test:mfa-runtime": "npm run build && node --no-experimental-require-module --test scripts/tests/mfa-runtime.test.cjs",
     "test:security-jobs:api": "ts-node scripts/tests/security-jobs.integration.ts",
     "test:salespeople": "ts-node scripts/tests/salespeople.test.ts",
     "test:staff-access": "ts-node scripts/tests/staff-role-access.test.ts",
