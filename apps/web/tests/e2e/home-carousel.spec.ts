@@ -58,17 +58,8 @@ test("el carrusel del inicio se recorre con teclado y no desborda", async ({
     const nextBox = await next.boundingBox();
     expect(stageBox).not.toBeNull();
     expect(nextBox).not.toBeNull();
-    if (width <= 900) {
-      expect(nextBox!.x).toBeLessThan(stageBox!.x + stageBox!.width / 2);
-      expect(nextBox!.y + nextBox!.height).toBeLessThan(
-        stageBox!.y + stageBox!.height,
-      );
-    } else {
-      expect(nextBox!.x).toBeGreaterThan(stageBox!.x + stageBox!.width / 2);
-      expect(nextBox!.y + nextBox!.height).toBeLessThan(
-        stageBox!.y + stageBox!.height,
-      );
-    }
+    expect(nextBox!.x).toBeGreaterThan(stageBox!.x + stageBox!.width / 2);
+    expect(nextBox!.y + nextBox!.height).toBeLessThan(stageBox!.y + stageBox!.height);
     await next.focus();
     await page.keyboard.press("Enter");
     await expect(

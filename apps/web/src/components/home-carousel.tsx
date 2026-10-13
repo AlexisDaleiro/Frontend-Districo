@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Pause,
-  Play,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Entity } from "@/lib/types";
 import { storeRoutes, withSearch } from "@/lib/store-routes";
 import { Picture } from "./ui";
@@ -95,14 +90,13 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
     active: number;
     direction: Direction;
   }>({ active: 0, direction: "first" });
-  const [playing, setPlaying] = useState(true);
   // En el servidor se asume movimiento reducido: el autoplay arranca al hidratar.
   const reduced = useSyncExternalStore(
     subscribeReduced,
     () => window.matchMedia(reducedQuery).matches,
     () => true,
   );
-  const rotating = playing && !reduced;
+  const rotating = !reduced;
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const shownIndex = Math.min(active, slides.length - 1);
   const slide = slides[shownIndex];
@@ -135,7 +129,6 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
       aria-label="Marcas destacadas de DISTRICO"
       aria-roledescription="carrusel"
       data-autoplay={!reduced}
-      data-paused={!playing}
     >
       <div
         className="home-carousel-stage"
@@ -212,18 +205,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
             if (event.animationName === "motion-progress") step(1);
           }}
         />
-        <div className="home-carousel-nav">
-          {!reduced && (
-            <button
-              className="home-carousel-arrow"
-              type="button"
-              aria-label={playing ? "Pausar carrusel" : "Reanudar carrusel"}
-              aria-controls="home-carousel-slide"
-              onClick={() => setPlaying((value) => !value)}
-            >
-              {playing ? <Pause size={15} /> : <Play size={15} />}
-            </button>
-          )}
+        <div className="home-carousel-nav" role="group" aria-label="Controles del banner">
           <button
             className="home-carousel-arrow home-carousel-arrow-prev"
             type="button"
@@ -231,7 +213,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
             aria-controls="home-carousel-slide"
             onClick={() => step(-1)}
           >
-            <ChevronLeft size={21} />
+            <ChevronLeft size={18} strokeWidth={1.6} aria-hidden="true" />
           </button>
           <button
             className="home-carousel-arrow home-carousel-arrow-next"
@@ -240,7 +222,7 @@ export function HomeCarousel({ brands }: { brands?: Entity[] }) {
             aria-controls="home-carousel-slide"
             onClick={() => step(1)}
           >
-            <ChevronRight size={21} />
+            <ChevronRight size={18} strokeWidth={1.6} aria-hidden="true" />
           </button>
         </div>
       </div>

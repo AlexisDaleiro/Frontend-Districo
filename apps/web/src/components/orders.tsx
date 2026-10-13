@@ -290,18 +290,21 @@ function CartContent({ checkoutMode }: { checkoutMode: boolean }) {
           </div>
         </div>
         <div className="cart-summary-count"><span>Productos</span><strong>{q.data.items.length}</strong></div>
-        <SubtotalRow value={q.data.total}>
-          <strong>Subtotal estimado</strong>
-          <strong>{money(q.data.total, q.data.items[0]?.currency)}</strong>
-        </SubtotalRow>
-        {q.data.pricing && <>
+        {q.data.pricing && q.data.pricing.discountTotal > 0 && <>
+          <SubtotalRow value={q.data.pricing.subtotal}>
+            <strong>Subtotal estimado</strong>
+            <strong>{money(q.data.pricing.subtotal, q.data.items[0]?.currency)}</strong>
+          </SubtotalRow>
           {q.data.pricing.promotionDiscountTotal > 0 && <div className="row between"><span>Promociones</span><strong>−{money(q.data.pricing.promotionDiscountTotal, q.data.items[0]?.currency)}</strong></div>}
-          {q.data.pricing.customerDiscountPercentage > 0 && <>
+          {q.data.pricing.customerDiscountTotal > 0 && <>
             <div className="row between"><span>Descuento de tu cuenta ({q.data.pricing.customerDiscountPercentage}%)</span><strong>−{money(q.data.pricing.customerDiscountTotal, q.data.items[0]?.currency)}</strong></div>
             <p className="small-copy muted">{discountModeLabel(q.data.pricing.customerDiscountMode)}</p>
           </>}
-          <SubtotalRow value={q.data.pricing.total}><strong>Total estimado</strong><strong>{money(q.data.pricing.total, q.data.items[0]?.currency)}</strong></SubtotalRow>
         </>}
+        <SubtotalRow value={q.data.pricing?.total ?? q.data.total}>
+          <strong>Total estimado</strong>
+          <strong>{money(q.data.pricing?.total ?? q.data.total, q.data.items[0]?.currency)}</strong>
+        </SubtotalRow>
         <div className="cart-summary-note"><ShieldCheck size={18} aria-hidden="true" /><p>Sin cobro en línea. Los descuentos se confirman al enviar el pedido y la entrega se coordina con DISTRICO.</p></div>
         {checkoutMode && user?.role === "CLIENT" && (
           <div className="checkout-address">

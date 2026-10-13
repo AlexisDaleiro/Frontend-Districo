@@ -126,11 +126,15 @@ test.describe("catalog dropdown", () => {
     await expect(
       menu.getByRole("link", { name: "Alimento para perro", exact: true }),
     ).toHaveAttribute("href", "/tienda/categorias/dog-food");
+    // Las tarjetas de escritorio muestran un nivel; el detalle sigue en la categoría y en el menú móvil.
+    const pharmacy = menu.getByRole("region", { name: "Farmacia", exact: true });
     await expect(
-      menu
-        .getByRole("region", { name: "Farmacia", exact: true })
-        .getByRole("link", { name: "Bovinos", exact: true }),
-    ).toHaveAttribute("href", "/tienda/categorias/bovine-medicines");
+      pharmacy.getByRole("link", { name: "Medicamentos para ganado", exact: true }),
+    ).toHaveText("Para ganado");
+    await expect(
+      pharmacy.getByRole("link", { name: "Medicamentos para ganado", exact: true }),
+    ).toHaveAttribute("href", "/tienda/categorias/medicines");
+    await expect(pharmacy.getByRole("link", { name: "Bovinos", exact: true })).toBeHidden();
     await menu
       .getByRole("link", { name: "Alimento para perro", exact: true })
       .hover();
@@ -241,6 +245,11 @@ test.describe("catalog dropdown", () => {
       path: testInfo.outputPath("catalog-menu-mobile.png"),
       fullPage: true,
     });
+    await expect(
+      menu
+        .getByRole("region", { name: "Farmacia", exact: true })
+        .getByRole("link", { name: "Bovinos", exact: true }),
+    ).toHaveAttribute("href", "/tienda/categorias/bovine-medicines");
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(dialog).toBeVisible();

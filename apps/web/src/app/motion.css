@@ -368,7 +368,7 @@ button {
 .home-carousel[data-autoplay="true"] .home-carousel-timer {
   animation: motion-progress var(--carousel-interval) linear both;
 }
-.home-carousel[data-autoplay="true"]:is(:hover, :has(:focus-visible), [data-paused="true"]) .home-carousel-timer {
+.home-carousel[data-autoplay="true"]:is(:hover, :has(:focus-visible)) .home-carousel-timer {
   animation-play-state: paused;
 }
 

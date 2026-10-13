@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { Building2, MapPin, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { request, useSession } from "./providers";
 import { ErrorBox } from "./ui";
 import type { Customer, CustomerAddress } from "@/lib/types";
@@ -97,7 +97,7 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
     <div className="account-details">
       <section className="account-detail-section">
         <div className="account-section-heading">
-          <h2>Datos comerciales</h2>
+          <h2><Building2 size={18} aria-hidden="true" /> Datos comerciales</h2>
           {!profileFormOpen && <button className="button small secondary" type="button" onClick={() => {
             setProfile({ businessName: customer.businessName, legalName: customer.legalName, rut: customer.rut });
             setProfileFormOpen(true);
@@ -109,11 +109,6 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
           <div><span>RUT</span><strong>{customer.rut}</strong></div>
           <div><span>Correo electrónico</span><strong>{email}</strong></div>
           <div><span>Teléfono</span><strong>{customer.phone || "Sin registrar"}</strong></div>
-          <div><span>Vendedor asignado</span><strong>{customer.salesperson?.name || "Aún no asignado"}</strong></div>
-          {customer.salesperson && <>
-            <div><span>Correo del vendedor</span><strong><a href={`mailto:${customer.salesperson.user.email}`}>{customer.salesperson.user.email}</a></strong></div>
-            <div><span>Teléfono del vendedor</span><strong><a href={`tel:${customer.salesperson.phone.replace(/[^\d+]/g, "")}`}>{customer.salesperson.phone}</a></strong></div>
-          </>}
           <div><span>Productos de uso profesional</span><strong>{user?.permissions.includes("CAN_BUY_MEDICATIONS") ? "Habilitados" : "Sin habilitación"}</strong></div>
         </div>
         {profileFormOpen && <form className="account-profile-form" onSubmit={(event) => void saveProfile(event)}>
@@ -137,7 +132,7 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
 
       <section className="account-detail-section" id="direcciones">
         <div className="account-section-heading">
-          <h2>Direcciones</h2>
+          <h2><MapPin size={18} aria-hidden="true" /> Direcciones</h2>
           {!addressFormOpen && (
             <button className="button small secondary" type="button" onClick={() => editAddress()}>
               <Plus size={16} /> Agregar dirección
@@ -147,7 +142,7 @@ export function AccountDetails({ customer, email }: { customer: Customer; email:
         {addresses.length ? (
           <div className="account-address-list">
             {addresses.map((address, index) => (
-              <div className="account-address-row" key={address.id}>
+              <div className={`account-address-row${index === 0 ? " is-primary" : ""}`} key={address.id}>
                 <div>
                   <strong>{address.label}</strong>
                   {index === 0 && address.label.trim().toLowerCase() !== "principal" && (

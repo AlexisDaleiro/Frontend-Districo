@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Cat,
@@ -33,6 +33,23 @@ const categoryIcons = {
   farmacia: Pill,
   "consumo humano": Cookie,
 };
+const featuredKinds = new Set(["perros", "gatos"]);
+const countCategories = (nodes: CatalogCategory[]): number =>
+  nodes.reduce((total, node) => total + 1 + countCategories(node.children), 0);
+const desktopLimit = 6;
+
+// Dentro de la tarjeta de la especie el sufijo repite el contexto («Alimento para perro» → «Alimento»).
+// Solo cambia el texto visible: el enlace conserva el nombre completo como nombre accesible.
+export function shortCategoryName(name: string, rootName: string) {
+  const kind = catalogCategoryKind(rootName);
+  const short =
+    kind === "perros" || kind === "gatos"
+      ? name.replace(/\s+(para|de)\s+(perros?|gatos?)$/i, "")
+      : kind === "farmacia"
+        ? name.replace(/^medicamentos\s+(?=para\s)/i, "")
+        : name;
+  return short ? short.charAt(0).toUpperCase() + short.slice(1) : name;
+}
 
 export function CatalogNavigation({
   current,
@@ -96,35 +113,51 @@ export function CatalogNavigation({
     };
   }, [open]);
 
-  function categoryLink(category: CatalogCategory, className?: string) {
+  function categoryLink(category: CatalogCategory, className?: string, text: ReactNode = category.name) {
     return (
       <Link
         href={storeRoutes.category(category.id)}
         prefetch={false}
         className={className}
         onClick={finish}
+        aria-label={text === category.name ? undefined : category.name}
         aria-current={
           pathname === storeRoutes.category(category.id) ? "page" : undefined
         }
         onMouseEnter={() => prefetch(category.id)}
         onFocus={() => prefetch(category.id)}
       >
-        {category.name}
+        {text}
       </Link>
     );
   }
-  function branches(nodes: CatalogCategory[]) {
+  function branches(nodes: CatalogCategory[], root?: CatalogCategory) {
+    // Escritorio muestra hasta seis subcategorías por tarjeta; celular, todas.
+    const extra = root && nodes.length > desktopLimit ? nodes.length - desktopLimit + 1 : 0;
     return (
       <ul>
-        {nodes.map((category) => (
-          <li key={category.id}>
+        {nodes.map((category, index) => (
+          <li key={category.id} className={extra && index >= nodes.length - extra ? "catalog-menu-extra" : undefined}>
             {categoryLink(
               category,
               category.children.length ? "catalog-menu-branch" : undefined,
+              root ? shortCategoryName(category.name, root.name) : category.name,
             )}
             {category.children.length > 0 && branches(category.children)}
           </li>
         ))}
+        {root && extra > 0 && (
+          <li className="catalog-menu-more">
+            <Link
+              href={storeRoutes.category(root.id)}
+              prefetch={false}
+              onClick={finish}
+              aria-label={`Ver ${extra} categorías más de ${root.name}`}
+            >
+              +{extra} más
+            </Link>
+          </li>
+        )}
       </ul>
     );
   }
@@ -188,7 +221,14 @@ export function CatalogNavigation({
         hidden={!open}
       >
         <div className="catalog-menu-head">
-          <strong>Catálogo</strong>
+          <p>
+            <strong>Catálogo</strong>
+            {tree.length > 0 && (
+              <span>
+                {tree.length} {tree.length === 1 ? "línea" : "líneas"} · {countCategories(tree)} categorías
+              </span>
+            )}
+          </p>
           <Link href={storeRoutes.products} onClick={finish}>
             Ver todo el catálogo <ArrowRight size={16} />
           </Link>
@@ -224,12 +264,17 @@ export function CatalogNavigation({
                   key={category.id}
                   className="catalog-menu-column"
                   aria-label={category.name}
+                  data-featured={featuredKinds.has(catalogCategoryKind(category.name)) || undefined}
                 >
-                  <div className="catalog-menu-heading">
-                    <Icon size={20} aria-hidden="true" />
-                    {categoryLink(category, "catalog-menu-root")}
-                  </div>
-                  {category.children.length > 0 && branches(category.children)}
+                  {categoryLink(
+                    category,
+                    "catalog-menu-root",
+                    <>
+                      <Icon size={26} strokeWidth={1.8} aria-hidden="true" />
+                      <span>{category.name}</span>
+                    </>,
+                  )}
+                  {category.children.length > 0 && branches(category.children, category)}
                 </section>
               );
             })}

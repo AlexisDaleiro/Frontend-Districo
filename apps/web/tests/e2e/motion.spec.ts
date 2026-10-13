@@ -228,18 +228,12 @@ test("el carrusel avanza solo, se pausa y no rota con movimiento reducido", asyn
   await page.mouse.move(0, 0);
   await expect.poll(progressState).toBe("running");
 
-  const toggle = carousel.getByRole("button", { name: "Pausar carrusel" });
-  await toggle.click();
+  await expect(carousel.getByRole("button", { name: /Pausar carrusel|Reanudar carrusel/ })).toHaveCount(0);
+  await carousel.getByRole("button", { name: "Banner siguiente" }).focus();
+  await page.keyboard.press("Shift");
   await page.mouse.move(0, 0);
-  await expect(
-    carousel.getByRole("button", { name: "Reanudar carrusel" }),
-  ).toBeVisible();
   await expect.poll(progressState).toBe("paused");
-  await expect(carousel.locator(".home-carousel-slide")).toHaveAttribute(
-    "aria-live",
-    "polite",
-  );
-  await carousel.getByRole("button", { name: "Reanudar carrusel" }).click();
+  await carousel.getByRole("button", { name: "Banner siguiente" }).evaluate((button: HTMLButtonElement) => button.blur());
   await page.mouse.move(0, 0);
   await expect.poll(progressState).toBe("running");
 
