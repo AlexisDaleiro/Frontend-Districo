@@ -19,16 +19,8 @@
         }
       ]
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/internal/notifications/dispatch",
-      "destination": { "service": "api" }
-    },
-    {
-      "source": "/(.*)",
-      "destination": { "service": "web" }
-    }
+  }
+}
   ],
   "crons": [
     {
