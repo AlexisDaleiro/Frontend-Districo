@@ -114,8 +114,8 @@ function Dashboard() {
     return <ErrorBox error={q.error} retry={() => void q.refetch()} />;
   return (
     <>
-      {canViewAdminFeature(user, "ventas") && <AdminSales />}
-      <div className="stats">
+      {/* Pendientes primero: son lo accionable; el informe de ventas va debajo. */}
+      <div className="stats admin-summary-stats">
         {(
           [
             ["products", "Productos", "catalogo", Package],
@@ -151,6 +151,7 @@ function Dashboard() {
           </Link>
         ))}
       </div>
+      {canViewAdminFeature(user, "ventas") && <AdminSales />}
     </>
   );
 }

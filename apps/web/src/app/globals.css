@@ -4959,6 +4959,24 @@ td .button {
 .admin-sales-date-range { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding-top: 16px; }
 .admin-sales-date-range .field { flex: 1 1 160px; max-width: 230px; }
 .admin-sales-filters { border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+/* Resumen compacto (14/10/2026): pendientes arriba en una fila y ventas con menos aire. */
+.admin-summary-stats { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.admin-summary-stats .stat { grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 12px 14px; }
+.admin-summary-stats .stat-icon { width: 32px; height: 32px; margin: 0; }
+.admin-summary-stats .stat strong { font-size: 22px; }
+.admin-summary-stats .stat > span:last-child { line-height: 1.25; }
+.admin-sales { padding: 16px 0 18px; margin-bottom: 0; border-bottom: 0; }
+.admin-sales-heading h2 { font-size: 20px; }
+.admin-sales .admin-sales-filters { align-items: center; gap: 8px; padding: 12px 0; margin-bottom: 12px; }
+.admin-sales .admin-sales-filters > .form-input { flex: 1 1 150px; width: auto; min-width: 0; min-height: 38px; padding-block: 7px; }
+.admin-sales-today { margin-top: 0; padding: 10px 16px; gap: 24px; }
+.admin-sales-today strong { font-size: 18px; }
+.admin-sales-metrics { margin-top: 14px; }
+.admin-sales-metrics strong { font-size: 18px; }
+.admin-sales-detail { gap: 28px; margin-top: 18px; }
+.admin-sales-detail h3 { margin-bottom: 8px; }
+.admin-sales-trend { grid-template-rows: 150px 24px; }
+.admin-sales-footnote { margin-top: 12px; }
 .admin-sales-filters .field { flex-basis: 150px; }
 .admin-sales-breakdown { margin-top: 24px; }
 .technical-sheet-fields { border: 0; margin: 0; padding: 0; min-width: 0; }

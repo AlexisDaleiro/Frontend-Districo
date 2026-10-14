@@ -2,6 +2,12 @@
 
 Última actualización: 14 de octubre de 2026. Rama de trabajo: `main`.
 
+## Resumen de administración compacto (14/10/2026)
+
+- `Dashboard` (`admin.tsx`): los accesos a pendientes (Productos, Solicitudes, Pedidos en revisión, Promociones, Consultas) pasan arriba, en una fila de chips (`.stats.admin-summary-stats`), antes del informe de Ventas. Siguen siendo `.stat`, que usan las pruebas.
+- `AdminSales` (`admin-sales.tsx`): filtros en una línea sin etiquetas visibles; conservan su `aria-label` y se agregó «Buscar cliente» a la búsqueda. Menos espacio en «hoy», métricas, gráfico (150 px en lugar de 214) y pie. Sin cambios de datos ni cálculos.
+- A 1440 px los pendientes empiezan a 396 px en lugar de 1349 y Ventas mide 748 px en lugar de 929. A 390 px sin desbordamiento. E2E demo 44/44 (dashboard-enhancements, flows, motion, admin-access, admin-navigation-speed, payment-terms). Sin commit/push.
+
 ## Catálogo de administración B2B compacto (14/10/2026)
 
 - `/tienda/admin/catalogo` (`ProductManagement` en `apps/web/src/components/admin.tsx`), según la propuesta aprobada:
