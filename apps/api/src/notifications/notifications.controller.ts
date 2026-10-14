@@ -8,10 +8,16 @@ export class NotificationsController {
 
   @Post('dispatch')
   async dispatch(@Headers('authorization') authorization?: string) {
-    const secret = this.notifications.settings().dispatchSecret;
-    const expected = createHash('sha256').update(`Bearer ${secret}`).digest();
+    const settings = this.notifications.settings();
+    const secrets = [settings.dispatchSecret, process.env.CRON_SECRET].filter(
+      (secret): secret is string => Boolean(secret && secret.length >= 32),
+    );
     const provided = createHash('sha256').update(authorization ?? '').digest();
-    if (secret.length < 32 || !timingSafeEqual(expected, provided)) throw new UnauthorizedException();
+    const authorized = secrets.some((secret) => {
+      const expected = createHash('sha256').update(`Bearer ${secret}`).digest();
+      return timingSafeEqual(expected, provided);
+    });
+    if (!authorized) throw new UnauthorizedException();
     return this.notifications.dispatch();
   }
 }
