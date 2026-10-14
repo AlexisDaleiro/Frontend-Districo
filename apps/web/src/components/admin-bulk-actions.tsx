@@ -121,8 +121,8 @@ export function AdminBulkActions({ kind, selection }: { kind: "products" | "cust
     } finally { setBusy(false); }
   }
   return <>
-    {/* La barra aparece recién con productos o clientes seleccionados. */}
-    <div className="admin-bulk-toolbar" aria-label="Acciones por lote" hidden={!selection.ids.length}>
+    {/* Siempre visible: aparecer al seleccionar desplazaba la tabla bajo el cursor. */}
+    <div className="admin-bulk-toolbar" aria-label="Acciones por lote" data-empty={!selection.ids.length || undefined}>
       <strong>{selection.ids.length} seleccionados</strong>
       <div className="actions">
         {kind === "products" ? <>

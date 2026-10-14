@@ -11,7 +11,7 @@
 - Mantenidos los nombres accesibles que usan las pruebas, los filtros en URL, la selección entre páginas, los permisos y la paginación de 12. Las pruebas de selección y de filtros dependen de tener dos páginas en el demo, así que no se cambió el tamaño de página. Sin ícono de vista previa en la fila, porque una prueba exige que la fila no lo tenga.
 - `admin-bulk-actions.tsx`:
   - `BulkHistory` admite `compact`, que lo muestra como ícono con el nombre «Historial de lotes».
-  - La barra de acciones por lote se oculta sin selección; también afecta a la lista de clientes.
+  - ~~La barra de acciones por lote se oculta sin selección~~. Revertido a pedido: al aparecer desplazaba la tabla bajo el cursor. Ahora está siempre visible en Catálogo y Clientes, en gris («0 seleccionados», botones desactivados) y en petróleo al seleccionar. La tabla de clientes queda en la misma posición al marcar (574 px antes y después). `admin-tools.spec.ts` vuelve a esperar «0 seleccionados». Lotes y filtros de clientes: 6/6 e2e correctas.
   - En `admin-tools.spec.ts` se reemplazó la espera de «0 seleccionados» por la barra oculta.
 - Medido a 1440×900 en demo: la tabla empieza a 508 px en lugar de 876, las filas miden 49 px en lugar de 73, y se ven 7 filas sin desplazarse (antes ninguna). A 390 px sin desbordamiento.
 - Verificación: tipos y ESLint correctos; e2e demo 44 correctas. Fallan `admin-complete.spec.ts:157` y `admin-list-filters.spec.ts:126` por el enlace «Volver a editar producto», renombrado en `b8d7b1ae`. Ambas pasaron los pasos del listado antes de fallar. Sin commit/push.

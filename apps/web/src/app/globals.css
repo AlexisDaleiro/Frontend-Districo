@@ -4889,7 +4889,7 @@ td .button {
 .admin-list-filters > .icon-button { flex: 0 0 38px; }
 .admin-filter-check { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
 .admin-filter-check input { width: 16px; height: 16px; flex-shrink: 0; }
-.admin-bulk-toolbar[hidden] { display: none; }
+
 /* Catálogo de administración compacto (14/10/2026): cabecera y filtros en una fila, tabla densa. */
 .admin-compact-list .admin-toolbar { justify-content: flex-start; gap: 10px 14px; margin-bottom: 12px; }
 .admin-compact-list .admin-toolbar h2 { font-size: 20px; }
@@ -4913,6 +4913,9 @@ td .button {
 .admin-compact-list .admin-bulk-toolbar .button.secondary { min-height: 32px; padding: 5px 12px; border-color: rgb(255 255 255 / .4); background: transparent; color: white; }
 .admin-compact-list .admin-bulk-toolbar .button.secondary:hover { background: rgb(255 255 255 / .12); }
 .admin-compact-list .admin-bulk-toolbar .icon-button { color: white; }
+.admin-compact-list .admin-bulk-toolbar[data-empty] { background: var(--paper); color: var(--muted); }
+.admin-compact-list .admin-bulk-toolbar[data-empty] .button.secondary { border-color: var(--line); color: var(--muted); }
+.admin-compact-list .admin-bulk-toolbar[data-empty] .icon-button { color: var(--muted); }
 .admin-compact-list .admin-bulk-toolbar .actions { gap: 6px; margin: 0 0 0 auto; }
 @media (min-width: 900px) { .admin-compact-list .admin-bulk-toolbar, .admin-compact-list .admin-bulk-toolbar .actions { flex-wrap: nowrap; } }
 .admin-compact-list th { position: sticky; top: 0; z-index: 1; padding: 9px 10px; background: #f7f8f7; }
