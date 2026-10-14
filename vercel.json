@@ -19,9 +19,7 @@
         }
       ]
     }
-  }
-}
-  ],
+  },
   "crons": [
     {
       "path": "/api/internal/notifications/dispatch",
