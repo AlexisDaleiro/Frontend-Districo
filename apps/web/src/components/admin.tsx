@@ -10,11 +10,13 @@ import {
   BadgePercent,
   ClipboardList,
   Download,
+  Eye,
   Inbox,
   Package,
   Pencil,
   Plus,
   Save,
+  Search,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -440,53 +442,59 @@ function Customers() {
   const rows = q.data?.items ?? [];
   useAdminListScroll(!q.isPending && !q.error && debouncedSearch === search.trim());
   return (
-    <>
+    <div className="admin-compact-list">
       <div className="admin-toolbar">
         <h2>{user?.role === "SALES" ? "Clientes asignados" : "Clientes mayoristas"}</h2>
-        <ShareAdminList />
-        <input
-          className="form-input"
-          aria-label="Buscar clientes"
-          placeholder="Buscar comercio, RUT, correo o teléfono"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
+        {q.data && <span className="admin-list-count">{q.data.meta.total} {q.data.meta.total === 1 ? "cliente" : "clientes"}</span>}
+        <div className="admin-list-tools">
+          {canViewAdminFeature(user, "vendedores") && <BulkHistory feature="vendedores" compact />}
+          <ShareAdminList />
+        </div>
       </div>
       <AdminListFilters active={!!(search || seller || accountStatus || debt)} onClear={() => { setSearch(""); setDebouncedSearch(""); setSeller(""); setAccountStatus(""); setDebt(""); setPage(1); }}>
-        {user?.role !== "SALES" && <label className="field">Vendedor<select className="form-input" aria-label="Vendedor" value={seller} onChange={(event) => { setSeller(event.target.value); setPage(1); }}>
+        <div className="admin-list-search">
+          <Search size={16} aria-hidden="true" />
+          <input
+            className="form-input"
+            aria-label="Buscar clientes"
+            placeholder="Comercio, RUT, correo o teléfono"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        {user?.role !== "SALES" && <select className="form-input" aria-label="Vendedor" value={seller} onChange={(event) => { setSeller(event.target.value); setPage(1); }}>
           <option value="">Todos los vendedores</option><option value="unassigned">Sin vendedor</option>
           {sellers.data?.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.user.email}</option>)}
-        </select></label>}
-        <label className="field">Estado de cuenta<select className="form-input" aria-label="Estado de cuenta" value={accountStatus} onChange={(event) => { setAccountStatus(event.target.value); setPage(1); }}>
+        </select>}
+        <select className="form-input" aria-label="Estado de cuenta" value={accountStatus} onChange={(event) => { setAccountStatus(event.target.value); setPage(1); }}>
           <option value="">Todos los estados</option>{["PENDING", "APPROVED", "REJECTED", "SUSPENDED"].map((value) => <option key={value} value={value}>{label(value)}</option>)}
-        </select></label>
-        {canViewDebt && <label className="field">Deuda<select className="form-input" aria-label="Deuda" value={debt} onChange={(event) => { setDebt(event.target.value); setPage(1); }}>
+        </select>
+        {canViewDebt && <select className="form-input" aria-label="Deuda" value={debt} onChange={(event) => { setDebt(event.target.value); setPage(1); }}>
           <option value="">Todos los saldos</option><option value="WITH_DEBT">Con deuda pendiente</option><option value="WITHOUT_DEBT">Sin deuda pendiente</option>
-        </select></label>}
+        </select>}
       </AdminListFilters>
       {sellers.error && <ErrorBox error={sellers.error} retry={() => void sellers.refetch()} />}
       {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : <>
       {canReassign && <AdminBulkActions kind="customers" selection={selection} />}
-      {canViewAdminFeature(user, "vendedores") && <div className="actions admin-history-actions"><BulkHistory feature="vendedores" /></div>}
       {!!rows.length && <div className="table-wrap">
         <table className="admin-customers-table">
-          <thead><tr>{canReassign && <th className="admin-selection-cell"><PageSelection selection={selection} rows={rows.map((c) => ({ id: c.id, name: c.businessName }))} /></th>}<th>CLIENTE</th><th>CONTACTO</th><th>CUENTA</th><th>CRÉDITO</th><th>MEDICAMENTOS</th><th>ACCIÓN</th></tr></thead>
+          <thead><tr>{canReassign && <th className="admin-selection-cell"><PageSelection selection={selection} rows={rows.map((c) => ({ id: c.id, name: c.businessName }))} /></th>}<th>CLIENTE</th><th>CONTACTO</th><th>CUENTA</th><th>CRÉDITO</th><th>MEDICAMENTOS</th><th className="admin-list-actions">ACCIÓN</th></tr></thead>
           <tbody>{rows.map((c) => (
           <tr key={c.id}>
             {canReassign && <td className="admin-selection-cell"><RowSelection selection={selection} id={c.id} name={c.businessName} /></td>}
-            <td><strong>{c.businessName}</strong><br /><span className="muted">{c.legalName} · {c.rut}</span></td>
-            <td>{c.users?.map((u) => u.email).join(", ") || "Sin correo"}<br /><span className="muted">{c.phone || "Sin teléfono"}</span></td>
+            <td><strong>{c.businessName}</strong><span className="admin-list-sub">{c.legalName} · {c.rut}</span></td>
+            <td>{c.users?.map((u) => u.email).join(", ") || "Sin correo"}<span className="admin-list-sub">{c.phone || "Sin teléfono"}</span></td>
             <td><span className="status-pill" data-status={c.accountStatus}>{label(c.accountStatus)}</span></td>
-            <td>{label(c.creditStatus)}</td>
-            <td>{c.medicationPermission ? "Habilitado" : "No habilitado"}</td>
-            <td><AdminRecordLink className="button secondary small" href={storeRoutes.adminCustomer(c.id)}>Ver ficha</AdminRecordLink></td>
+            <td><span className="status-pill" data-status={c.creditStatus}>{label(c.creditStatus)}</span></td>
+            <td>{c.medicationPermission ? "Habilitado" : <span className="muted">No habilitado</span>}</td>
+            <td className="admin-list-actions"><AdminRecordLink className="icon-button" href={storeRoutes.adminCustomer(c.id)} aria-label="Ver ficha" title="Ver ficha"><Eye size={16} /></AdminRecordLink></td>
           </tr>
         ))}</tbody></table>
       </div>}
       {!rows.length && <Empty title="No encontramos clientes" />}
       {q.data && <ListPagination meta={q.data.meta} onPage={setPage} />}
       </>}
-    </>
+    </div>
   );
 }
 function AdminPagination({ meta, onPage }: { meta: { total: number; page: number; limit: number }; onPage: (page: number) => void }) {
@@ -733,7 +741,6 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
   const [page, setPage] = useAdminListField("page", 1),
     [search, setSearch] = useAdminListField("search", ""),
     [activity, setActivity] = useAdminListField("active", "", ["", "true", "false"]);
-  const [searchInput, setSearchInput] = [search, setSearch];
   const [brand, setBrand] = useAdminListField("brandId", "");
   const [category, setCategory] = useAdminListField("categoryId", "");
   const [withoutPrice, setWithoutPrice] = useAdminListField("withoutPrice", false);
@@ -751,56 +758,45 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
     labs = useApi<Entity[]>("laboratories"),
     attributes = useApi<Attribute[]>("attributes");
   useAdminListScroll(!q.isPending && !q.error && productSearch === search.trim());
+  const filtered = !!(search || activity || brand || category || withoutPrice || withoutStock);
+  const clear = () => { setSearch(""); setActivity(""); setBrand(""); setCategory(""); setWithoutPrice(false); setWithoutStock(false); setPage(1); };
   return (
-    <>
+    <div className="admin-compact-list">
       <div className="admin-toolbar">
         <h2>Catálogo y existencias</h2>
-        <ShareAdminList />
-        {canEdit && <button className="button small" disabled={attributes.isPending || !!attributes.error} onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data, attributes.data))}>
-          <Plus size={16} />
-          Crear producto
-        </button>}
+        {q.data && <span className="admin-list-count">{q.data.meta.total} {q.data.meta.total === 1 ? "producto" : "productos"}</span>}
+        <div className="admin-list-tools">
+          <BulkHistory feature="catalogo" compact />
+          <ShareAdminList />
+          {canEdit && <button className="button small" disabled={attributes.isPending || !!attributes.error} onClick={() => edit(adminProductEditor(undefined, brands.data, categories.data, labs.data, attributes.data))}>
+            <Plus size={16} />
+            Crear producto
+          </button>}
+        </div>
       </div>
-      <form
-        className="inline-search"
-        style={{ marginBottom: 25 }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSearch(String(new FormData(e.currentTarget).get("search") ?? ""));
-          setPage(1);
-        }}
-      >
-        <input
-          className="form-input"
-          name="search"
-          aria-label="Buscar producto para administrar"
-          placeholder="Nombre o SKU"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-        />
-        <button className="button small">Buscar</button>
-      </form>
-      <div className="admin-status-filter" role="group" aria-label="Estado de productos">
-        {[["", "Todos"], ["true", "Activos"], ["false", "Inactivos"]].map(([value, title]) => (
-          <button key={title} className={activity === value ? "button small" : "button small secondary"} type="button"
-            onClick={() => { setActivity(value); setPage(1); }}>
-            {title}
-          </button>
-        ))}
-      </div>
-      <AdminListFilters active={!!(searchInput || search || activity || brand || category || withoutPrice || withoutStock)} onClear={() => { setSearch(""); setSearchInput(""); setActivity(""); setBrand(""); setCategory(""); setWithoutPrice(false); setWithoutStock(false); setPage(1); }}>
-        <label className="field">Marca<select className="form-input" aria-label="Marca" value={brand} onChange={(event) => { setBrand(event.target.value); setPage(1); }}>
+      <AdminListFilters active={filtered} onClear={clear}>
+        {/* La búsqueda filtra mientras se escribe; Enter solo vuelve a la primera página. */}
+        <form className="admin-list-search" role="search" onSubmit={(event) => { event.preventDefault(); setPage(1); }}>
+          <Search size={16} aria-hidden="true" />
+          <input className="form-input" type="search" name="search" aria-label="Buscar producto para administrar" placeholder="Nombre o SKU"
+            value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
+        </form>
+        <div className="admin-segmented" role="group" aria-label="Estado de productos">
+          {[["", "Todos"], ["true", "Activos"], ["false", "Inactivos"]].map(([value, title]) => (
+            <button key={title} type="button" aria-pressed={activity === value} onClick={() => { setActivity(value); setPage(1); }}>{title}</button>
+          ))}
+        </div>
+        <select className="form-input" aria-label="Marca" value={brand} onChange={(event) => { setBrand(event.target.value); setPage(1); }}>
           <option value="">Todas las marcas</option>{brands.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select></label>
-        <label className="field">Categoría<select className="form-input" aria-label="Categoría" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}>
+        </select>
+        <select className="form-input" aria-label="Categoría" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}>
           <option value="">Todas las categorías</option>{categories.data?.map((item) => <option key={item.id} value={item.id}>{item.parentId ? `${categories.data?.find((parent) => parent.id === item.parentId)?.name ?? "Subcategoría"} / ` : ""}{item.name}</option>)}
-        </select></label>
-        <label className="admin-filter-check"><input type="checkbox" checked={withoutPrice} onChange={(event) => { setWithoutPrice(event.target.checked); setPage(1); }} />Sin precio vigente</label>
-        <label className="admin-filter-check"><input type="checkbox" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
+        </select>
+        <label className="admin-filter-chip"><input type="checkbox" checked={withoutPrice} onChange={(event) => { setWithoutPrice(event.target.checked); setPage(1); }} />Sin precio vigente</label>
+        <label className="admin-filter-chip"><input type="checkbox" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
       </AdminListFilters>
       {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
       {canBulk && <AdminBulkActions kind="products" selection={selection} />}
-      <div className="actions admin-history-actions"><BulkHistory feature="catalogo" /></div>
       <div className="table-wrap">
         <table>
           <thead>
@@ -808,9 +804,10 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
               {canBulk && <th className="admin-selection-cell"><PageSelection selection={selection} rows={q.data.items.map((p) => ({ id: p.id, name: p.name }))} /></th>}
               <th>PRODUCTO</th>
               <th>MARCA</th>
-              <th>PRESENTACIONES</th>
+              <th>PRES.</th>
               <th>STOCK</th>
-              <th>ACCIONES</th>
+              <th>ESTADO</th>
+              <th className="admin-list-actions">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
@@ -818,29 +815,29 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
               const availableStock = p.variants
                 .filter((variant) => variant.active !== false)
                 .reduce((total, variant) => total + variant.availableStock, 0);
+              const action = canEdit ? "Editar producto" : canManage ? "Gestionar producto" : "Ver producto";
               return <tr key={p.id}>
                 {canBulk && <td className="admin-selection-cell"><RowSelection selection={selection} id={p.id} name={p.name} /></td>}
                 <td>
-                  <div className="row">
+                  <div className="admin-catalog-product">
                     <Picture
                       src={
                         p.media.find((m) => m.type === "IMAGE")?.url ??
                         "/images/placeholder.svg"
                       }
                       alt=""
-                      sizes="42px"
-                      style={{ width: 42, height: 42, objectFit: "contain" }}
+                      sizes="36px"
                     />
                     <strong>{p.name}</strong>
-                    <span className="status-pill">{p.active === false ? "Inactivo" : "Activo"}</span>
                   </div>
                 </td>
                 <td>{p.brand?.name ?? p.laboratory?.name ?? "—"}</td>
                 <td>{p.variants.length}</td>
-                <td><strong>{availableStock}</strong> uds.</td>
-                <td>
-                  <AdminRecordLink className="button small secondary" href={canManage ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)}>
-                    {canManage ? <Pencil size={15} /> : null}{canEdit ? "Editar producto" : canManage ? "Gestionar producto" : "Ver producto"}
+                <td>{availableStock > 0 ? <><strong>{availableStock}</strong> uds.</> : <span className="status-pill pending">Sin stock</span>}</td>
+                <td><span className="status-pill" data-status={p.active === false ? "INACTIVE" : "ACTIVE"}>{p.active === false ? "Inactivo" : "Activo"}</span></td>
+                <td className="admin-list-actions">
+                  <AdminRecordLink className="icon-button" href={canManage ? storeRoutes.adminProduct(p.slug) : storeRoutes.adminProductPreview(p.slug)} aria-label={action} title={action}>
+                    {canManage ? <Pencil size={16} /> : <Eye size={16} />}
                   </AdminRecordLink>
                 </td>
               </tr>
@@ -851,7 +848,7 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
       {!q.data.items.length && <Empty title="No encontramos productos con esos filtros" />}
       <ListPagination meta={q.data.meta} onPage={setPage} />
       </>}
-    </>
+    </div>
   );
 }
 export function VariantManagement({

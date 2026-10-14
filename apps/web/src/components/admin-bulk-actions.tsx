@@ -54,13 +54,15 @@ function SellerPicker({ value, onChange }: { value: string; onChange: (value: st
   </div>;
 }
 
-export function BulkHistory({ feature }: { feature: "catalogo" | "vendedores" }) {
+export function BulkHistory({ feature, compact = false }: { feature: "catalogo" | "vendedores"; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
   const q = useApi<{ items: BulkHistoryRecord[]; meta: { total: number; limit: number } }>(`admin/bulk/history?feature=${feature}&page=${page}&limit=10`, open);
   const titles: Record<string, string> = { ADMIN_BULK_PRODUCTS_ACTIVE: "Estado de productos", ADMIN_BULK_PRODUCTS_PRICES: "Precios", ADMIN_BULK_CUSTOMERS_SALESPERSON: "Asignación de clientes" };
   return <>
-    <button className="button small secondary" type="button" onClick={() => setOpen(true)}><History size={16} />Historial de lotes</button>
+    {compact
+      ? <button className="icon-button" type="button" title="Historial de lotes" aria-label="Historial de lotes" onClick={() => setOpen(true)}><History size={17} /></button>
+      : <button className="button small secondary" type="button" onClick={() => setOpen(true)}><History size={16} />Historial de lotes</button>}
     <Modal open={open} onClose={() => setOpen(false)} title="Historial de acciones por lote" className="admin-bulk-dialog">
       {q.isPending ? <p role="status">Cargando historial…</p> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data.items.length ? <>
         {q.data.items.map((item) => <details className="admin-bulk-history" key={item.id}><summary><strong>{titles[item.action] ?? item.action}</strong> · {item.metadata.changed} cambios · {new Date(item.createdAt).toLocaleString("es-UY")}</summary>
@@ -119,7 +121,8 @@ export function AdminBulkActions({ kind, selection }: { kind: "products" | "cust
     } finally { setBusy(false); }
   }
   return <>
-    <div className="admin-bulk-toolbar" aria-label="Acciones por lote">
+    {/* La barra aparece recién con productos o clientes seleccionados. */}
+    <div className="admin-bulk-toolbar" aria-label="Acciones por lote" hidden={!selection.ids.length}>
       <strong>{selection.ids.length} seleccionados</strong>
       <div className="actions">
         {kind === "products" ? <>

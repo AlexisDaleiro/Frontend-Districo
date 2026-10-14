@@ -2,8 +2,33 @@
 
 Última actualización: 14 de octubre de 2026. Rama de trabajo: `main`.
 
+## Catálogo de administración B2B compacto (14/10/2026)
+
+- `/tienda/admin/catalogo` (`ProductManagement` en `apps/web/src/components/admin.tsx`), según la propuesta aprobada:
+  - Cabecera de una fila con título, cantidad de productos, Historial y Compartir como íconos, y Crear producto.
+  - Filtros en una barra: búsqueda con lupa que filtra al escribir, sin botón Buscar; estado en botones segmentados con `aria-pressed`; Marca y Categoría; chips «Sin precio vigente» y «Sin stock disponible»; Limpiar.
+  - Tabla densa con columna Estado, «Sin stock» marcado y acción como ícono.
+- Mantenidos los nombres accesibles que usan las pruebas, los filtros en URL, la selección entre páginas, los permisos y la paginación de 12. Las pruebas de selección y de filtros dependen de tener dos páginas en el demo, así que no se cambió el tamaño de página. Sin ícono de vista previa en la fila, porque una prueba exige que la fila no lo tenga.
+- `admin-bulk-actions.tsx`:
+  - `BulkHistory` admite `compact`, que lo muestra como ícono con el nombre «Historial de lotes».
+  - La barra de acciones por lote se oculta sin selección; también afecta a la lista de clientes.
+  - En `admin-tools.spec.ts` se reemplazó la espera de «0 seleccionados» por la barra oculta.
+- Medido a 1440×900 en demo: la tabla empieza a 508 px en lugar de 876, las filas miden 49 px en lugar de 73, y se ven 7 filas sin desplazarse (antes ninguna). A 390 px sin desbordamiento.
+- Verificación: tipos y ESLint correctos; e2e demo 44 correctas. Fallan `admin-complete.spec.ts:157` y `admin-list-filters.spec.ts:126` por el enlace «Volver a editar producto», renombrado en `b8d7b1ae`. Ambas pasaron los pasos del listado antes de fallar. Sin commit/push.
+- Clientes (`Customers` en `admin.tsx`) con el mismo formato:
+  - Cabecera con cantidad, Historial (si se ve vendedores) y Compartir como íconos.
+  - Filtros en una barra: búsqueda con lupa y Vendedor/Estado/Deuda sin etiquetas visibles; conservan su `aria-label`.
+  - Tabla densa con subtítulos grises, Crédito como píldora de color y «Ver ficha» como ícono con nombre accesible.
+  - Se mantienen 20 por página (lo exige la precarga de navegación) y `textbox` «Buscar clientes».
+  - Las clases compactas pasaron a ser genéricas: `.admin-compact-list`, `.admin-list-search/-count/-tools/-actions/-sub`.
+- A 1440 px la tabla de clientes empieza a 508 px, con filas de 55 px. E2E de clientes, vendedores, descuentos, registros y lotes: 21 correctas. Solo fallan las 2 conocidas de «Volver a editar producto».
+
 ## Preparación de correos en Vercel (14/10/2026)
 
+- Usuario confirmó que no tiene dominio verificado y autorizó cambiar el destinatario de prueba a marafio2018@gmail.com. Resend aceptó la prueba directa del proveedor (HTTP 200) y posteriormente informó `delivered`; esto no acredita todavía el recorrido Vercel/cola/scheduler. La clave proporcionada coincide con RESEND_API_KEY ya configurada en Vercel; se comparó sin imprimirla y se volvió a ocultar el valor.
+- Agregado EMAIL_FROM=`DISTRICO <onboarding@resend.dev>` solo a Production como remitente de prueba. Continúan pendientes la carga manual de las claves nuevas, el redeploy con toda la configuración y la verificación desde la cola del sitio. Resend seguirá limitado al destinatario de la cuenta hasta verificar un dominio propio; Gmail no se usa como remitente.
+- Publicación posterior autorizada explícitamente: commit/push `6c742df` a main y deployment Production `CAu6hH8EZHSuJctuwZFghf8yJwny` verificado Ready. El POST publicado sin Authorization responde 401; no procesa correos. EMAIL_PROVIDER=resend, EMAIL_WORKER_ENABLED=false y EMAIL_PUBLIC_URL con el origen HTTPS definitivo ya guardados para Production (también disponibles en Preview).
+- Preparadas claves nuevas exclusivas de Production en `apps/api/.env.production-mail`, ignorado por Git, sin imprimir valores. Formularios privados de Vercel y GitHub abiertos para ingreso/guardado manual de las credenciales por el usuario según la regla del navegador. Pendientes esas claves, EMAIL_FROM confirmado, redeploy con las variables definitivas y prueba real autorizada a alexisdaleiro@gmail.com. No se afirma envío todavía.
 - Revisado el chat de v0 y su deployment e9fdec3, que muestra «Invalid vercel.json file provided». La rama de v0 añade crons y elimina los rewrites de ingreso. Se conserva el vercel.json válido de main, con backend privado y binding al servicio web; no se incorpora ese cron ni se publica todavía.
 - Preparados workflow de GitHub Actions cada cinco minutos y puente POST fijo de Next `/api/internal/notifications/dispatch`: CRON_SECRET autentica al scheduler y EMAIL_DISPATCH_SECRET autentica la llamada privada al backend. Comparación de hashes en tiempo constante, sin redirecciones, sin proxy genérico ni datos de destinatarios en la respuesta; modo demo deshabilitado.
 - Verificación: 14 pruebas correctas del puente/política del proxy, ESLint, TypeScript y build de producción aislado correctos. Configuración generada de Next restaurada. Sin correos reales, cambios de base, commit/push ni cambios de variables en Vercel.

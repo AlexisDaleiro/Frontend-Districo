@@ -27,7 +27,8 @@ test("checkbox selection spans pages, activation is confirmed and its history pe
   await page.screenshot({ path: info.outputPath("bulk-desktop.png") });
   await dialog.getByRole("button", { name: "Confirmar cambios" }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByText("0 seleccionados", { exact: true })).toBeVisible();
+  // Sin selección la barra de acciones por lote se oculta.
+  await expect(page.locator(".admin-bulk-toolbar")).toBeHidden();
   const state = await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!));
   expect(state.bulkHistory).toHaveLength(1);
   expect(state.bulkHistory[0].metadata.changed).toBe(3);

@@ -4889,6 +4889,46 @@ td .button {
 .admin-list-filters > .icon-button { flex: 0 0 38px; }
 .admin-filter-check { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
 .admin-filter-check input { width: 16px; height: 16px; flex-shrink: 0; }
+.admin-bulk-toolbar[hidden] { display: none; }
+/* Catálogo de administración compacto (14/10/2026): cabecera y filtros en una fila, tabla densa. */
+.admin-compact-list .admin-toolbar { justify-content: flex-start; gap: 10px 14px; margin-bottom: 12px; }
+.admin-compact-list .admin-toolbar h2 { font-size: 20px; }
+.admin-list-count { color: var(--muted); font-size: 13px; }
+.admin-list-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.admin-compact-list .admin-list-filters { align-items: center; gap: 8px; padding: 0 0 12px; }
+.admin-compact-list .admin-list-filters > select.form-input { flex: 0 1 165px; width: auto; min-height: 38px; padding-block: 7px; }
+.admin-list-search { position: relative; flex: 1 1 140px; min-width: 130px; margin: 0; }
+.admin-list-search svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+.admin-list-search .form-input { width: 100%; min-height: 38px; padding-block: 7px; padding-left: 36px; }
+.admin-segmented { display: inline-flex; flex: none; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.admin-segmented button { min-height: 36px; padding: 0 10px; border: 0; background: white; color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer; }
+.admin-segmented button + button { border-left: 1px solid var(--line); }
+.admin-segmented button[aria-pressed="true"] { background: var(--ink); color: white; }
+.admin-filter-chip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.admin-filter-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.admin-filter-chip:has(input:checked) { border-color: var(--lime); background: var(--lime-soft); color: var(--lime-text); }
+.admin-filter-chip:has(input:checked)::after { content: "✓"; margin-left: 6px; }
+.admin-filter-chip:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+.admin-compact-list .admin-bulk-toolbar { margin-block: 0 10px; padding: 6px 8px 6px 14px; border: 0; border-radius: 10px; background: var(--ink); color: white; }
+.admin-compact-list .admin-bulk-toolbar .button.secondary { min-height: 32px; padding: 5px 12px; border-color: rgb(255 255 255 / .4); background: transparent; color: white; }
+.admin-compact-list .admin-bulk-toolbar .button.secondary:hover { background: rgb(255 255 255 / .12); }
+.admin-compact-list .admin-bulk-toolbar .icon-button { color: white; }
+.admin-compact-list .admin-bulk-toolbar .actions { gap: 6px; margin: 0 0 0 auto; }
+@media (min-width: 900px) { .admin-compact-list .admin-bulk-toolbar, .admin-compact-list .admin-bulk-toolbar .actions { flex-wrap: nowrap; } }
+.admin-compact-list th { position: sticky; top: 0; z-index: 1; padding: 9px 10px; background: #f7f8f7; }
+.admin-compact-list td { padding: 6px 10px; vertical-align: middle; }
+.admin-compact-list tbody tr:hover { background: color-mix(in srgb, var(--lime) 6%, white); }
+.admin-catalog-product { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.admin-catalog-product img { flex: none; width: 36px; height: 36px; border-radius: 6px; background: var(--paper); object-fit: contain; }
+.admin-catalog-product strong { font-size: 13px; font-weight: 650; line-height: 1.3; }
+.admin-list-actions { text-align: right; }
+.admin-compact-list td .icon-button { width: 32px; height: 32px; }
+.status-pill[data-status="INACTIVE"] { background: var(--paper); color: var(--muted); }
+.admin-compact-list .admin-list-filters > select[aria-label="Vendedor"] { flex-basis: 200px; }
+.admin-list-sub { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.admin-compact-list .status-pill[data-status="GOOD_STANDING"] { background: #d3ecc0; color: #2f5d0f; }
+.admin-compact-list .status-pill:is([data-status="PENDING"], [data-status="PAYMENT_DELAY"], [data-status="PAYMENT_PENDING"], [data-status="CREDIT_LIMIT_EXCEEDED"]) { background: #fbefdb; color: #826013; }
+.admin-compact-list .status-pill:is([data-status="SUSPENDED"], [data-status="RESTRICTED"]) { background: #f6dcdc; color: #9a3535; }
 
 .admin-marketing-table { min-width: 800px; width: 100%; table-layout: fixed; }
 .admin-marketing-table th, .admin-marketing-table td { padding: 12px 10px; vertical-align: top; overflow-wrap: anywhere; }
