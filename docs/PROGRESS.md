@@ -1,6 +1,13 @@
 # Registro de avance
 
-Última actualización: 12 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 14 de octubre de 2026. Rama de trabajo: `main`.
+
+## Preparación de correos en Vercel (14/10/2026)
+
+- Revisado el chat de v0 y su deployment e9fdec3, que muestra «Invalid vercel.json file provided». La rama de v0 añade crons y elimina los rewrites de ingreso. Se conserva el vercel.json válido de main, con backend privado y binding al servicio web; no se incorpora ese cron ni se publica todavía.
+- Preparados workflow de GitHub Actions cada cinco minutos y puente POST fijo de Next `/api/internal/notifications/dispatch`: CRON_SECRET autentica al scheduler y EMAIL_DISPATCH_SECRET autentica la llamada privada al backend. Comparación de hashes en tiempo constante, sin redirecciones, sin proxy genérico ni datos de destinatarios en la respuesta; modo demo deshabilitado.
+- Verificación: 14 pruebas correctas del puente/política del proxy, ESLint, TypeScript y build de producción aislado correctos. Configuración generada de Next restaurada. Sin correos reales, cambios de base, commit/push ni cambios de variables en Vercel.
+- Estado observado en Vercel: seis variables EMAIL_* solo en Preview; RESEND_API_KEY en todos los entornos y CRON_SECRET presente en Preview y Production. Tras el inicio de sesión del usuario se verificó GitHub: no hay secretos de repositorio ni de entorno; falta CRON_SECRET para Actions. Pendientes variables Production, secreto/workflow de GitHub y envío real después del despliegue. No se revelaron valores secretos.
 
 ## Espacio de opciones por especie (12/10/2026)
 
