@@ -649,6 +649,17 @@ svg {
   gap: 14px;
   align-items: center;
 }
+.header.is-admin .header-main { min-height: 64px; gap: 28px; }
+.header.is-admin .logo img { width: 132px; }
+.header.is-admin .header-actions { margin-left: auto; gap: 22px; }
+.admin-welcome { padding-left: 28px; border-left: 1px solid var(--on-ink-line); color: var(--on-ink-muted); font-size: 12px; font-weight: 500; }
+.admin-store-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--on-ink-line); border-radius: 999px; font-size: 12px; font-weight: 700; }
+.admin-store-link:hover { border-color: var(--lime); }
+@media (max-width: 1023px) { .admin-welcome { display: none; } }
+@media (max-width: 767px) {
+  .header.is-admin .header-main { padding-block: 12px; }
+  .header.is-admin .account-link span { display: none; }
+}
 .mobile-menu {
   display: none;
 }

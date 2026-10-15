@@ -188,6 +188,11 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const canOrder = can(user, "CAN_PLACE_ORDERS");
+  // Dentro del panel la cabecera se reduce a cuenta y vuelta a la tienda.
+  const inAdmin =
+    canAccessAdmin(user) &&
+    (pathname === storeRoutes.admin ||
+      pathname.startsWith(`${storeRoutes.admin}/`));
   const cart = useApi<Cart>("cart", canOrder);
   // El contador rebota cuando cambia la cantidad de productos, no al cargar.
   const cartCount = cart.data?.items.length;
@@ -244,7 +249,7 @@ export function Header() {
           <button onClick={() => setResetOpen(true)}>Reiniciar demo</button>
         </div>
       )}
-      <div className="topbar">
+      {!inAdmin && <div className="topbar">
         <div className="container">
           <span>Venta mayorista para comercios de todo Uruguay</span>
           <div className="topbar-links">
@@ -269,8 +274,8 @@ export function Header() {
             </a>
           </div>
         </div>
-      </div>
-      <header className="header">
+      </div>}
+      <header className={inAdmin ? "header is-admin" : "header"}>
         <div className="container header-main">
           <button
             className="icon-button mobile-menu"
@@ -293,8 +298,19 @@ export function Header() {
               height={38}
             />
           </Link>
-          <HeaderSearch />
+          {inAdmin ? (
+            <span className="admin-welcome">
+              Modo administrador · Gestioná tu operación mayorista desde acá
+            </span>
+          ) : (
+            <HeaderSearch />
+          )}
           <div className="header-actions">
+            {inAdmin && (
+              <Link className="admin-store-link" href={storeRoutes.home}>
+                Ver Ecommerce <ArrowUpRight size={15} />
+              </Link>
+            )}
             <Link
               href={
                 user
@@ -359,20 +375,23 @@ export function Header() {
             )}
           </div>
         </div>
-        <div className="navline">
-          <nav aria-label="Navegación principal" className="container">
-            {nav()}
-            {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
-            {(!user || canAccessAdmin(user)) && (
-              <Link
-                className="be-client"
-                href={user ? storeRoutes.admin : storeRoutes.requestAccount}
-              >
-                {user ? "Administración" : "Quiero ser cliente"}
-              </Link>
-            )}
-          </nav>
-        </div>
+        {/* En el panel el staff no compra: una sola fila sin navegación de tienda. */}
+        {!inAdmin && (
+          <div className="navline">
+            <nav aria-label="Navegación principal" className="container">
+              {nav()}
+              {/* Con sesión de cliente no tiene sentido invitar a solicitar cuenta. */}
+              {(!user || canAccessAdmin(user)) && (
+                <Link
+                  className="be-client"
+                  href={user ? storeRoutes.admin : storeRoutes.requestAccount}
+                >
+                  {user ? "Administración" : "Quiero ser cliente"}
+                </Link>
+              )}
+            </nav>
+          </div>
+        )}
       </header>
       <Modal
         open={open}

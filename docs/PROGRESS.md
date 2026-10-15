@@ -2,6 +2,12 @@
 
 Última actualización: 14 de octubre de 2026. Rama de trabajo: `main`.
 
+## Barra de navegación en modo administrador (14/10/2026)
+
+- `src/components/shell.tsx`: solo dentro de `/tienda/admin/*` (`inAdmin`, staff con `canAccessAdmin`) se ocultan topbar, buscador y navline; queda una sola fila: logo reducido, «Modo administrador · Gestioná tu operación mayorista desde acá» y, a la derecha, «Ver Ecommerce» (→ `/tienda`) junto a la cuenta. Fuera del panel el header es el normal, con «Administración».
+- `src/app/globals.css`: `.header.is-admin` (64 px, logo 132 px), `.admin-welcome` (oculto < 1024 px), `.admin-store-link` en píldora; en móvil la cuenta queda solo con ícono.
+- Pruebas: `tsc --noEmit` sin errores; demo (puerto 3010) `admin-access.spec.ts` + `admin-complete.spec.ts`: 12 pasan, 1 falla ya conocida (`admin-complete.spec.ts:157`, texto «Volver a editar producto» renombrado antes). Verificado visualmente en `/tienda/admin` y `/tienda`.
+
 ## Resumen de administración compacto (14/10/2026)
 
 - `Dashboard` (`admin.tsx`): los accesos a pendientes (Productos, Solicitudes, Pedidos en revisión, Promociones, Consultas) pasan arriba, en una fila de chips (`.stats.admin-summary-stats`), antes del informe de Ventas. Siguen siendo `.stat`, que usan las pruebas.
