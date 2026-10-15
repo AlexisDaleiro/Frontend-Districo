@@ -1416,7 +1416,7 @@ export function Admin({ section = "" }: { section?: string }) {
   return (
     <>
       <div className="admin-section" key={section}>
-        <PageHeading eyebrow="Administración" title={section && current ? current[2] : "Resumen"} />
+        {section !== "vendedores" && <PageHeading eyebrow="Administración" title={section && current ? current[2] : "Resumen"} />}
         {canSeeAdminSection(user, section) ? <AdminSection section={section} edit={setEditor} /> : <Empty title="No tenés acceso a esta sección" />}
       </div>
       <Modal open={!!editor} onClose={() => setEditor(null)} title={editor?.title ?? ""}>

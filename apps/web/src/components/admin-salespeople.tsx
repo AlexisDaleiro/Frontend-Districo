@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Plus, Save, UserMinus } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Copy, Plus, Save, Search, UserMinus } from "lucide-react";
 import { request, useApi, useSession } from "./providers";
 import { Empty, ErrorBox, Loading, Modal, PageHeading } from "./ui";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
@@ -11,9 +11,11 @@ import { label } from "@/lib/commerce";
 import { canEditAdminFeature, canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
 import type { Customer, SalespersonDetail, SalespersonSummary } from "@/lib/types";
-import { AdminListFilters, ListPagination, StaffStatusFilter } from "./admin-list-filters";
+import { AdminListFilters, ListPagination } from "./admin-list-filters";
 import { adminListPath, staffListStatus, staffStatusOptions } from "@/lib/admin-list-filters";
 import { AdminRecordLink, ShareAdminList, useAdminListField, useAdminListScroll, useAdminReturnHref } from "./admin-list-navigation";
+import { PageSelection, RowSelection } from "./admin-bulk-actions";
+import { SalespeopleActions } from "./admin-salespeople-actions";
 
 type Page<T> = { items: T[]; meta: { total: number; page: number; limit: number } };
 
@@ -26,6 +28,8 @@ export function AdminSalespeople() {
   const [debounced, setDebounced] = useState(search.trim());
   const [page, setPage] = useAdminListField("page", 1);
   const [status, setStatus] = useAdminListField("status", "", ["", ...staffStatusOptions.map(([key]) => key)]);
+  const [selected, setSelected] = useState<Record<string, SalespersonSummary>>({});
+  const selectedSellers = Object.values(selected);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -38,6 +42,22 @@ export function AdminSalespeople() {
     return () => clearTimeout(timer);
   }, [search]);
   const q = useApi<Page<SalespersonSummary>>(adminListPath("admin/salespeople", { page, limit: 20, search: debounced, status }));
+  const selection = {
+    ids: Object.keys(selected),
+    selected: Object.fromEntries(selectedSellers.map((seller) => [seller.id, seller.profile?.name || seller.email])),
+    clear: () => setSelected({}),
+    toggle: (id: string) => setSelected((current) => {
+      if (id in current) { const next = { ...current }; delete next[id]; return next; }
+      const seller = q.data?.items.find((item) => item.id === id);
+      return seller && Object.keys(current).length < 100 ? { ...current, [id]: seller } : current;
+    }),
+    togglePage: (rows: { id: string; name: string }[]) => setSelected((current) => {
+      const next = { ...current };
+      if (rows.every((row) => row.id in current)) for (const row of rows) delete next[row.id];
+      else for (const seller of q.data?.items ?? []) { if (Object.keys(next).length < 100) next[seller.id] = seller; }
+      return next;
+    }),
+  };
   useAdminListScroll(!q.isPending && !q.error && debounced === search.trim());
   const invitationUrl = invitation && typeof window !== "undefined" ? `${window.location.origin}${storeRoutes.staffInvitation}#token=${encodeURIComponent(invitation.token)}` : "";
   function closeInvite() { setInviteOpen(false); setInvitation(null); setInviteError(""); setInviteEmail(""); setInviteName(""); setInvitePhone(""); }
@@ -56,28 +76,40 @@ export function AdminSalespeople() {
       await invalidateAdminMutation(client, "admin/salespeople");
     } finally { setInviteBusy(false); }
   }
-  return <section>
+  return <section className="admin-compact-list admin-salespeople-list" aria-labelledby="salespeople-title">
     <div className="admin-toolbar">
-      <h2>Vendedores</h2>
-      <ShareAdminList />
-      {q.data && <span className="muted small-copy">{q.data.meta.total} {q.data.meta.total === 1 ? "vendedor" : "vendedores"}</span>}
-      <input className="form-input" type="search" aria-label="Buscar vendedores" placeholder="Nombre, correo o teléfono" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
-      {canInvite && <button className="button small" type="button" onClick={() => setInviteOpen(true)}><Plus size={16} /> Invitar vendedor</button>}
+      <h1 id="salespeople-title">Vendedores</h1>
+      {q.data && <span className="admin-list-count" role="status">{q.data.meta.total} {q.data.meta.total === 1 ? "vendedor" : "vendedores"}</span>}
+      <div className="admin-list-tools">
+        <ShareAdminList />
+        {canInvite && <button className="button small" type="button" onClick={() => setInviteOpen(true)}><Plus size={16} aria-hidden="true" /> Invitar vendedor</button>}
+      </div>
     </div>
     <AdminListFilters active={!!(search || status)} onClear={() => { setSearch(""); setDebounced(""); setStatus(""); setPage(1); }}>
-      <StaffStatusFilter value={status} onChange={(value) => { setStatus(value); setPage(1); }} />
+      <div className="admin-list-search">
+        <Search size={16} aria-hidden="true" />
+        <input className="form-input" type="search" aria-label="Buscar vendedores" placeholder="Nombre, correo o teléfono" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
+      </div>
+      <select className="form-input" aria-label="Filtrar por estado" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
+        <option value="">Todos los estados</option>
+        {staffStatusOptions.map(([key, title]) => <option key={key} value={key}>{title}</option>)}
+      </select>
     </AdminListFilters>
+    <SalespeopleActions sellers={selectedSellers} clear={selection.clear} pageSelection={<label className="admin-salespeople-checkbox" title="Seleccionar esta página"><PageSelection selection={selection} rows={(q.data?.items ?? []).map((seller) => ({ id: seller.id, name: seller.profile?.name || seller.email }))} /></label>} remove={(ids) => setSelected((current) => {
+      const next = { ...current }; for (const id of ids) delete next[id]; return next;
+    })} />
     {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
-    {q.data.items.length ? <div className="table-wrap"><table className="admin-salespeople-table"><thead><tr><th>VENDEDOR</th><th>CONTACTO</th><th>CLIENTES</th><th>ACCESO</th><th>ACCIÓN</th></tr></thead><tbody>
-      {q.data.items.map((seller) => <tr key={seller.id}>
-        <td><strong>{seller.profile?.name || "Ficha pendiente"}</strong><br /><span className="muted">{seller.email}</span></td>
-        <td>{seller.profile?.phone || "Sin teléfono"}</td>
-        <td>{seller.profile?.customerCount ?? 0}</td>
-        <td><span className="status-pill">{staffStatusOptions.find(([key]) => key === staffListStatus(seller))?.[1]}</span></td>
-        <td><AdminRecordLink className="button small secondary" href={storeRoutes.adminSalesperson(seller.id)}>Ver ficha</AdminRecordLink></td>
+    {q.data.items.length ? <div className="table-wrap"><table className="admin-salespeople-table" aria-label="Vendedores"><thead><tr><th scope="col" className="admin-selection-cell" aria-label="Selección" /><th scope="col">VENDEDOR</th><th scope="col">TELÉFONO</th><th scope="col">CLIENTES</th><th scope="col">ACCESO</th><th scope="col" className="admin-list-actions">FICHA</th></tr></thead><tbody>
+      {q.data.items.map((seller) => <tr key={seller.id} aria-selected={seller.id in selected}>
+        <td className="admin-selection-cell"><label className="admin-salespeople-checkbox"><RowSelection selection={selection} id={seller.id} name={seller.profile?.name || seller.email} /></label></td>
+        <td className="admin-salesperson-identity"><strong>{seller.profile?.name || "Ficha pendiente"}</strong><a className="admin-list-sub" href={`mailto:${seller.email}`}>{seller.email}</a></td>
+        <td className="admin-salesperson-phone">{seller.profile?.phone ? <a href={`tel:${seller.profile.phone.replace(/[^+\d]/g, "")}`}>{seller.profile.phone}</a> : <span className="muted">Sin teléfono</span>}</td>
+        <td className="admin-salesperson-customers" data-label="Clientes">{seller.profile?.customerCount ?? 0}</td>
+        <td className="admin-salesperson-status"><span className="status-pill" data-status={staffListStatus(seller)}>{({ ACTIVE: "Activo", INACTIVE: "Desactivado", PENDING: "Invitación pendiente", UNVERIFIED: "Sin activar" })[staffListStatus(seller)]}</span></td>
+        <td className="admin-list-actions"><AdminRecordLink className="text-link admin-salesperson-open" href={storeRoutes.adminSalesperson(seller.id)}>Ver ficha <ArrowUpRight size={15} aria-hidden="true" /></AdminRecordLink></td>
       </tr>)}
-    </tbody></table></div> : <Empty title={debounced ? "No hay vendedores con esa búsqueda" : "Todavía no hay vendedores"} />}
-    <ListPagination meta={q.data.meta} onPage={setPage} />
+    </tbody></table></div> : <Empty title={debounced ? "No hay vendedores con esa búsqueda" : status ? "No hay vendedores con ese estado" : "Todavía no hay vendedores"}>{search || status ? "Probá otra búsqueda o limpiá los filtros." : canInvite ? "Invitá a un vendedor para completar su ficha y asignarle clientes." : "Acá aparecerán los vendedores y sus clientes asignados."}</Empty>}
+    {q.data.meta.total > q.data.meta.limit && <ListPagination meta={q.data.meta} onPage={setPage} />}
     </>}
     <Modal open={inviteOpen} onClose={closeInvite} title={invitation ? "Compartir invitación" : "Invitar vendedor"}>
       {invitation ? <div className="stack">

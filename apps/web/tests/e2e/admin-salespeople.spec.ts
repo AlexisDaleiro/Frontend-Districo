@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("administra vendedores y asigna un único responsable por cliente", async ({ page }) => {
+test("administra vendedores y asigna un único responsable por cliente", async ({ page }, info) => {
   test.setTimeout(120_000);
   await page.goto("/tienda/ingresar");
   await page.getByRole("button", { name: "Administración", exact: true }).click();
@@ -55,4 +55,27 @@ test("administra vendedores y asigna un único responsable por cliente", async (
   await page.getByRole("button", { name: "Quitar Pet Shop Demo" }).click();
   await page.getByRole("dialog", { name: "Quitar asignación" }).getByRole("button", { name: "Quitar asignación" }).click();
   await expect(page.getByText("Todavía no tiene clientes asignados.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Volver a vendedores" }).click();
+  await expect(page.getByRole("heading", { name: "Vendedores", exact: true })).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Buscar vendedores" }).fill("ana.ventas");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator("tbody")).toContainText("Ana Ventas");
+  await page.getByRole("combobox", { name: "Filtrar por estado" }).selectOption("INACTIVE");
+  await expect(page.getByRole("heading", { name: "No hay vendedores con esa búsqueda" })).toBeVisible();
+  await page.getByRole("button", { name: "Limpiar filtros" }).click();
+  await expect(page.locator("tbody")).toContainText("Bruno Ventas");
+  await expect(page.locator(".toast.visible")).toHaveCount(0, { timeout: 8000 });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator(".admin-salespeople-list").screenshot({ path: info.outputPath("vendedores-desktop.png") });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const table = page.getByRole("table", { name: "Vendedores", exact: true });
+    expect(await table.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".admin-salespeople-list").screenshot({ path: info.outputPath("vendedores-mobile.png") });
+  await page.getByRole("row").filter({ hasText: "Ana Ventas" }).getByRole("link", { name: "Ver ficha" }).click();
+  await expect(page.getByRole("heading", { name: "Ana Ventas", exact: true })).toBeVisible();
 });
