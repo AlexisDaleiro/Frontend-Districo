@@ -13,6 +13,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter(), client = useQueryClient();
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const main = root.current?.querySelector<HTMLElement>(".admin-main");
+    if (main?.dataset.preserveViewport && main.dataset.preserveViewport !== pathname) {
+      delete main.dataset.preserveViewport;
+      main.style.removeProperty("min-height");
+    }
+  }, [pathname]);
+  useEffect(() => {
     const element = root.current;
     if (!element || !user) return;
     const prepared = new Map<string, number>();

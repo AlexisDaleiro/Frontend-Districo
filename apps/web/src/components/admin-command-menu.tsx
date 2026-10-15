@@ -12,6 +12,7 @@ import { label } from "@/lib/commerce";
 import { shortcutForm, submitShortcutForm, type AdminSearchResult } from "@/lib/admin-tools";
 import { adminNavigationTarget } from "@/lib/admin-navigation";
 import { confirmNavigation } from "@/lib/unsaved-changes";
+import { preserveAdminViewport } from "@/lib/admin-viewport";
 
 export function AdminCommandMenu() {
   const { user, notify } = useSession();
@@ -85,7 +86,14 @@ export function AdminCommandMenu() {
     });
   }, [open, activeResultId, activeHref, user, router, client]);
   function close() { setOpen(false); setSearch(""); setTerm(""); setActive(0); }
-  function navigate(href: string) { if (confirmNavigation()) { close(); router.push(href); } }
+  function navigate(href: string) {
+    if (confirmNavigation()) {
+      close();
+      const section = shortcuts.some((shortcut) => shortcut.href === href);
+      if (section) preserveAdminViewport(href);
+      router.push(href, { scroll: !section });
+    }
+  }
   if (!visible) return null;
   return <>
     <button className="admin-command-trigger" type="button" title="Buscar en administración (Ctrl+K)" aria-label="Buscar en administración" onClick={() => setOpen(true)}>

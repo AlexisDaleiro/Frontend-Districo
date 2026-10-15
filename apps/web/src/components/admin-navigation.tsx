@@ -14,6 +14,7 @@ import { useApi, useSession } from "./providers";
 import { ErrorBox } from "./ui";
 import { canSeeAdminSection } from "@/lib/staff-access";
 import { storeRoutes } from "@/lib/store-routes";
+import { preserveAdminViewport } from "@/lib/admin-viewport";
 
 export const adminSections: [string, string, string, LucideIcon, string?][] = [
   ["Operación", "", "Resumen", LayoutDashboard],
@@ -105,7 +106,8 @@ export function AdminNav({ section, email }: { section: string; email?: string }
           const visibleTitle = user?.role === "SALES" && path === "clientes" ? "Clientes asignados" : user?.role === "SALES" && path === "pedidos" ? "Pedidos asignados" : title;
           const count = countKey && !(user?.role === "SALES" && path === "pedidos") ? counts.data?.[countKey] ?? 0 : 0;
           return <Link className={section === path ? "active" : ""} aria-current={section === path ? "page" : undefined}
-            aria-label={visibleTitle} title={collapsed ? visibleTitle : undefined} href={storeRoutes.adminSection(path)} prefetch={true} key={path}>
+            aria-label={visibleTitle} title={collapsed ? visibleTitle : undefined} href={storeRoutes.adminSection(path)} prefetch={true} key={path}
+            scroll={false} onNavigate={() => preserveAdminViewport(storeRoutes.adminSection(path))}>
             <Icon size={17} aria-hidden="true" /><span>{visibleTitle}</span>
             {count > 0 && <em className="admin-nav-count" aria-label={`${count} pendientes`}>{count}</em>}
             <LinkStatus />

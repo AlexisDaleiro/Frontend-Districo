@@ -29,6 +29,39 @@ async function setup(page: Page) {
   });
 }
 
+for (const width of [1440, 390]) {
+  test(`cambiar secciones conserva el viewport actual a ${width}px`, async ({ page }) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width, height: 844 });
+    await setup(page);
+    await page.goto("/tienda/admin/clientes");
+    await expect(page.locator("tbody tr")).toHaveCount(20);
+    await page.evaluate(() => {
+      for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith("districo-admin-scroll:")) sessionStorage.removeItem(key);
+      }
+      const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+      const admin = state.users.find((user: { email: string }) => user.email === "admin@districo.com");
+      for (const section of ["clientes", "vendedores"]) sessionStorage.setItem(
+        `districo-admin-scroll:${admin.id}:/tienda/admin/${section}`,
+        JSON.stringify({ x: 0, y: 700, tables: [] }),
+      );
+      window.scrollTo(0, 260);
+    });
+    const y = await page.evaluate(() => window.scrollY);
+    expect(y).toBeGreaterThan(200);
+    for (const href of ["/tienda/admin/vendedores", "/tienda/admin", "/tienda/admin/clientes", "/tienda/admin/vendedores"]) {
+      // Activate without Playwright scrolling an off-screen mobile menu into view.
+      await page.locator(`.admin-nav a[href="${href}"]`).evaluate((link: HTMLAnchorElement) => link.click());
+      await expect(page).toHaveURL(href);
+      await expect(page.locator(".admin-route-loading")).toHaveCount(0);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y);
+      await page.waitForTimeout(200);
+      expect(await page.evaluate(() => window.scrollY)).toBe(y);
+    }
+  });
+}
+
 test("clientes: filtros combinados, paginación y búsqueda sin perder foco", async ({ page }, info) => {
   test.setTimeout(90000);
   await setup(page);

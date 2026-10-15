@@ -38,6 +38,7 @@ export function useAdminListScroll(ready: boolean) {
   const restored = useRef("");
   useLayoutEffect(() => {
     if (!ready || !user || restored.current === href) return;
+    if (document.querySelector<HTMLElement>(".admin-main")?.dataset.preserveViewport === pathname) return;
     let position: Position | undefined;
     try { position = JSON.parse(sessionStorage.getItem(positionKey(user.id, href)) ?? "null") ?? undefined; } catch { return; }
     if (!position || !Number.isFinite(position.y) || !Number.isFinite(position.x) || !Array.isArray(position.tables)) return;
@@ -56,7 +57,7 @@ export function useAdminListScroll(ready: boolean) {
     window.addEventListener("pointerdown", stop);
     window.addEventListener("keydown", stop);
     return () => { stop(); restored.current = ""; window.removeEventListener("wheel", stop); window.removeEventListener("pointerdown", stop); window.removeEventListener("keydown", stop); };
-  }, [ready, href, user]);
+  }, [ready, href, user, pathname]);
   useEffect(() => {
     if (!user || !ready) return;
     const save = () => savePosition(user.id, href);
