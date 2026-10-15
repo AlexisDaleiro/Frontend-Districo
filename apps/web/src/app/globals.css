@@ -2623,7 +2623,7 @@ td .button {
   padding-block: 9px;
   vertical-align: middle;
 }
-.admin-customers-table td:first-child,
+.admin-customers-table td:first-child:not(.admin-selection-cell),
 .admin-staff-table td:first-child {
   min-width: 180px;
 }
