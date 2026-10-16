@@ -2,9 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setup(page: Page) {
   await page.goto("/tienda/ingresar");
-  await page.getByRole("button", { name: "Administración", exact: true }).click();
+  await expect(async () => {
+    await page.getByRole("button", { name: "Administración", exact: true }).click();
+    expect(await page.getByLabel("Correo electrónico").inputValue()).toBe("admin@districo.com");
+  }).toPass({ timeout: 15000 });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page).toHaveURL(/\/tienda$/);
+  await expect(page).toHaveURL(/\/tienda$/, { timeout: 15000 });
   await page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
     for (let i = 0; i < 24; i++) {
@@ -54,6 +57,51 @@ test("selecciona entre páginas y filtros, copia correos y mantiene estable la t
   await page.getByRole("searchbox", { name: "Buscar vendedores" }).fill("seller-01");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.locator(".admin-salespeople-list").screenshot({ path: info.outputPath("seleccion-mobile.png") });
+});
+
+test("revalida vendedores seleccionados fuera de la página y cambios durante la confirmación", async ({ page }) => {
+  test.setTimeout(120000);
+  await setup(page);
+  await page.getByRole("checkbox", { name: "Seleccionar Vendedor 01", exact: true }).check();
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await expect(page.getByRole("checkbox", { name: "Seleccionar Vendedor 22", exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    state.users.find((user: { id: string }) => user.id === "bulk-seller-1").active = false;
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+  });
+  await page.getByRole("button", { name: "Activar", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Activar vendedores", exact: true });
+  await expect(dialog).toContainText("Se cambiarán 1 de 1 cuentas.");
+  await expect(dialog.getByRole("button", { name: "Confirmar activación", exact: true })).toBeEnabled();
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+    state.users.find((user: { id: string }) => user.id === "bulk-seller-1").emailVerified = false;
+    localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+  });
+  await dialog.getByRole("button", { name: "Confirmar activación", exact: true }).click();
+  await expect(dialog).toContainText("Los estados cambiaron desde la revisión.");
+  await expect(dialog).toContainText("Debe aceptar su invitación antes de activarse.");
+  await expect(dialog.getByRole("button", { name: "Confirmar activación", exact: true })).toBeDisabled();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("districo-demo-v1")!).users.find((user: { id: string }) => user.id === "bulk-seller-1").active)).toBe(false);
+});
+
+test("vuelve a la última página válida al desactivar el último vendedor filtrado", async ({ page }) => {
+  test.setTimeout(120000);
+  await setup(page);
+  await page.getByRole("combobox", { name: "Filtrar por estado" }).selectOption("ACTIVE");
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await page.getByRole("checkbox", { name: "Seleccionar esta página", exact: true }).check();
+  await page.getByRole("button", { name: "Desactivar", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Desactivar vendedores", exact: true });
+  await expect(dialog.getByRole("button", { name: "Confirmar desactivación", exact: true })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Confirmar desactivación", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator("tbody tr")).toHaveCount(20);
+  await expect(page.getByRole("combobox", { name: "Filtrar por estado" })).toHaveValue("ACTIVE");
+  await expect(page).not.toHaveURL(/page=2/);
+  await expect(page.getByText("No hay vendedores con ese estado", { exact: true })).toHaveCount(0);
 });
 
 test("revisa los cambios, permite cancelar y respeta clientes e invitaciones", async ({ page }) => {

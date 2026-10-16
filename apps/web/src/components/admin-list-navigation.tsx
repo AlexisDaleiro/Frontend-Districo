@@ -8,6 +8,7 @@ import { useSession } from "./providers";
 import { adminRecordHref, readAdminListValue, safeAdminListReturn, updateAdminListValue } from "@/lib/admin-list-navigation";
 import { withSearch } from "@/lib/store-routes";
 import { beginPerformanceNavigation } from "@/lib/performance-navigation";
+import { adminViewportPath } from "@/lib/admin-viewport";
 
 export function useAdminListField(key: string, fallback: string, allowed?: readonly string[]): [string, Dispatch<SetStateAction<string>>];
 export function useAdminListField(key: string, fallback: number): [number, Dispatch<SetStateAction<number>>];
@@ -38,7 +39,7 @@ export function useAdminListScroll(ready: boolean) {
   const restored = useRef("");
   useLayoutEffect(() => {
     if (!ready || !user || restored.current === href) return;
-    if (document.querySelector<HTMLElement>(".admin-main")?.dataset.preserveViewport === pathname) return;
+    if (document.querySelector<HTMLElement>(".admin-main")?.dataset.preserveViewport === adminViewportPath(pathname)) return;
     let position: Position | undefined;
     try { position = JSON.parse(sessionStorage.getItem(positionKey(user.id, href)) ?? "null") ?? undefined; } catch { return; }
     if (!position || !Number.isFinite(position.y) || !Number.isFinite(position.x) || !Array.isArray(position.tables)) return;

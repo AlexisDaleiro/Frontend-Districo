@@ -60,6 +60,29 @@ for (const width of [1440, 390]) {
       expect(await page.evaluate(() => window.scrollY)).toBe(y);
     }
   });
+
+  test(`Resumen corto conserva el viewport del catálogo a ${width}px`, async ({ page }) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width, height: 844 });
+    await setup(page);
+    await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem("districo-demo-v1")!);
+      state.users.find((user: { email: string }) => user.email === "admin@districo.com").role = "CATALOG";
+      localStorage.setItem("districo-demo-v1", JSON.stringify(state));
+    });
+    await page.goto("/tienda/admin/catalogo");
+    await expect(page.locator("tbody tr")).toHaveCount(12);
+    await page.evaluate(() => window.scrollTo(0, 600));
+    const y = await page.evaluate(() => window.scrollY);
+    expect(y).toBeGreaterThan(200);
+    await page.locator('.admin-nav a[href="/tienda/admin"]').evaluate((link: HTMLAnchorElement) => link.click());
+    await expect(page).toHaveURL("/tienda/admin");
+    await expect(page.locator(".admin-route-loading")).toHaveCount(0);
+    await expect(page.locator(".admin-main")).toHaveAttribute("data-preserve-viewport", "/tienda/admin");
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y);
+    await page.waitForTimeout(250);
+    expect(await page.evaluate(() => window.scrollY)).toBe(y);
+  });
 }
 
 test("clientes: filtros combinados, paginación y búsqueda sin perder foco", async ({ page }, info) => {
@@ -138,12 +161,13 @@ test("volver de una ficha conserva clientes filtrados, página y desplazamiento"
   const list = "/tienda/admin/clientes?salespersonId=profile-seller-a&accountStatus=SUSPENDED&debt=WITH_DEBT&search=customer-&page=2";
   await page.goto(list);
   await expect(page.locator("tbody tr")).toHaveCount(4);
+  await page.setViewportSize({ width: 1440, height: 480 });
   const link = page.locator("tbody tr").last().getByRole("link", { name: "Ver ficha" });
   await link.scrollIntoViewIfNeeded();
   const y = await page.evaluate(() => window.scrollY);
   expect(y).toBeGreaterThan(100);
   await link.click();
-  await expect(page.getByRole("heading", { name: "Cliente 23", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cliente 23", exact: true })).toBeVisible({ timeout: 15000 });
   await page.getByRole("link", { name: "Volver a clientes", exact: true }).click();
   await expect(page).toHaveURL(new RegExp("/clientes\\?.*page=2"));
   await expect(page.getByLabel("Vendedor", { exact: true })).toHaveValue("profile-seller-a");
@@ -162,10 +186,10 @@ test("catálogo y vista previa conservan filtros al volver con el navegador y co
   await page.goto("/tienda/admin/catalogo?brandId=filter-brand&categoryId=parent&withoutPrice=true&withoutStock=true&page=2");
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await page.locator("tbody tr").last().getByRole("link", { name: "Editar producto" }).click();
-  await expect(page).toHaveURL(/\/productos\/p\d+\?back=/);
+  await expect(page).toHaveURL(/\/productos\/p\d+\?back=/, { timeout: 15000 });
   await page.getByRole("link", { name: "Vista previa", exact: true }).click();
   await expect(page).toHaveURL(/vista-previa\?back=/);
-  await page.getByRole("link", { name: "Volver a editar producto", exact: true }).click();
+  await page.getByRole("link", { name: "Volver a gestionar producto", exact: true }).click();
   await page.getByRole("link", { name: "Volver al catálogo", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await expect(page.getByLabel("Marca", { exact: true })).toHaveValue("filter-brand");

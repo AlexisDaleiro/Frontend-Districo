@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminNavigationTarget, adminSectionFromPath } from "@/lib/admin-navigation";
+import { adminViewportPath } from "@/lib/admin-viewport";
 import { AdminNav } from "./admin-navigation";
 import { API_STALE_TIME, apiQueryKey, request, useSession } from "./providers";
 
@@ -14,7 +15,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const main = root.current?.querySelector<HTMLElement>(".admin-main");
-    if (main?.dataset.preserveViewport && main.dataset.preserveViewport !== pathname) {
+    if (main?.dataset.preserveViewport && main.dataset.preserveViewport !== adminViewportPath(pathname)) {
       delete main.dataset.preserveViewport;
       main.style.removeProperty("min-height");
     }

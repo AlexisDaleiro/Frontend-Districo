@@ -208,7 +208,7 @@ test("administración crea producto, presentación, precio, stock y medio", asyn
   await page.getByRole("link", { name: "Vista previa" }).click();
   await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba\/vista-previa(?:\?|$)/);
   await expect(page.getByText("Stock disponible", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Volver a editar producto" }).click();
+  await page.getByRole("link", { name: "Volver a gestionar producto" }).click();
   await expect(page).toHaveURL(/\/tienda\/admin\/productos\/aa-producto-prueba(?:\?|$)/);
   await expect(page.getByRole("heading", { name: "Editar producto" })).toBeVisible();
   await expect(page.getByRole("dialog")).not.toBeVisible();

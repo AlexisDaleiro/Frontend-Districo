@@ -12,6 +12,6 @@ export class NotificationsController {
     const expected = createHash('sha256').update(`Bearer ${secret}`).digest();
     const provided = createHash('sha256').update(authorization ?? '').digest();
     if (secret.length < 32 || !timingSafeEqual(expected, provided)) throw new UnauthorizedException();
-    return this.notifications.dispatch();
+    return this.notifications.dispatch({ limit: 30, budgetMs: 40000 });
   }
 }

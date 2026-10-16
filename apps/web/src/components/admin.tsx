@@ -793,8 +793,8 @@ function ProductManagement({ edit }: { edit: OpenEditor }) {
         <select className="form-input" aria-label="Categoría" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}>
           <option value="">Todas las categorías</option>{categories.data?.map((item) => <option key={item.id} value={item.id}>{item.parentId ? `${categories.data?.find((parent) => parent.id === item.parentId)?.name ?? "Subcategoría"} / ` : ""}{item.name}</option>)}
         </select>
-        <label className="admin-filter-chip"><input type="checkbox" checked={withoutPrice} onChange={(event) => { setWithoutPrice(event.target.checked); setPage(1); }} />Sin precio vigente</label>
-        <label className="admin-filter-chip"><input type="checkbox" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
+        <label className="admin-filter-chip"><input type="checkbox" aria-label="Sin precio vigente" checked={withoutPrice} onChange={(event) => { setWithoutPrice(event.target.checked); setPage(1); }} />Sin precio vigente</label>
+        <label className="admin-filter-chip"><input type="checkbox" aria-label="Sin stock disponible" checked={withoutStock} onChange={(event) => { setWithoutStock(event.target.checked); setPage(1); }} />Sin stock disponible</label>
       </AdminListFilters>
       {q.isPending ? <Loading /> : q.error ? <ErrorBox error={q.error} retry={() => void q.refetch()} /> : q.data && <>
       {canBulk && <AdminBulkActions kind="products" selection={selection} />}

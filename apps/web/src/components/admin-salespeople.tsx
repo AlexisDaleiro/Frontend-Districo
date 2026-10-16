@@ -29,7 +29,6 @@ export function AdminSalespeople() {
   const [page, setPage] = useAdminListField("page", 1);
   const [status, setStatus] = useAdminListField("status", "", ["", ...staffStatusOptions.map(([key]) => key)]);
   const [selected, setSelected] = useState<Record<string, SalespersonSummary>>({});
-  const selectedSellers = Object.values(selected);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -42,6 +41,12 @@ export function AdminSalespeople() {
     return () => clearTimeout(timer);
   }, [search]);
   const q = useApi<Page<SalespersonSummary>>(adminListPath("admin/salespeople", { page, limit: 20, search: debounced, status }));
+  const selectedSellers = Object.values(selected).map((seller) => q.data?.items.find((item) => item.id === seller.id) ?? seller);
+  useEffect(() => {
+    if (!q.data || q.isFetching || q.error || q.data.meta.page !== page || debounced !== search.trim()) return;
+    const lastPage = Math.max(1, Math.ceil(q.data.meta.total / q.data.meta.limit));
+    if (page > lastPage) setPage(lastPage);
+  }, [q.data, q.isFetching, q.error, page, debounced, search, setPage]);
   const selection = {
     ids: Object.keys(selected),
     selected: Object.fromEntries(selectedSellers.map((seller) => [seller.id, seller.profile?.name || seller.email])),

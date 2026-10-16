@@ -6,12 +6,14 @@ import { Copy, UserCheck, UserX, X } from "lucide-react";
 import { canEditAdminFeature } from "@/lib/staff-access";
 import { invalidateAdminMutation } from "@/lib/admin-query-invalidation";
 import type { SalespersonSummary } from "@/lib/types";
+import { refreshSalespeopleSelection } from "@/lib/salespeople-selection";
 import { request, useSession } from "./providers";
 import { Modal } from "./ui";
 
-type Review = { active: boolean; sellers: SalespersonSummary[] };
+type Review = { active: boolean; sellers: SalespersonSummary[]; issues: Issue[] };
 type Issue = { id: string; name: string; reason: string };
 const name = (seller: SalespersonSummary) => seller.profile?.name || seller.email;
+const refresh = (sellers: SalespersonSummary[]) => refreshSalespeopleSelection(sellers, (id) => request(`admin/salespeople/${id}`));
 
 function unchangedReason(seller: SalespersonSummary, active: boolean, ownId?: string) {
   if (seller.active === active) return active ? "Ya está activo." : "Ya está desactivado.";
@@ -33,15 +35,30 @@ export function SalespeopleActions({ sellers, clear, remove, pageSelection }: {
   const [progress, setProgress] = useState(0);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [copyFallback, setCopyFallback] = useState("");
-  const eligible = review?.sellers.filter((seller) => !unchangedReason(seller, review.active, user?.id)) ?? [];
-  function begin(active: boolean) { setIssues([]); setReview({ active, sellers: [...sellers] }); }
+  const [notice, setNotice] = useState("");
+  const reason = (seller: SalespersonSummary, current: Review) => current.issues.find((issue) => issue.id === seller.id)?.reason || unchangedReason(seller, current.active, user?.id);
+  const eligible = review?.sellers.filter((seller) => !reason(seller, review)) ?? [];
+  async function begin(active: boolean) {
+    if (!canChange || applying.current || !sellers.length) return;
+    applying.current = true;
+    setBusy(true); setIssues([]); setNotice(""); setReview({ active, sellers: [...sellers], issues: [] });
+    try { setReview({ active, ...await refresh(sellers) }); }
+    finally { applying.current = false; setBusy(false); }
+  }
   async function apply() {
     if (!review || !canChange || applying.current || !eligible.length) return;
     applying.current = true;
     setBusy(true); setProgress(0);
     const saved: string[] = [], failed: Issue[] = [];
     try {
-      for (const [index, seller] of eligible.entries()) {
+      const current = { active: review.active, ...await refresh(review.sellers) };
+      if (current.sellers.some((seller, index) => reason(seller, current) !== reason(review.sellers[index], review))) {
+        setReview(current);
+        setNotice("Los estados cambiaron desde la revisión. Revisá el detalle y confirmá nuevamente.");
+        return;
+      }
+      const verified = current.sellers.filter((seller) => !reason(seller, current));
+      for (const [index, seller] of verified.entries()) {
         try {
           await request(`admin/staff/${seller.id}/active`, "PATCH", { active: review.active });
           saved.push(seller.id);
@@ -81,9 +98,10 @@ export function SalespeopleActions({ sellers, clear, remove, pageSelection }: {
       {review && <div className="stack" aria-busy={busy}>
         <p>{review.active ? "Las cuentas activadas podrán volver a ingresar." : "Los vendedores desactivados perderán el acceso y se cerrarán sus sesiones."}</p>
         <ul className="admin-salespeople-review">{review.sellers.map((seller) => {
-          const reason = unchangedReason(seller, review.active, user?.id);
-          return <li key={seller.id}><strong>{name(seller)}</strong><span className="admin-list-sub">{seller.email}</span><span className="admin-list-sub">{reason || (review.active ? "Se activará la cuenta." : "Se desactivará la cuenta.")}</span></li>;
+          const explanation = reason(seller, review);
+          return <li key={seller.id}><strong>{name(seller)}</strong><span className="admin-list-sub">{seller.email}</span><span className="admin-list-sub">{explanation || (review.active ? "Se activará la cuenta." : "Se desactivará la cuenta.")}</span></li>;
         })}</ul>
+        {notice && <p role="alert">{notice}</p>}
         <p className="small-copy">Se cambiarán {eligible.length} de {review.sellers.length} cuentas. Las demás conservarán su estado.</p>
         <div className="actions"><button className="button" type="button" disabled={busy || !eligible.length} onClick={() => void apply()}>{busy ? `Procesando ${progress} de ${eligible.length}…` : `Confirmar ${review.active ? "activación" : "desactivación"}`}</button><button className="button secondary" type="button" disabled={busy} onClick={() => setReview(null)}>Cancelar</button></div>
       </div>}

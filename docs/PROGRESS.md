@@ -1,6 +1,16 @@
 # Registro de avance
 
-Última actualización: 14 de octubre de 2026. Rama de trabajo: `main`.
+Última actualización: 16 de octubre de 2026. Rama de trabajo: `main`.
+
+## Correcciones de la revision de cambios del equipo (16/10/2026)
+
+- Incorporados por avance rapido los diez commits hasta `f9df2dd`, conservando las comprobaciones de permisos sensibles existentes.
+- Correos: prioridad para recuperacion/cambio de contrasena, hasta 30 intentos por tanda con presupuesto de 40 segundos y hasta cuatro tandas por ejecucion programada. Puente, proveedor y workflow con esperas compatibles, bloqueo atomico, reintentos e idempotencia conservados. Sin migraciones ni variables nuevas; sin configuracion sigue deshabilitado de forma segura. Ver `EMAIL-RECOVERY.md`.
+- Vendedores: revalidacion de seleccionados incluso fuera de la pagina actual antes de revisar y confirmar. Consultas limitadas a cuatro simultaneas, sin conservar la lista privada de clientes en la seleccion; estados no verificables no se modifican. Si cambia la elegibilidad durante la revision, se requiere revisar y confirmar nuevamente. La API conserva la ultima validacion y sus permisos.
+- Paginacion de vendedores: corrige la pagina cuando una desactivacion reduce los resultados del filtro, conservando busqueda y estado.
+- Desplazamiento: rutas con/sin barra final comparten la misma clave; el Resumen corto conserva el viewport procedente del catalogo. Filtros de precio/stock con nombres accesibles estables al marcarse.
+- Verificacion: 248 pruebas web; 18 pruebas de autenticacion/MFA/correos, 31 de permisos y una de arranque de API sin correo; 45 recorridos distintos de navegador entre demo y API simulada, con regresiones repetidas tras las correcciones. Tipos, lint y compilaciones comprobados; workflow validado como YAML. Capturas de vendedores revisadas en escritorio y celular, sin desbordamiento a 320/390 px.
+- No se modificaron registros de Supabase, no se enviaron correos reales ni se ejecuto el workflow remoto. Verificacion local, no confirmacion de despliegue en Vercel. Publicacion en main solicitada por el usuario despues de verificar los cambios del equipo.
 
 ## Barra de navegación en modo administrador (14/10/2026)
 

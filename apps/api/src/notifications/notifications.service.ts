@@ -49,10 +49,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async dispatch() {
+  async dispatch({ limit = 3, budgetMs = 40000 } = {}) {
     if (this.running || !this.settings().ready) return { processed: 0 };
     this.running = true;
     let processed = 0;
+    const deadline = Date.now() + Math.min(40000, Math.max(10000, budgetMs));
+    const batchSize = Math.min(30, Math.max(1, limit));
     try {
       const now = new Date();
       await this.prisma.notificationLog.updateMany({ where: {
@@ -61,11 +63,23 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       await this.prisma.notificationLog.updateMany({ where: {
         status: 'PROCESSING', lockedAt: { lt: new Date(now.getTime() - 120000) },
       }, data: { status: 'PENDING', lockedAt: null } });
-      const rows = await this.prisma.notificationLog.findMany({ where: { status: 'PENDING', availableAt: { lte: now } },
-        orderBy: { availableAt: 'asc' }, take: 3 });
+      // Recovery links must not expire behind ordinary order notifications.
+      const securityEvents = ['password.reset_requested', 'password.changed'];
+      const pending = { status: 'PENDING', availableAt: { lte: now }, expiresAt: { gt: now } };
+      const priority = await this.prisma.notificationLog.findMany({ where: { ...pending, event: { in: securityEvents } },
+        orderBy: [{ expiresAt: 'asc' }, { availableAt: 'asc' }, { id: 'asc' }], take: batchSize });
+      const ordinary = priority.length < batchSize ? await this.prisma.notificationLog.findMany({
+        where: { ...pending, event: { notIn: securityEvents } },
+        orderBy: [{ availableAt: 'asc' }, { id: 'asc' }], take: batchSize - priority.length,
+      }) : [];
+      const rows = [...priority, ...ordinary];
       for (const row of rows) {
+        // Leave room for the provider's 8s timeout and persisting its result.
+        if (Date.now() + 9000 >= deadline) break;
         const lockedAt = new Date();
-        const claimed = await this.prisma.notificationLog.updateMany({ where: { id: row.id, status: 'PENDING' },
+        const claimed = await this.prisma.notificationLog.updateMany({ where: {
+          id: row.id, status: 'PENDING', availableAt: { lte: lockedAt }, expiresAt: { gt: lockedAt },
+        },
           data: { status: 'PROCESSING', lockedAt, attempts: { increment: 1 } } });
         if (!claimed.count) continue;
         try {

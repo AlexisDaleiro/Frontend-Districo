@@ -4,6 +4,7 @@ import { isDemoMode } from "@/lib/data-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function reply(body: unknown, status: number) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store, private" } });
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       headers: { Authorization: `Bearer ${dispatchSecret}`, Accept: "application/json" },
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(50_000),
     });
     if (!upstream.ok) return reply({ message: "No se pudo procesar la cola." }, 502);
     const result = await upstream.json();

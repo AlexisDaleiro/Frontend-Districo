@@ -186,7 +186,7 @@ test('outbox accepts only a successfully claimed row, retries failures and wipes
     for (const status of [200, 429, 403]) {
       const row = { id: 'log-1', attempts: 0, expiresAt: new Date(Date.now() + 60000), encryptedMessage: sealEmail({ from: 'test', to: ['owner@example.test'], subject: 'Test', text: 'secret' }, key, 'log-1') };
       const updates: { where: Record<string, unknown>; data: Record<string, unknown> }[] = [];
-      const prisma = { notificationLog: { findMany: async () => [row], updateMany: async (input: typeof updates[number]) => { updates.push(input); return { count: 1 }; } } };
+      const prisma = { notificationLog: { findMany: async ({ where }: { where: { event: { in?: string[] } } }) => where.event.in ? [] : [row], updateMany: async (input: typeof updates[number]) => { updates.push(input); return { count: 1 }; } } };
       global.fetch = (async () => new Response('{}', { status })) as typeof fetch;
       const mail = new NotificationsService(prisma as never, config());
       assert.deepEqual(await mail.dispatch(), { processed: 1 });
@@ -198,15 +198,73 @@ test('outbox accepts only a successfully claimed row, retries failures and wipes
     }
     let sent = false;
     global.fetch = (async () => { sent = true; return new Response(); }) as typeof fetch;
-    const mail = new NotificationsService({ notificationLog: { findMany: async () => [{ id: 'lost' }], updateMany: async () => ({ count: 0 }) } } as never, config());
+    const mail = new NotificationsService({ notificationLog: { findMany: async ({ where }: { where: { event: { in?: string[] } } }) => where.event.in ? [] : [{ id: 'lost' }], updateMany: async () => ({ count: 0 }) } } as never, config());
     assert.deepEqual(await mail.dispatch(), { processed: 0 });
     assert.equal(sent, false);
   } finally { global.fetch = original; }
 });
 
-test('internal dispatcher is inaccessible without the dedicated secret', async () => {
-  const controller = new NotificationsController({ settings: () => ({ dispatchSecret: 's'.repeat(40) }), dispatch: async () => ({ processed: 0 }) } as never);
+test('internal dispatcher is inaccessible without the dedicated secret and uses a bounded larger batch', async () => {
+  const controller = new NotificationsController({ settings: () => ({ dispatchSecret: 's'.repeat(40) }), dispatch: async (options: object) => {
+    assert.deepEqual(options, { limit: 30, budgetMs: 40000 });
+    return { processed: 0 };
+  } } as never);
   await assert.rejects(() => controller.dispatch());
   await assert.rejects(() => controller.dispatch('Bearer wrong'));
   assert.deepEqual(await controller.dispatch(`Bearer ${'s'.repeat(40)}`), { processed: 0 });
+});
+
+function queueFixture() {
+  const now = Date.now();
+  const rows = Array.from({ length: 22 }, (_, index) => {
+    const id = `queue-${index}`;
+    return { id, event: index === 21 ? 'password.reset_requested' : 'order.received', status: 'PENDING', attempts: 0,
+      availableAt: new Date(now - (22 - index) * 1000), expiresAt: new Date(now + 60000), lockedAt: null,
+      encryptedMessage: sealEmail({ from: 'test', to: ['fixture@example.test'], subject: 'Test', text: 'secret' }, key, id) };
+  });
+  const notificationLog = {
+    findMany: async ({ where, take }: { where: { event: { in?: string[]; notIn?: string[] } }; take: number }) => rows
+      .filter((row) => row.status === 'PENDING' && row.expiresAt.getTime() > Date.now() && row.availableAt.getTime() <= Date.now()
+        && (where.event.in ? where.event.in.includes(row.event) : !where.event.notIn!.includes(row.event))).slice(0, take),
+    updateMany: async ({ where, data }: { where: { id?: string; status: string; expiresAt?: { gt?: Date } }; data: Record<string, unknown> }) => {
+      if (!where.id) return { count: 0 };
+      const row = rows.find((item) => item.id === where.id && item.status === where.status);
+      if (!row) return { count: 0 };
+      Object.assign(row, data);
+      return { count: 1 };
+    },
+  };
+  return { rows, mail: new NotificationsService({ notificationLog } as never, config()) };
+}
+
+test('recovery takes priority over a backlog, scheduled dispatch exceeds three sends and cannot replay accepted content', async () => {
+  const original = global.fetch;
+  const sent: string[] = [];
+  try {
+    global.fetch = (async (_url, options) => {
+      sent.push((options!.headers as Record<string, string>)['Idempotency-Key']);
+      return new Response('{}');
+    }) as typeof fetch;
+    const { mail, rows } = queueFixture();
+    assert.deepEqual(await mail.dispatch({ limit: 4 }), { processed: 4 });
+    assert.equal(sent[0], 'districo/queue-21');
+    assert.equal(rows.filter((row) => row.status === 'ACCEPTED').length, 4);
+    assert.equal(rows.filter((row) => row.status === 'PROCESSING').length, 0);
+    assert.deepEqual(await mail.dispatch({ limit: 1 }), { processed: 1 });
+    assert.equal(new Set(sent).size, 5);
+  } finally { global.fetch = original; }
+});
+
+test('dispatch stops before its budget is exhausted without claiming unsent rows', async () => {
+  const originalFetch = global.fetch, originalNow = Date.now;
+  let elapsed = 0;
+  const base = Date.now();
+  try {
+    Date.now = () => base + elapsed;
+    global.fetch = (async () => { elapsed += 18000; return new Response('{}'); }) as typeof fetch;
+    const { mail, rows } = queueFixture();
+    assert.deepEqual(await mail.dispatch({ limit: 30, budgetMs: 40000 }), { processed: 2 });
+    assert.equal(rows.filter((row) => row.status === 'PENDING').length, 20);
+    assert.equal(rows.filter((row) => row.status === 'PROCESSING').length, 0);
+  } finally { global.fetch = originalFetch; Date.now = originalNow; }
 });

@@ -15,7 +15,7 @@ concurrency:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
       - name: Dispatch queued emails
         env:
@@ -24,11 +24,16 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$CRON_SECRET"
-          curl --fail-with-body --silent --show-error \
-            --connect-timeout 10 --max-time 45 \
-            --request POST \
-            --header "Authorization: Bearer ${CRON_SECRET}" \
-            --header "Accept: application/json" \
-            "${APP_URL%/}/api/internal/notifications/dispatch"
-          printf '\n'
+          for batch in 1 2 3 4; do
+            result=$(curl --fail-with-body --silent --show-error \
+              --connect-timeout 10 --max-time 60 \
+              --request POST \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              --header "Accept: application/json" \
+              "${APP_URL%/}/api/internal/notifications/dispatch")
+            processed=$(printf '%s' "$result" | jq -er '.processed | select(type == "number" and . >= 0 and . == floor)')
+            printf 'Batch %s: %s processed\n' "$batch" "$processed"
+            if [ "$processed" -eq 0 ]; then break; fi
+            sleep 1
+          done
         shell: bash
