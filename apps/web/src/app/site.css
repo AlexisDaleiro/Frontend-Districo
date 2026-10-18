@@ -320,13 +320,12 @@
 /* Vitrina contenida: no ocupa toda la columna en pantallas anchas. */
 .site-sheet-media { width: min(100%, 540px); justify-self: center; }
 .site-sheet-zoom { position: relative; isolation: isolate; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid #ececea; border-radius: 28px; background: white; cursor: zoom-in; }
-.site-sheet-zoom::before { content: ""; position: absolute; inset: auto 0 0; z-index: -1; height: 22%; border-top: 1px solid #dcdcd4; background: #eeefea; transition: opacity var(--dur-base) ease; }
 /* Fondo blanco: los JPG con fondo blanco se funden sin teñirse; la foto termina donde empieza el estante. */
-.site-sheet-zoom img { position: absolute; inset: 6% 11% 22%; width: 78%; height: 72%; object-fit: contain; object-position: bottom; transform-origin: var(--zoom-origin, 50% 50%); transition: transform var(--dur-base) var(--ease-out); }
+.site-sheet-zoom img { position: absolute; inset: 8% 11%; width: 78%; height: 84%; object-fit: contain; transform-origin: var(--zoom-origin, 50% 50%); transition: transform var(--dur-base) var(--ease-out); }
 .site-sheet-zoom-badge { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: white; color: var(--ink); box-shadow: 0 2px 8px rgb(0 0 0 / .08); pointer-events: none; transition: opacity var(--dur-base) ease; }
 @media (hover: hover) and (pointer: fine) {
   .site-sheet-zoom:hover img { transform: scale(1.8); }
-  .site-sheet-zoom:hover .site-sheet-zoom-badge, .site-sheet-zoom:hover::before { opacity: 0; }
+  .site-sheet-zoom:hover .site-sheet-zoom-badge { opacity: 0; }
 }
 .site-sheet-thumbs { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
 .site-sheet-thumbs button { display: grid; place-items: center; width: 72px; height: 72px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: white; cursor: pointer; transition: border-color var(--dur-base) ease, background-color var(--dur-base) ease; }

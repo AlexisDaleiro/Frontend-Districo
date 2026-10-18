@@ -12,6 +12,11 @@
 - Verificacion: 248 pruebas web; 18 pruebas de autenticacion/MFA/correos, 31 de permisos y una de arranque de API sin correo; 45 recorridos distintos de navegador entre demo y API simulada, con regresiones repetidas tras las correcciones. Tipos, lint y compilaciones comprobados; workflow validado como YAML. Capturas de vendedores revisadas en escritorio y celular, sin desbordamiento a 320/390 px.
 - No se modificaron registros de Supabase, no se enviaron correos reales ni se ejecuto el workflow remoto. Verificacion local, no confirmacion de despliegue en Vercel. Publicacion en main solicitada por el usuario despues de verificar los cambios del equipo.
 
+## Foto de ficha sin franja gris (18/10/2026)
+
+- Se quitó el «estante» gris (pseudo-elemento `::before`) bajo la foto en la ficha de ecommerce (`.detail-image`, `apps/web/src/app/globals.css`) y en la de landing (`.site-sheet-zoom`, `apps/web/src/app/site.css`). La foto queda centrada en la vitrina blanca (8% arriba y abajo).
+- Verificado en demo (3010): sin pseudo-elemento y márgenes iguales arriba/abajo en ambas fichas. Sin pruebas e2e que dependan del estante.
+
 ## Panel de administración en celular: cajón agrupado (18/10/2026)
 
 - Por debajo de 960px el menú del panel es una barra fija (☰ + sección actual + buscar) y las secciones abren en un cajón lateral agrupado (Operación, Catálogo, Marketing…), con contadores, Seguridad y Cerrar sesión. Se cierra al navegar, con Escape, con la X o tocando el fondo. Escritorio sin cambios (barra lateral contraíble).
