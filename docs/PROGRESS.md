@@ -1049,3 +1049,8 @@ Para una sesión nueva: leer `CLAUDE.md`, este archivo y el estado de Git; elegi
 - `apps/web/tests/e2e/landing.spec.ts`: test nuevo de la banda; el test de scroll horizontal esperaba `.site-apply` visible en móvil (desactualizado desde la opción C), ahora verifica `.site-login`.
 - Pruebas: `tsc` y `eslint` OK; `E2E_PORT=3107 npx playwright test tests/e2e/landing.spec.ts` 21/21.
 - Pendiente: datos reales para la banda (requisitos, tiempos, pedido mínimo, zonas); issues P2 restantes de la critique (flecha del hero a 4px del botón WhatsApp, pill ISO 9px, tarjeta Farmacia, logos inactivos .55). Snapshot en `apps/web/.impeccable/critique/`.
+
+## 2026-10-18 · CI e2e: cierre de sesión en el cajón móvil
+
+- `apps/web/tests/e2e/customer-discounts.spec.ts`: a 390px el botón «Cerrar sesión» del admin quedó dentro del cajón «Abrir secciones» (commit bba8b393); el test ahora abre el cajón antes de cerrar sesión.
+- Pruebas: `E2E_PORT=3010 E2E_USE_EXISTING_SERVER=1 npx playwright test tests/e2e/customer-discounts.spec.ts` 2/2. Suite completa no repetida localmente.

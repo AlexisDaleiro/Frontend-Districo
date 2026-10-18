@@ -45,6 +45,8 @@ test("vendedor edita descuento propio, guarda con atajo, conserva historial y cl
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: info.outputPath("customer-discount-mobile.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  // En celular el cierre de sesión vive en el cajón de secciones.
+  await page.getByRole("button", { name: "Abrir secciones" }).click();
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   await login(page, "cliente@gmail.com");
   await page.goto("/tienda/carrito");
