@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type PointerEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownRight, ArrowUpRight, Download, RefreshCw } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Download, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { money } from "@/lib/commerce";
 import { apiQueryKey, request, useApi, useSession, DEMO } from "./providers";
 import { useAdminListField, ShareAdminList } from "./admin-list-navigation";
@@ -162,6 +162,9 @@ export function AdminSales() {
   const [currency, setCurrency] = useAdminListField('currency', 'UYU', ['UYU', 'USD']);
   const [page, setPage] = useAdminListField('page', 1);
   const [customerSearch, setCustomerSearch] = useState(''), [customerTerm, setCustomerTerm] = useState('');
+  // En celular los filtros quedan plegados detrás de un botón; en escritorio siempre visibles.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = [salespersonId, customerId, brandId, customerSearch, currency !== 'UYU'].filter(Boolean).length;
   const [exporting, setExporting] = useState(false), [exportError, setExportError] = useState<unknown>();
   const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string }>();
   useEffect(() => { const timer = setTimeout(() => setCustomerTerm(customerSearch.trim()), 250); return () => clearTimeout(timer); }, [customerSearch]);
@@ -209,6 +212,9 @@ export function AdminSales() {
           </div>
           <button className="icon-button" type="button" title="Actualizar ventas" aria-label="Actualizar ventas" onClick={() => void q.refetch()}><RefreshCw size={17} /></button>
           <ShareAdminList />
+          <button className="button secondary small admin-sales-filters-toggle" type="button" aria-expanded={filtersOpen} aria-controls="admin-sales-filters" onClick={() => setFiltersOpen((open) => !open)}>
+            <SlidersHorizontal size={16} aria-hidden="true" />Filtros{activeFilters > 0 && <em>{activeFilters}</em>}
+          </button>
           <button className="button secondary small" type="button" disabled={exporting || q.isPending || !!q.error} onClick={() => void exportReport()}><Download size={16} />{exporting ? 'Exportando…' : 'Exportar CSV'}</button>
         </div>
       </div>
@@ -217,7 +223,7 @@ export function AdminSales() {
         <label className="field">Hasta<input className="form-input" type="date" required min={fromDraft} max={salesDate()} value={toDraft} onChange={(event) => setToDraft(event.target.value)} /></label>
         <button className="button small secondary" type="submit">Aplicar fechas</button>
       </form>}
-      <div className="admin-list-filters admin-sales-filters">
+      <div className="admin-list-filters admin-sales-filters" id="admin-sales-filters" data-open={filtersOpen}>
         <select className="form-input" aria-label="Filtrar ventas por vendedor" value={salespersonId} onChange={(event) => { setSalesperson(event.target.value); setCustomer(''); setPage(1); }}><option value="">{user?.role === 'SALES' ? 'Mis clientes asignados' : 'Todos los vendedores'}</option>{options.data?.salespeople.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
         <input className="form-input" type="search" aria-label="Buscar cliente" placeholder="Comercio, correo o RUT" maxLength={120} value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} />
         <select className="form-input" aria-label="Filtrar ventas por cliente" value={customerId} onChange={(event) => { const id = event.target.value; setSelectedCustomer(customerChoices.find((item) => item.id === id)); setCustomer(id); setPage(1); }}><option value="">Todos los clientes</option>{customerChoices.map((item) => <option key={item.id} value={item.id}>{item.name}{item.rut ? ` · ${item.rut}` : ''}</option>)}</select>

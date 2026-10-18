@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BadgePercent, BriefcaseBusiness, Cable, ClipboardList, FolderTree, Images,
   Inbox, LayoutDashboard, ListChecks, LogOut, Menu, Package, ShieldCheck,
-  Sparkles, Tags, UserPlus, Users, type LucideIcon,
+  Sparkles, Tags, UserPlus, Users, X, type LucideIcon,
   WalletCards, Truck, ChartNoAxesCombined, Target,
 } from "lucide-react";
 import { AdminCommandMenu } from "./admin-command-menu";
@@ -50,6 +50,10 @@ export function AdminNav({ section, email }: { section: string; email?: string }
   const counts = useApi<Record<string, number>>("admin/dashboard", canSeeAdminSection(user, ""));
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  // En celular el menú es un cajón lateral, independiente del contraído de escritorio.
+  const [drawer, setDrawer] = useState(false);
+  const drawerButton = useRef<HTMLButtonElement>(null);
+  const drawerPanel = useRef<HTMLDivElement>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<unknown>();
   const nav = useRef<HTMLElement>(null);
@@ -67,6 +71,18 @@ export function AdminNav({ section, email }: { section: string; email?: string }
     try { window.localStorage.setItem("districo-admin-nav-collapsed", String(next)); }
     catch { /* The preference is optional. */ }
   };
+  useEffect(() => { setDrawer(false); }, [section]);
+  useEffect(() => {
+    if (!drawer) return;
+    drawerPanel.current?.querySelector<HTMLElement>("a.active, a")?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setDrawer(false);
+      drawerButton.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawer]);
   useEffect(() => {
     const strip = nav.current;
     const active = strip?.querySelector<HTMLElement>("a.active");
@@ -91,13 +107,22 @@ export function AdminNav({ section, email }: { section: string; email?: string }
     resize.observe(strip);
     return () => { cancelAnimationFrame(ready); resize.disconnect(); };
   }, [section, counts.data, collapsed]);
-  return <aside className="admin-sidebar" data-collapsed={collapsed}>
+  const current = adminSections.find(([, path]) => path === section)?.[2] ?? "Administración";
+  return <aside className="admin-sidebar" data-collapsed={collapsed} data-drawer={drawer}>
     <div className="admin-sidebar-head">
+      <button type="button" className="admin-drawer-toggle" ref={drawerButton} aria-label="Abrir secciones"
+        aria-expanded={drawer} aria-controls="admin-drawer" onClick={() => setDrawer(true)}><Menu size={20} /></button>
+      <strong className="admin-sidebar-current" aria-hidden="true">{current}</strong>
       <div className="admin-sidebar-identity"><strong>Administración</strong>{email && <span>{email}</span>}</div>
       <button type="button" className="admin-sidebar-toggle" aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
         title={collapsed ? "Expandir menú" : "Contraer menú"} aria-expanded={!collapsed} aria-controls="admin-navigation" onClick={toggleCollapsed}><Menu size={20} /></button>
     </div>
     <AdminCommandMenu />
+    <div className="admin-drawer" id="admin-drawer" ref={drawerPanel}>
+    <div className="admin-drawer-head">
+      <div><strong>Administración</strong>{email && <span>{email}</span>}</div>
+      <button type="button" className="admin-sidebar-toggle" aria-label="Cerrar secciones" onClick={() => { setDrawer(false); drawerButton.current?.focus(); }}><X size={20} /></button>
+    </div>
     <nav className="admin-nav" aria-label="Administración" id="admin-navigation" ref={nav}>
       <span className="admin-nav-indicator" ref={indicator} aria-hidden="true" />
       {groups.filter((group) => adminSections.some(([g, path]) => g === group && canSeeAdminSection(user, path))).map((group) => <div className="admin-nav-group" key={group}>
@@ -125,5 +150,7 @@ export function AdminNav({ section, email }: { section: string; email?: string }
       }}><LogOut size={17} aria-hidden="true" /><span>{loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}</span></button>
       {logoutError !== undefined && <ErrorBox error={logoutError} />}
     </div>
+    </div>
+    <button type="button" className="admin-drawer-backdrop" tabIndex={-1} aria-hidden="true" onClick={() => setDrawer(false)} />
   </aside>;
 }

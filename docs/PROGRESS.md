@@ -12,6 +12,15 @@
 - Verificacion: 248 pruebas web; 18 pruebas de autenticacion/MFA/correos, 31 de permisos y una de arranque de API sin correo; 45 recorridos distintos de navegador entre demo y API simulada, con regresiones repetidas tras las correcciones. Tipos, lint y compilaciones comprobados; workflow validado como YAML. Capturas de vendedores revisadas en escritorio y celular, sin desbordamiento a 320/390 px.
 - No se modificaron registros de Supabase, no se enviaron correos reales ni se ejecuto el workflow remoto. Verificacion local, no confirmacion de despliegue en Vercel. Publicacion en main solicitada por el usuario despues de verificar los cambios del equipo.
 
+## Panel de administración en celular: cajón agrupado (18/10/2026)
+
+- Por debajo de 960px el menú del panel es una barra fija (☰ + sección actual + buscar) y las secciones abren en un cajón lateral agrupado (Operación, Catálogo, Marketing…), con contadores, Seguridad y Cerrar sesión. Se cierra al navegar, con Escape, con la X o tocando el fondo. Escritorio sin cambios (barra lateral contraíble).
+- En el panel se oculta el ☰ del encabezado de la tienda en celular (un solo menú) y el logo vuelve a tamaño legible.
+- Resumen en celular: contadores en grilla de 3 columnas; ventas con botón «Filtros» (con cantidad activa) que pliega los filtros; controles en una fila.
+- Archivos: `apps/web/src/components/admin-navigation.tsx`, `admin-sales.tsx`, `apps/web/src/app/globals.css`, `apps/web/tests/e2e/admin-complete.spec.ts` (el menú móvil ahora se prueba con «Abrir secciones»/Escape).
+- Pruebas: `tsc --noEmit` ok. e2e admin-complete, admin-list-filters, dashboard-enhancements, admin-access, admin-navigation-speed contra demo en 3010: 24 ok, 3 fallan y ya fallaban sin estos cambios (dos buscan «Volver a editar producto», renombrado; `admin-list-filters:135` espera desplazamiento >100 en una lista que ahora entra sin scroll).
+- Pendiente: revisar listados (catálogo, clientes) en celular; las tablas siguen con scroll horizontal.
+
 ## Barra de navegación en modo administrador (14/10/2026)
 
 - `src/components/shell.tsx`: solo dentro de `/tienda/admin/*` (`inAdmin`, staff con `canAccessAdmin`) se ocultan topbar, buscador y navline; queda una sola fila: logo reducido, «Modo administrador · Gestioná tu operación mayorista desde acá» y, a la derecha, «Ver Ecommerce» (→ `/tienda`) junto a la cuenta. Fuera del panel el header es el normal, con «Administración».

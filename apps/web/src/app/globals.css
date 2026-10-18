@@ -659,6 +659,11 @@ svg {
 @media (max-width: 767px) {
   .header.is-admin .header-main { padding-block: 12px; }
   .header.is-admin .account-link span { display: none; }
+  /* En el panel el único menú es el de secciones. */
+  .header.is-admin .mobile-menu { display: none; }
+  .header.is-admin .header-main { gap: 12px; }
+  .header.is-admin .logo img { width: 112px; max-width: none; height: auto; }
+  .header.is-admin .header-actions { gap: 10px; }
 }
 .mobile-menu {
   display: none;
@@ -2032,7 +2037,7 @@ th {
 td .button {
   white-space: nowrap;
 }
-/* Móvil: la navegación es una franja con scroll sobre el contenido. */
+/* Móvil: barra fija con la sección actual; las secciones abren en un cajón lateral. */
 .admin-shell {
   display: grid;
   gap: 24px;
@@ -2089,7 +2094,8 @@ td .button {
 .admin-nav-group p {
   display: none;
 }
-.admin-sidebar-toggle {
+.admin-sidebar-toggle,
+.admin-drawer-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2103,11 +2109,10 @@ td .button {
   cursor: pointer;
 }
 .admin-sidebar-toggle:hover,
-.admin-sidebar-toggle:focus-visible {
+.admin-sidebar-toggle:focus-visible,
+.admin-drawer-toggle:hover,
+.admin-drawer-toggle:focus-visible {
   background: var(--on-ink-line);
-}
-.admin-sidebar[data-collapsed="true"] .admin-nav {
-  display: none;
 }
 .admin-sidebar-footer {
   display: flex;
@@ -2190,7 +2195,40 @@ td .button {
   color: var(--on-ink);
   background: var(--ink);
 }
+@media (max-width: 959px) {
+  .container.admin-page.section { padding-top: 0; }
+  .admin-shell { gap: 16px; }
+  /* La barra ya nombra la sección: el encabezado de página se achica. */
+  .admin-main .page-heading { margin-bottom: 16px; }
+  .admin-main .page-heading .eyebrow { display: none; }
+  .admin-main .page-heading h1 { font-size: 26px; }
+  .admin-sidebar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 6px; margin-inline: calc(50% - 50vw); padding: 6px 10px; border-radius: 0; }
+  .admin-sidebar-head { flex: 1; min-width: 0; justify-content: flex-start; gap: 6px; padding: 0; }
+  .admin-sidebar-head > .admin-sidebar-toggle { display: none; }
+  .admin-sidebar-current { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-sidebar .admin-command-trigger { width: 40px; height: 40px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--on-ink); }
+  .admin-sidebar .admin-command-trigger span { display: none; }
+  .admin-drawer { position: fixed; inset: 0 auto 0 0; z-index: 2; display: flex; flex-direction: column; width: min(320px, 86vw); padding: 14px 12px; overflow-y: auto; overscroll-behavior: contain; background: var(--ink-deep, var(--ink)); visibility: hidden; transform: translateX(-100%); transition: transform .22s ease, visibility 0s linear .22s; }
+  .admin-sidebar[data-drawer="true"] { z-index: 200; }
+  .admin-sidebar[data-drawer="true"] .admin-drawer { visibility: visible; transform: none; transition: transform .22s ease; }
+  .admin-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 0 4px 12px; margin-bottom: 6px; border-bottom: 1px solid var(--on-ink-line); }
+  .admin-drawer-head div { display: grid; gap: 3px; min-width: 0; }
+  .admin-drawer-head strong { font-size: 15px; }
+  .admin-drawer-head span { color: var(--on-ink-muted); font-size: 11px; overflow-wrap: anywhere; }
+  .admin-nav { flex-direction: column; gap: 10px; overflow: visible; }
+  .admin-nav-group { display: grid; gap: 2px; }
+  .admin-nav-group p { display: block; margin: 0; padding: 4px 12px 2px; color: var(--on-ink-muted); font-size: 12px; font-weight: 700; }
+  .admin-nav a { min-height: 42px; }
+  .admin-sidebar-footer { display: grid; margin-top: auto; padding-top: 10px; }
+  .admin-drawer-backdrop { position: fixed; inset: 0; z-index: 1; padding: 0; border: 0; background: rgb(10 30 36 / .45); opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+  .admin-sidebar[data-drawer="true"] .admin-drawer-backdrop { opacity: 1; pointer-events: auto; }
+}
+@media (max-width: 959px) and (prefers-reduced-motion: reduce) {
+  .admin-drawer, .admin-sidebar[data-drawer="true"] .admin-drawer, .admin-drawer-backdrop { transition: none; }
+}
 @media (min-width: 960px) {
+  .admin-drawer { display: contents; }
+  .admin-drawer-toggle, .admin-sidebar-current, .admin-drawer-head, .admin-drawer-backdrop { display: none; }
   /* El panel usa todo el ancho: la barra queda pegada al borde izquierdo. */
   .container.admin-page {
     width: auto;
@@ -5096,7 +5134,21 @@ td .button {
 .admin-sales-table { width: 100%; min-width: 440px; }
 .admin-sales-table td:not(:first-child), .admin-sales-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .admin-sales-table td:first-child { overflow-wrap: anywhere; }
+.admin-sales-filters-toggle { display: none; }
+.admin-sales-filters-toggle em { min-width: 18px; padding: 0 5px; border-radius: 99px; background: var(--lime); color: var(--ink); font-size: 11px; font-style: normal; font-weight: 700; }
 @media (max-width: 600px) {
+  .admin-sales-filters-toggle { display: inline-flex; }
+  .admin-sales-controls { justify-content: flex-start; gap: 6px; }
+  .admin-sales-controls .button { gap: 6px; padding-inline: 10px; font-size: 12px; }
+  .admin-sales-controls .icon-button { width: 36px; height: 36px; }
+  .admin-sales-controls > .button:last-child { margin-left: auto; }
+  .admin-sales .admin-sales-filters:not([data-open="true"]) { display: none; }
+  .admin-sales .admin-sales-filters > .form-input { flex-basis: 100%; }
+  .admin-summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .admin-summary-stats .stat { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 6px; padding: 10px; }
+  .admin-summary-stats .stat-icon { grid-column: 2; grid-row: 1; width: 26px; height: 26px; }
+  .admin-summary-stats .stat strong { grid-column: 1; grid-row: 1; font-size: 20px; }
+  .admin-summary-stats .stat > span:last-child { grid-column: 1 / -1; font-size: 11px; }
   .admin-sales-controls .admin-sales-periods { flex-basis: 100%; flex-wrap: wrap; }
   .admin-sales-controls .admin-sales-periods button { flex: 1 1 auto; }
   .admin-sales-date-range .field { max-width: none; }

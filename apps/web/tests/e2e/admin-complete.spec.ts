@@ -66,11 +66,13 @@ test("administración conserva búsqueda, roles y aviso de suspensión", async (
   await page.goto("/tienda/admin/consultas");
   await page.getByRole("button", { name: "Expandir menú" }).click();
   await expect(sidebar).toHaveAttribute("data-collapsed", "false");
+  // En celular las secciones viven en un cajón lateral cerrado por defecto.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Contraer menú" }).click();
   await expect(page.getByRole("navigation", { name: "Administración" })).not.toBeVisible();
-  await page.getByRole("button", { name: "Expandir menú" }).click();
+  await page.getByRole("button", { name: "Abrir secciones" }).click();
   await expect(page.getByRole("navigation", { name: "Administración" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Administración" })).not.toBeVisible();
   await expect(page.getByRole("heading", { name: "Consultas comerciales" })).toBeVisible();
   await page.getByRole("textbox", { name: "Buscar consultas" }).fill("sin coincidencias");
   await expect(page.getByText("No hay consultas con estos filtros")).toBeVisible();
