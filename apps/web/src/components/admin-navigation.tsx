@@ -71,7 +71,12 @@ export function AdminNav({ section, email }: { section: string; email?: string }
     try { window.localStorage.setItem("districo-admin-nav-collapsed", String(next)); }
     catch { /* The preference is optional. */ }
   };
-  useEffect(() => { setDrawer(false); }, [section]);
+  // Cerrar el cajón al navegar: se ajusta en render, no en un efecto.
+  const [drawerSection, setDrawerSection] = useState(section);
+  if (drawerSection !== section) {
+    setDrawerSection(section);
+    setDrawer(false);
+  }
   useEffect(() => {
     if (!drawer) return;
     drawerPanel.current?.querySelector<HTMLElement>("a.active, a")?.focus();
