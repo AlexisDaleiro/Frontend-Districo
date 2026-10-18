@@ -666,7 +666,9 @@ button {
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+    /* 0s y no 1ms: transition-property vale all por defecto, así que 1ms
+       crea transiciones en cualquier cambio de estilo de cualquier elemento. */
+    transition-duration: 0s !important;
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
